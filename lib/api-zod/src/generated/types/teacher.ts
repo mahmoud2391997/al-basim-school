@@ -12,6 +12,7 @@ export interface Teacher {
   fullName: string;
   fullNameArabic: string;
   employeeNumber: string;
+  nationalId: string;
   subject: string;
   phone: string;
   status: TeacherStatus;

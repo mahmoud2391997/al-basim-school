@@ -1,22 +1,41 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, ilike } from "drizzle-orm";
-import { db, academicYearsTable, booksTable, studentsTable, teachersTable } from "@workspace/db";
+import { and, desc, eq, ilike, or } from "drizzle-orm";
+import { db, academicYearsTable, booksTable, employeesTable, studentsTable, teachersTable } from "@workspace/db";
 import {
   CreateBookBody,
   CreateBookResponse,
   CreateStudentBody,
   CreateStudentResponse,
+  CreateTeacherBody,
+  CreateTeacherResponse,
+  DeleteBookParams,
   DeleteStudentParams,
+  DeleteTeacherParams,
   GetAcademicYearsResponse,
   GetBooksQueryParams,
   GetBooksResponse,
   GetDashboardSummaryResponse,
   GetStudentsQueryParams,
   GetStudentsResponse,
+  GetTeachersQueryParams,
   GetTeachersResponse,
+  CreateEmployeeBody,
+  CreateEmployeeResponse,
+  DeleteEmployeeParams,
+  GetEmployeesQueryParams,
+  GetEmployeesResponse,
+  UpdateBookBody,
+  UpdateBookParams,
+  UpdateBookResponse,
   UpdateStudentBody,
   UpdateStudentParams,
   UpdateStudentResponse,
+  UpdateTeacherBody,
+  UpdateTeacherParams,
+  UpdateTeacherResponse,
+  UpdateEmployeeBody,
+  UpdateEmployeeParams,
+  UpdateEmployeeResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -111,9 +130,134 @@ router.delete("/students/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-router.get("/teachers", async (_req, res): Promise<void> => {
-  const rows = await db.select().from(teachersTable).orderBy(teachersTable.fullName);
+router.get("/teachers", async (req, res): Promise<void> => {
+  const parsed = GetTeachersQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { search, status } = parsed.data;
+  const filters = [];
+  if (search) filters.push(ilike(teachersTable.fullName, `%${search}%`));
+  if (status) filters.push(eq(teachersTable.status, status));
+  const rows = await db.select().from(teachersTable)
+    .where(filters.length ? and(...filters) : undefined)
+    .orderBy(teachersTable.fullName);
   res.json(GetTeachersResponse.parse(rows));
+});
+
+router.post("/teachers", async (req, res): Promise<void> => {
+  const parsed = CreateTeacherBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [teacher] = await db.insert(teachersTable).values({
+    ...parsed.data,
+    status: parsed.data.status ?? "active",
+  }).returning();
+  res.status(201).json(CreateTeacherResponse.parse(teacher));
+});
+
+router.patch("/teachers/:id", async (req, res): Promise<void> => {
+  const params = UpdateTeacherParams.safeParse(req.params);
+  const parsed = UpdateTeacherBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [teacher] = await db.update(teachersTable).set({
+    ...parsed.data,
+    status: parsed.data.status ?? "active",
+  }).where(eq(teachersTable.id, params.data.id)).returning();
+  if (!teacher) {
+    res.status(404).json({ error: "Teacher not found" });
+    return;
+  }
+  res.json(UpdateTeacherResponse.parse(teacher));
+});
+
+router.delete("/teachers/:id", async (req, res): Promise<void> => {
+  const params = DeleteTeacherParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [teacher] = await db.delete(teachersTable).where(eq(teachersTable.id, params.data.id)).returning();
+  if (!teacher) {
+    res.status(404).json({ error: "Teacher not found" });
+    return;
+  }
+  res.sendStatus(204);
+});
+
+router.get("/employees", async (req, res): Promise<void> => {
+  const parsed = GetEmployeesQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { search, status } = parsed.data;
+  const filters = [];
+  if (search) filters.push(or(ilike(employeesTable.fullName, `%${search}%`), ilike(employeesTable.jobTitle, `%${search}%`), ilike(employeesTable.employeeNumber, `%${search}%`)));
+  if (status) filters.push(eq(employeesTable.status, status));
+  const rows = await db.select().from(employeesTable)
+    .where(filters.length ? and(...filters) : undefined)
+    .orderBy(employeesTable.employeeNumber);
+  res.json(GetEmployeesResponse.parse(rows));
+});
+
+router.post("/employees", async (req, res): Promise<void> => {
+  const parsed = CreateEmployeeBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [employee] = await db.insert(employeesTable).values({
+    ...parsed.data,
+    status: parsed.data.status ?? "active",
+  }).returning();
+  res.status(201).json(CreateEmployeeResponse.parse(employee));
+});
+
+router.patch("/employees/:id", async (req, res): Promise<void> => {
+  const params = UpdateEmployeeParams.safeParse(req.params);
+  const parsed = UpdateEmployeeBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [employee] = await db.update(employeesTable).set({
+    ...parsed.data,
+    status: parsed.data.status ?? "active",
+  }).where(eq(employeesTable.id, params.data.id)).returning();
+  if (!employee) {
+    res.status(404).json({ error: "Employee not found" });
+    return;
+  }
+  res.json(UpdateEmployeeResponse.parse(employee));
+});
+
+router.delete("/employees/:id", async (req, res): Promise<void> => {
+  const params = DeleteEmployeeParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [employee] = await db.delete(employeesTable).where(eq(employeesTable.id, params.data.id)).returning();
+  if (!employee) {
+    res.status(404).json({ error: "Employee not found" });
+    return;
+  }
+  res.sendStatus(204);
 });
 
 router.get("/library/books", async (req, res): Promise<void> => {
@@ -124,7 +268,7 @@ router.get("/library/books", async (req, res): Promise<void> => {
   }
   const { search, category } = parsed.data;
   const filters = [];
-  if (search) filters.push(ilike(booksTable.title, `%${search}%`));
+  if (search) filters.push(or(ilike(booksTable.title, `%${search}%`), ilike(booksTable.author, `%${search}%`), ilike(booksTable.isbn, `%${search}%`)));
   if (category) filters.push(eq(booksTable.category, category));
   const rows = await db.select().from(booksTable)
     .where(filters.length ? and(...filters) : undefined)
@@ -143,6 +287,45 @@ router.post("/library/books", async (req, res): Promise<void> => {
     availableCopies: parsed.data.copies,
   }).returning();
   res.status(201).json(CreateBookResponse.parse(book));
+});
+
+router.patch("/library/books/:id", async (req, res): Promise<void> => {
+  const params = UpdateBookParams.safeParse(req.params);
+  const parsed = UpdateBookBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [existing] = await db.select().from(booksTable).where(eq(booksTable.id, params.data.id));
+  if (!existing) {
+    res.status(404).json({ error: "Book not found" });
+    return;
+  }
+  const borrowed = existing.copies - existing.availableCopies;
+  const availableCopies = Math.max(0, parsed.data.copies - borrowed);
+  const [book] = await db.update(booksTable).set({
+    ...parsed.data,
+    availableCopies,
+  }).where(eq(booksTable.id, params.data.id)).returning();
+  res.json(UpdateBookResponse.parse(book));
+});
+
+router.delete("/library/books/:id", async (req, res): Promise<void> => {
+  const params = DeleteBookParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [book] = await db.delete(booksTable).where(eq(booksTable.id, params.data.id)).returning();
+  if (!book) {
+    res.status(404).json({ error: "Book not found" });
+    return;
+  }
+  res.sendStatus(204);
 });
 
 router.get("/academic-years", async (_req, res): Promise<void> => {

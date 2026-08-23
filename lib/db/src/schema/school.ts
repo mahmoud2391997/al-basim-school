@@ -30,7 +30,19 @@ export const teachersTable = pgTable("teachers", {
   fullName: text("full_name").notNull(),
   fullNameArabic: text("full_name_arabic").notNull(),
   employeeNumber: text("employee_number").notNull().unique(),
+  nationalId: text("national_id").notNull().default(""),
   subject: text("subject").notNull(),
+  phone: text("phone").notNull(),
+  status: text("status").notNull().default("active"),
+});
+
+export const employeesTable = pgTable("employees", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  fullName: text("full_name").notNull(),
+  fullNameArabic: text("full_name_arabic").notNull(),
+  employeeNumber: text("employee_number").notNull().unique(),
+  nationalId: text("national_id").notNull().default(""),
+  jobTitle: text("job_title").notNull(),
   phone: text("phone").notNull(),
   status: text("status").notNull().default("active"),
 });
@@ -50,6 +62,7 @@ export const booksTable = pgTable("books", {
 export const insertAcademicYearSchema = createInsertSchema(academicYearsTable);
 export const insertStudentSchema = createInsertSchema(studentsTable);
 export const insertTeacherSchema = createInsertSchema(teachersTable);
+export const insertEmployeeSchema = createInsertSchema(employeesTable);
 export const insertBookSchema = createInsertSchema(booksTable);
 
 export type InsertAcademicYear = z.infer<typeof insertAcademicYearSchema>;
@@ -58,5 +71,7 @@ export type InsertStudent = z.infer<typeof insertStudentSchema>;
 export type Student = typeof studentsTable.$inferSelect;
 export type InsertTeacher = z.infer<typeof insertTeacherSchema>;
 export type Teacher = typeof teachersTable.$inferSelect;
+export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
+export type Employee = typeof employeesTable.$inferSelect;
 export type InsertBook = z.infer<typeof insertBookSchema>;
 export type Book = typeof booksTable.$inferSelect;

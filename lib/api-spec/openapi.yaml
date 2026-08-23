@@ -16,6 +16,8 @@ tags:
     description: Student records
   - name: teachers
     description: Teacher records
+  - name: employees
+    description: Staff employee records
   - name: library
     description: Library collection
   - name: academic-years
@@ -118,6 +120,13 @@ paths:
       operationId: getTeachers
       tags: [teachers]
       summary: List teachers
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive] }
       responses:
         "200":
           description: Teacher list
@@ -126,6 +135,120 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Teacher" }
+    post:
+      operationId: createTeacher
+      tags: [teachers]
+      summary: Create a teacher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TeacherInput" }
+      responses:
+        "201":
+          description: Created teacher
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Teacher" }
+  /teachers/{id}:
+    patch:
+      operationId: updateTeacher
+      tags: [teachers]
+      summary: Update a teacher
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: number }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TeacherUpdate" }
+      responses:
+        "200":
+          description: Updated teacher
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Teacher" }
+    delete:
+      operationId: deleteTeacher
+      tags: [teachers]
+      summary: Delete a teacher
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: number }
+      responses:
+        "204": { description: Teacher deleted }
+  /employees:
+    get:
+      operationId: getEmployees
+      tags: [employees]
+      summary: List employees
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive] }
+      responses:
+        "200":
+          description: Employee list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Employee" }
+    post:
+      operationId: createEmployee
+      tags: [employees]
+      summary: Create an employee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeInput" }
+      responses:
+        "201":
+          description: Created employee
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+  /employees/{id}:
+    patch:
+      operationId: updateEmployee
+      tags: [employees]
+      summary: Update an employee
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: number }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeUpdate" }
+      responses:
+        "200":
+          description: Updated employee
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+    delete:
+      operationId: deleteEmployee
+      tags: [employees]
+      summary: Delete an employee
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: number }
+      responses:
+        "204": { description: Employee deleted }
   /library/books:
     get:
       operationId: getBooks
@@ -161,6 +284,38 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Book" }
+  /library/books/{id}:
+    patch:
+      operationId: updateBook
+      tags: [library]
+      summary: Update a library book
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: number }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookUpdate" }
+      responses:
+        "200":
+          description: Updated book
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Book" }
+    delete:
+      operationId: deleteBook
+      tags: [library]
+      summary: Delete a library book
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: number }
+      responses:
+        "204": { description: Book deleted }
   /academic-years:
     get:
       operationId: getAcademicYears
@@ -235,15 +390,56 @@ components:
         - $ref: "#/components/schemas/StudentInput"
     Teacher:
       type: object
-      required: [id, fullName, fullNameArabic, employeeNumber, subject, phone, status]
+      required: [id, fullName, fullNameArabic, employeeNumber, nationalId, subject, phone, status]
       properties:
         id: { type: number }
         fullName: { type: string }
         fullNameArabic: { type: string }
         employeeNumber: { type: string }
+        nationalId: { type: string }
         subject: { type: string }
         phone: { type: string }
         status: { type: string, enum: [active, inactive] }
+    TeacherInput:
+      type: object
+      required: [fullName, fullNameArabic, employeeNumber, nationalId, subject, phone]
+      properties:
+        fullName: { type: string, minLength: 1 }
+        fullNameArabic: { type: string, minLength: 1 }
+        employeeNumber: { type: string, minLength: 1 }
+        nationalId: { type: string, minLength: 1 }
+        subject: { type: string, minLength: 1 }
+        phone: { type: string, minLength: 1 }
+        status: { type: string, enum: [active, inactive] }
+    TeacherUpdate:
+      allOf:
+        - $ref: "#/components/schemas/TeacherInput"
+    Employee:
+      type: object
+      required: [id, fullName, fullNameArabic, employeeNumber, nationalId, jobTitle, phone, status]
+      properties:
+        id: { type: number }
+        fullName: { type: string }
+        fullNameArabic: { type: string }
+        employeeNumber: { type: string }
+        nationalId: { type: string }
+        jobTitle: { type: string }
+        phone: { type: string }
+        status: { type: string, enum: [active, inactive] }
+    EmployeeInput:
+      type: object
+      required: [fullName, fullNameArabic, employeeNumber, nationalId, jobTitle, phone]
+      properties:
+        fullName: { type: string, minLength: 1 }
+        fullNameArabic: { type: string, minLength: 1 }
+        employeeNumber: { type: string, minLength: 1 }
+        nationalId: { type: string, minLength: 1 }
+        jobTitle: { type: string, minLength: 1 }
+        phone: { type: string, minLength: 1 }
+        status: { type: string, enum: [active, inactive] }
+    EmployeeUpdate:
+      allOf:
+        - $ref: "#/components/schemas/EmployeeInput"
     Book:
       type: object
       required: [id, title, author, isbn, category, copies, availableCopies, language]
@@ -268,6 +464,9 @@ components:
         copies: { type: number, minimum: 0 }
         language: { type: string, enum: [Arabic, English, French] }
         shelf: { type: string }
+    BookUpdate:
+      allOf:
+        - $ref: "#/components/schemas/BookInput"
     AcademicYear:
       type: object
       required: [id, label, startDate, endDate, isCurrent]

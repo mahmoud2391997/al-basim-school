@@ -90,10 +90,82 @@ export interface Teacher {
   fullName: string;
   fullNameArabic: string;
   employeeNumber: string;
+  nationalId: string;
   subject: string;
   phone: string;
   status: TeacherStatus;
 }
+
+export type TeacherInputStatus = typeof TeacherInputStatus[keyof typeof TeacherInputStatus];
+
+
+export const TeacherInputStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export interface TeacherInput {
+  /** @minLength 1 */
+  fullName: string;
+  /** @minLength 1 */
+  fullNameArabic: string;
+  /** @minLength 1 */
+  employeeNumber: string;
+  /** @minLength 1 */
+  nationalId: string;
+  /** @minLength 1 */
+  subject: string;
+  /** @minLength 1 */
+  phone: string;
+  status?: TeacherInputStatus;
+}
+
+export type TeacherUpdate = TeacherInput;
+
+export type EmployeeStatus = typeof EmployeeStatus[keyof typeof EmployeeStatus];
+
+
+export const EmployeeStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export interface Employee {
+  id: number;
+  fullName: string;
+  fullNameArabic: string;
+  employeeNumber: string;
+  nationalId: string;
+  jobTitle: string;
+  phone: string;
+  status: EmployeeStatus;
+}
+
+export type EmployeeInputStatus = typeof EmployeeInputStatus[keyof typeof EmployeeInputStatus];
+
+
+export const EmployeeInputStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export interface EmployeeInput {
+  /** @minLength 1 */
+  fullName: string;
+  /** @minLength 1 */
+  fullNameArabic: string;
+  /** @minLength 1 */
+  employeeNumber: string;
+  /** @minLength 1 */
+  nationalId: string;
+  /** @minLength 1 */
+  jobTitle: string;
+  /** @minLength 1 */
+  phone: string;
+  status?: EmployeeInputStatus;
+}
+
+export type EmployeeUpdate = EmployeeInput;
 
 export type BookLanguage = typeof BookLanguage[keyof typeof BookLanguage];
 
@@ -139,6 +211,8 @@ export interface BookInput {
   shelf?: string;
 }
 
+export type BookUpdate = BookInput;
+
 export interface AcademicYear {
   id: number;
   label: string;
@@ -159,6 +233,32 @@ export const GetStudentsStatus = {
   active: 'active',
   inactive: 'inactive',
   graduated: 'graduated',
+} as const;
+
+export type GetTeachersParams = {
+search?: string;
+status?: GetTeachersStatus;
+};
+
+export type GetTeachersStatus = typeof GetTeachersStatus[keyof typeof GetTeachersStatus];
+
+
+export const GetTeachersStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export type GetEmployeesParams = {
+search?: string;
+status?: GetEmployeesStatus;
+};
+
+export type GetEmployeesStatus = typeof GetEmployeesStatus[keyof typeof GetEmployeesStatus];
+
+
+export const GetEmployeesStatus = {
+  active: 'active',
+  inactive: 'inactive',
 } as const;
 
 export type GetBooksParams = {

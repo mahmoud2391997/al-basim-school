@@ -151,16 +151,203 @@ export const DeleteStudentResponse = zod.void()
 /**
  * @summary List teachers
  */
+export const GetTeachersQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "status": zod.enum(['active', 'inactive']).optional()
+})
+
 export const GetTeachersResponseItem = zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
   "fullNameArabic": zod.string(),
   "employeeNumber": zod.string(),
+  "nationalId": zod.string(),
   "subject": zod.string(),
   "phone": zod.string(),
   "status": zod.enum(['active', 'inactive'])
 })
 export const GetTeachersResponse = zod.array(GetTeachersResponseItem)
+
+
+/**
+ * @summary Create a teacher
+ */
+
+
+
+
+
+
+
+
+export const CreateTeacherBody = zod.object({
+  "fullName": zod.string().min(1),
+  "fullNameArabic": zod.string().min(1),
+  "employeeNumber": zod.string().min(1),
+  "nationalId": zod.string().min(1),
+  "subject": zod.string().min(1),
+  "phone": zod.string().min(1),
+  "status": zod.enum(['active', 'inactive']).optional()
+})
+
+export const CreateTeacherResponse = zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "fullNameArabic": zod.string(),
+  "employeeNumber": zod.string(),
+  "nationalId": zod.string(),
+  "subject": zod.string(),
+  "phone": zod.string(),
+  "status": zod.enum(['active', 'inactive'])
+})
+
+
+/**
+ * @summary Update a teacher
+ */
+export const UpdateTeacherParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+
+
+
+
+export const UpdateTeacherBody = zod.object({
+  "fullName": zod.string().min(1),
+  "fullNameArabic": zod.string().min(1),
+  "employeeNumber": zod.string().min(1),
+  "nationalId": zod.string().min(1),
+  "subject": zod.string().min(1),
+  "phone": zod.string().min(1),
+  "status": zod.enum(['active', 'inactive']).optional()
+})
+
+export const UpdateTeacherResponse = zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "fullNameArabic": zod.string(),
+  "employeeNumber": zod.string(),
+  "nationalId": zod.string(),
+  "subject": zod.string(),
+  "phone": zod.string(),
+  "status": zod.enum(['active', 'inactive'])
+})
+
+
+/**
+ * @summary Delete a teacher
+ */
+export const DeleteTeacherParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteTeacherResponse = zod.void()
+
+
+/**
+ * @summary List employees
+ */
+export const GetEmployeesQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "status": zod.enum(['active', 'inactive']).optional()
+})
+
+export const GetEmployeesResponseItem = zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "fullNameArabic": zod.string(),
+  "employeeNumber": zod.string(),
+  "nationalId": zod.string(),
+  "jobTitle": zod.string(),
+  "phone": zod.string(),
+  "status": zod.enum(['active', 'inactive'])
+})
+export const GetEmployeesResponse = zod.array(GetEmployeesResponseItem)
+
+
+/**
+ * @summary Create an employee
+ */
+
+
+
+
+
+
+
+
+export const CreateEmployeeBody = zod.object({
+  "fullName": zod.string().min(1),
+  "fullNameArabic": zod.string().min(1),
+  "employeeNumber": zod.string().min(1),
+  "nationalId": zod.string().min(1),
+  "jobTitle": zod.string().min(1),
+  "phone": zod.string().min(1),
+  "status": zod.enum(['active', 'inactive']).optional()
+})
+
+export const CreateEmployeeResponse = zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "fullNameArabic": zod.string(),
+  "employeeNumber": zod.string(),
+  "nationalId": zod.string(),
+  "jobTitle": zod.string(),
+  "phone": zod.string(),
+  "status": zod.enum(['active', 'inactive'])
+})
+
+
+/**
+ * @summary Update an employee
+ */
+export const UpdateEmployeeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+
+
+
+
+export const UpdateEmployeeBody = zod.object({
+  "fullName": zod.string().min(1),
+  "fullNameArabic": zod.string().min(1),
+  "employeeNumber": zod.string().min(1),
+  "nationalId": zod.string().min(1),
+  "jobTitle": zod.string().min(1),
+  "phone": zod.string().min(1),
+  "status": zod.enum(['active', 'inactive']).optional()
+})
+
+export const UpdateEmployeeResponse = zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "fullNameArabic": zod.string(),
+  "employeeNumber": zod.string(),
+  "nationalId": zod.string(),
+  "jobTitle": zod.string(),
+  "phone": zod.string(),
+  "status": zod.enum(['active', 'inactive'])
+})
+
+
+/**
+ * @summary Delete an employee
+ */
+export const DeleteEmployeeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteEmployeeResponse = zod.void()
 
 
 /**
@@ -216,6 +403,53 @@ export const CreateBookResponse = zod.object({
   "language": zod.enum(['Arabic', 'English', 'French']),
   "shelf": zod.string().optional()
 })
+
+
+/**
+ * @summary Update a library book
+ */
+export const UpdateBookParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const updateBookBodyOneCopiesMin = 0;
+
+
+
+export const UpdateBookBody = zod.object({
+  "title": zod.string().min(1),
+  "author": zod.string().min(1),
+  "isbn": zod.string(),
+  "category": zod.string().min(1),
+  "copies": zod.number().min(updateBookBodyOneCopiesMin),
+  "language": zod.enum(['Arabic', 'English', 'French']),
+  "shelf": zod.string().optional()
+})
+
+export const UpdateBookResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "author": zod.string(),
+  "isbn": zod.string(),
+  "category": zod.string(),
+  "copies": zod.number(),
+  "availableCopies": zod.number(),
+  "language": zod.enum(['Arabic', 'English', 'French']),
+  "shelf": zod.string().optional()
+})
+
+
+/**
+ * @summary Delete a library book
+ */
+export const DeleteBookParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteBookResponse = zod.void()
 
 
 /**
