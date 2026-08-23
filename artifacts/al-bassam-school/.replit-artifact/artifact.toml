@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Al-Bassam School Management"
+description = "A bilingual school administration workspace for managing students, teachers, academic years, and the school library, designed for a future Electron desktop release."
+version = "1.0.0"
+id = "artifacts/al-bassam-school"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24438
+
+[services.development]
+run = "pnpm --filter @workspace/al-bassam-school run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/al-bassam-school", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/al-bassam-school/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24438"
+BASE_PATH = "/"

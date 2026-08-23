@@ -1,0 +1,1 @@
+- [Schema compatibility](schema-compatibility.md) — keep OpenAPI numeric fields compatible with the workspace's generated Zod version and normalize calendar dates at the API boundary.

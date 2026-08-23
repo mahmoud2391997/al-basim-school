@@ -10,6 +10,16 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: School overview
+  - name: students
+    description: Student records
+  - name: teachers
+    description: Teacher records
+  - name: library
+    description: Library collection
+  - name: academic-years
+    description: Academic years
 paths:
   /healthz:
     get:
@@ -24,6 +34,146 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary
+      responses:
+        "200":
+          description: Dashboard totals and recent activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /students:
+    get:
+      operationId: getStudents
+      tags: [students]
+      summary: List students
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive, graduated] }
+      responses:
+        "200":
+          description: Student list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Student" }
+    post:
+      operationId: createStudent
+      tags: [students]
+      summary: Create a student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentInput" }
+      responses:
+        "201":
+          description: Created student
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Student" }
+  /students/{id}:
+    patch:
+      operationId: updateStudent
+      tags: [students]
+      summary: Update a student
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: number }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentUpdate" }
+      responses:
+        "200":
+          description: Updated student
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Student" }
+    delete:
+      operationId: deleteStudent
+      tags: [students]
+      summary: Delete a student
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: number }
+      responses:
+        "204": { description: Student deleted }
+  /teachers:
+    get:
+      operationId: getTeachers
+      tags: [teachers]
+      summary: List teachers
+      responses:
+        "200":
+          description: Teacher list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Teacher" }
+  /library/books:
+    get:
+      operationId: getBooks
+      tags: [library]
+      summary: List library books
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string }
+      responses:
+        "200":
+          description: Book list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Book" }
+    post:
+      operationId: createBook
+      tags: [library]
+      summary: Add a library book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookInput" }
+      responses:
+        "201":
+          description: Created book
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Book" }
+  /academic-years:
+    get:
+      operationId: getAcademicYears
+      tags: [academic-years]
+      summary: List academic years
+      responses:
+        "200":
+          description: Academic year list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AcademicYear" }
 components:
   schemas:
     HealthStatus:
@@ -33,4 +183,98 @@ components:
           type: string
       required:
         - status
+    DashboardSummary:
+      type: object
+      required: [students, teachers, books, attendanceRate, recentActivity]
+      properties:
+        students: { type: number }
+        teachers: { type: number }
+        books: { type: number }
+        attendanceRate: { type: number }
+        recentActivity:
+          type: array
+          items: { $ref: "#/components/schemas/Activity" }
+    Activity:
+      type: object
+      required: [id, type, title, timestamp]
+      properties:
+        id: { type: number }
+        type: { type: string, enum: [student, library, teacher, system] }
+        title: { type: string }
+        timestamp: { type: string, format: date-time }
+    Student:
+      type: object
+      required: [id, fullName, fullNameArabic, studentNumber, nationalId, grade, className, status, enrollmentDate]
+      properties:
+        id: { type: number }
+        fullName: { type: string }
+        fullNameArabic: { type: string }
+        studentNumber: { type: string }
+        nationalId: { type: string }
+        grade: { type: string }
+        className: { type: string }
+        guardianName: { type: string }
+        guardianPhone: { type: string }
+        status: { type: string, enum: [active, inactive, graduated] }
+        enrollmentDate: { type: string, format: date }
+    StudentInput:
+      type: object
+      required: [fullName, fullNameArabic, studentNumber, nationalId, grade, className, enrollmentDate]
+      properties:
+        fullName: { type: string, minLength: 1 }
+        fullNameArabic: { type: string, minLength: 1 }
+        studentNumber: { type: string, minLength: 1 }
+        nationalId: { type: string, minLength: 1 }
+        grade: { type: string, minLength: 1 }
+        className: { type: string, minLength: 1 }
+        guardianName: { type: string }
+        guardianPhone: { type: string }
+        enrollmentDate: { type: string, format: date }
+    StudentUpdate:
+      allOf:
+        - $ref: "#/components/schemas/StudentInput"
+    Teacher:
+      type: object
+      required: [id, fullName, fullNameArabic, employeeNumber, subject, phone, status]
+      properties:
+        id: { type: number }
+        fullName: { type: string }
+        fullNameArabic: { type: string }
+        employeeNumber: { type: string }
+        subject: { type: string }
+        phone: { type: string }
+        status: { type: string, enum: [active, inactive] }
+    Book:
+      type: object
+      required: [id, title, author, isbn, category, copies, availableCopies, language]
+      properties:
+        id: { type: number }
+        title: { type: string }
+        author: { type: string }
+        isbn: { type: string }
+        category: { type: string }
+        copies: { type: number }
+        availableCopies: { type: number }
+        language: { type: string, enum: [Arabic, English, French] }
+        shelf: { type: string }
+    BookInput:
+      type: object
+      required: [title, author, isbn, category, copies, language]
+      properties:
+        title: { type: string, minLength: 1 }
+        author: { type: string, minLength: 1 }
+        isbn: { type: string }
+        category: { type: string, minLength: 1 }
+        copies: { type: number, minimum: 0 }
+        language: { type: string, enum: [Arabic, English, French] }
+        shelf: { type: string }
+    AcademicYear:
+      type: object
+      required: [id, label, startDate, endDate, isCurrent]
+      properties:
+        id: { type: number }
+        label: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        isCurrent: { type: boolean }
 
