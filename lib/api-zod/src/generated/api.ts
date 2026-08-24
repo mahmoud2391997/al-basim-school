@@ -453,6 +453,69 @@ export const DeleteBookResponse = zod.void()
 
 
 /**
+ * @summary List borrows
+ */
+export const GetBorrowsQueryParams = zod.object({
+  "active": zod.coerce.boolean().optional()
+})
+
+export const GetBorrowsResponseItem = zod.object({
+  "id": zod.number(),
+  "bookId": zod.number(),
+  "studentId": zod.number(),
+  "borrowedAt": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "returnedAt": zod.coerce.date().nullish(),
+  "bookTitle": zod.string().optional(),
+  "bookBarcode": zod.string().optional(),
+  "studentName": zod.string().optional()
+})
+export const GetBorrowsResponse = zod.array(GetBorrowsResponseItem)
+
+
+/**
+ * @summary Borrow a book for a student
+ */
+export const CreateBorrowBody = zod.object({
+  "bookId": zod.number(),
+  "studentId": zod.number(),
+  "dueDate": zod.coerce.date().optional()
+})
+
+export const CreateBorrowResponse = zod.object({
+  "id": zod.number(),
+  "bookId": zod.number(),
+  "studentId": zod.number(),
+  "borrowedAt": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "returnedAt": zod.coerce.date().nullish(),
+  "bookTitle": zod.string().optional(),
+  "bookBarcode": zod.string().optional(),
+  "studentName": zod.string().optional()
+})
+
+
+/**
+ * @summary Mark a borrow as returned
+ */
+export const ReturnBorrowParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ReturnBorrowResponse = zod.object({
+  "id": zod.number(),
+  "bookId": zod.number(),
+  "studentId": zod.number(),
+  "borrowedAt": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "returnedAt": zod.coerce.date().nullish(),
+  "bookTitle": zod.string().optional(),
+  "bookBarcode": zod.string().optional(),
+  "studentName": zod.string().optional()
+})
+
+
+/**
  * @summary List academic years
  */
 export const GetAcademicYearsResponseItem = zod.object({

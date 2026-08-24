@@ -316,6 +316,56 @@ paths:
           schema: { type: number }
       responses:
         "204": { description: Book deleted }
+  /library/borrows:
+    get:
+      operationId: getBorrows
+      tags: [library]
+      summary: List borrows
+      parameters:
+        - in: query
+          name: active
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: Borrow list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Borrow" }
+    post:
+      operationId: createBorrow
+      tags: [library]
+      summary: Borrow a book for a student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BorrowInput" }
+      responses:
+        "201":
+          description: Created borrow
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Borrow" }
+  /library/borrows/{id}/return:
+    patch:
+      operationId: returnBorrow
+      tags: [library]
+      summary: Mark a borrow as returned
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: number }
+      responses:
+        "200":
+          description: Returned borrow
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Borrow" }
+        "404": { description: Borrow not found }
+        "409": { description: Borrow already returned }
   /academic-years:
     get:
       operationId: getAcademicYears
@@ -467,6 +517,26 @@ components:
     BookUpdate:
       allOf:
         - $ref: "#/components/schemas/BookInput"
+    Borrow:
+      type: object
+      required: [id, bookId, studentId, borrowedAt]
+      properties:
+        id: { type: number }
+        bookId: { type: number }
+        studentId: { type: number }
+        borrowedAt: { type: string, format: date-time }
+        dueDate: { type: string, format: date, nullable: true }
+        returnedAt: { type: string, format: date-time, nullable: true }
+        bookTitle: { type: string }
+        bookBarcode: { type: string }
+        studentName: { type: string }
+    BorrowInput:
+      type: object
+      required: [bookId, studentId]
+      properties:
+        bookId: { type: number }
+        studentId: { type: number }
+        dueDate: { type: string, format: date }
     AcademicYear:
       type: object
       required: [id, label, startDate, endDate, isCurrent]

@@ -59,11 +59,21 @@ export const booksTable = pgTable("books", {
   shelf: text("shelf").notNull().default(""),
 });
 
+export const borrowsTable = pgTable("borrows", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  bookId: integer("book_id").notNull().references(() => booksTable.id, { onDelete: "cascade" }),
+  studentId: integer("student_id").notNull().references(() => studentsTable.id, { onDelete: "cascade" }),
+  borrowedAt: timestamp("borrowed_at", { withTimezone: true }).notNull().defaultNow(),
+  dueDate: date("due_date", { mode: "string" }),
+  returnedAt: timestamp("returned_at", { withTimezone: true }),
+});
+
 export const insertAcademicYearSchema = createInsertSchema(academicYearsTable);
 export const insertStudentSchema = createInsertSchema(studentsTable);
 export const insertTeacherSchema = createInsertSchema(teachersTable);
 export const insertEmployeeSchema = createInsertSchema(employeesTable);
 export const insertBookSchema = createInsertSchema(booksTable);
+export const insertBorrowSchema = createInsertSchema(borrowsTable);
 
 export type InsertAcademicYear = z.infer<typeof insertAcademicYearSchema>;
 export type AcademicYear = typeof academicYearsTable.$inferSelect;
@@ -75,3 +85,5 @@ export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
 export type Employee = typeof employeesTable.$inferSelect;
 export type InsertBook = z.infer<typeof insertBookSchema>;
 export type Book = typeof booksTable.$inferSelect;
+export type InsertBorrow = z.infer<typeof insertBorrowSchema>;
+export type Borrow = typeof borrowsTable.$inferSelect;

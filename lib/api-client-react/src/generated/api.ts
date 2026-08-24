@@ -24,11 +24,14 @@ import type {
   Book,
   BookInput,
   BookUpdate,
+  Borrow,
+  BorrowInput,
   DashboardSummary,
   Employee,
   EmployeeInput,
   EmployeeUpdate,
   GetBooksParams,
+  GetBorrowsParams,
   GetEmployeesParams,
   GetStudentsParams,
   GetTeachersParams,
@@ -1413,6 +1416,232 @@ export const useDeleteBook = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteBookMutationOptions(options));
+    }
+
+export const getGetBorrowsUrl = (params?: GetBorrowsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/library/borrows?${stringifiedParams}` : `/api/library/borrows`
+}
+
+/**
+ * @summary List borrows
+ */
+export const getBorrows = async (params?: GetBorrowsParams, options?: Parameters<typeof customFetch>[1]): Promise<Borrow[]> => {
+
+  return customFetch<Borrow[]>(getGetBorrowsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBorrowsQueryKey = (params?: GetBorrowsParams,) => {
+    return [
+    `/api/library/borrows`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetBorrowsQueryOptions = <TData = Awaited<ReturnType<typeof getBorrows>>, TError = ErrorType<unknown>>(params?: GetBorrowsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBorrows>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBorrowsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBorrows>>> = ({ signal }) => getBorrows(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBorrows>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBorrowsQueryResult = NonNullable<Awaited<ReturnType<typeof getBorrows>>>
+export type GetBorrowsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List borrows
+ */
+
+export function useGetBorrows<TData = Awaited<ReturnType<typeof getBorrows>>, TError = ErrorType<unknown>>(
+ params?: GetBorrowsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBorrows>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBorrowsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBorrowUrl = () => {
+
+
+
+
+  return `/api/library/borrows`
+}
+
+/**
+ * @summary Borrow a book for a student
+ */
+export const createBorrow = async (borrowInput: BorrowInput, options?: Parameters<typeof customFetch>[1]): Promise<Borrow> => {
+
+  return customFetch<Borrow>(getCreateBorrowUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(borrowInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBorrowMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBorrow>>, TError,{data: BodyType<BorrowInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBorrow>>, TError,{data: BodyType<BorrowInput>}, TContext> => {
+
+const mutationKey = ['createBorrow'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBorrow>>, {data: BodyType<BorrowInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBorrow(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBorrowMutationResult = NonNullable<Awaited<ReturnType<typeof createBorrow>>>
+    export type CreateBorrowMutationBody = BodyType<BorrowInput>
+    export type CreateBorrowMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Borrow a book for a student
+ */
+export const useCreateBorrow = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBorrow>>, TError,{data: BodyType<BorrowInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBorrow>>,
+        TError,
+        {data: BodyType<BorrowInput>},
+        TContext
+      > => {
+      return useMutation(getCreateBorrowMutationOptions(options));
+    }
+
+export const getReturnBorrowUrl = (id: number,) => {
+
+
+
+
+  return `/api/library/borrows/${id}/return`
+}
+
+/**
+ * @summary Mark a borrow as returned
+ */
+export const returnBorrow = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Borrow> => {
+
+  return customFetch<Borrow>(getReturnBorrowUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getReturnBorrowMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof returnBorrow>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof returnBorrow>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['returnBorrow'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof returnBorrow>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  returnBorrow(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReturnBorrowMutationResult = NonNullable<Awaited<ReturnType<typeof returnBorrow>>>
+
+    export type ReturnBorrowMutationError = ErrorType<void>
+
+    /**
+ * @summary Mark a borrow as returned
+ */
+export const useReturnBorrow = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof returnBorrow>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof returnBorrow>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getReturnBorrowMutationOptions(options));
     }
 
 export const getGetAcademicYearsUrl = () => {

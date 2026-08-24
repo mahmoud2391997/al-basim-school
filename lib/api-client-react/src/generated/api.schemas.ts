@@ -213,6 +213,24 @@ export interface BookInput {
 
 export type BookUpdate = BookInput;
 
+export interface Borrow {
+  id: number;
+  bookId: number;
+  studentId: number;
+  borrowedAt: string;
+  dueDate?: string | null;
+  returnedAt?: string | null;
+  bookTitle?: string;
+  bookBarcode?: string;
+  studentName?: string;
+}
+
+export interface BorrowInput {
+  bookId: number;
+  studentId: number;
+  dueDate?: string;
+}
+
 export interface AcademicYear {
   id: number;
   label: string;
@@ -264,5 +282,9 @@ export const GetEmployeesStatus = {
 export type GetBooksParams = {
 search?: string;
 category?: string;
+};
+
+export type GetBorrowsParams = {
+active?: boolean;
 };
 
