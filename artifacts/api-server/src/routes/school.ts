@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
-import { db, academicYearsTable, booksTable, borrowsTable, employeesTable, studentsTable, teachersTable } from "@workspace/db";
+import { and, desc, eq, ilike, isNull, or, sql, gte, lte, count, sum } from "drizzle-orm";
+import { db, academicYearsTable, attendanceTable, booksTable, borrowsTable, employeesTable, studentsTable, teachersTable } from "@workspace/db";
+import { z } from "zod";
 import {
   CreateBookBody,
   CreateBookResponse,
@@ -57,11 +58,18 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       timestamp: studentsTable.createdAt,
     }).from(studentsTable).orderBy(desc(studentsTable.createdAt)).limit(4),
   ]);
+  const attendance = await db.select({
+    present: sum(sql`case when ${attendanceTable.status} = 'present' then 1 else 0 end`),
+    total: count(attendanceTable.id),
+  }).from(attendanceTable);
+  const attendanceRate = Number(attendance[0]?.total) > 0
+    ? Math.round((Number(attendance[0]?.present ?? 0) / Number(attendance[0]?.total)) * 1000) / 10
+    : 0;
   res.json(GetDashboardSummaryResponse.parse({
     students: students.length,
     teachers: teachers.length,
     books: books.length,
-    attendanceRate: 94.2,
+    attendanceRate,
     recentActivity: recent.map((item) => ({
       id: item.id,
       type: "student",
@@ -436,6 +444,38 @@ router.patch("/library/borrows/:id/return", async (req, res): Promise<void> => {
     availableCopies: sql`LEAST(${booksTable.copies}, ${booksTable.availableCopies} + 1)`,
   }).where(eq(booksTable.id, existing.bookId));
   res.json(ReturnBorrowResponse.parse(borrow));
+});
+
+const attendanceInput = z.object({
+  studentId: z.coerce.number().int().positive(),
+  academicYearId: z.coerce.number().int().positive(),
+  attendanceDate: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+  status: z.enum(["present", "absent", "late", "excused"]),
+  note: z.string().trim().max(500).optional(),
+});
+
+router.get("/attendance", async (req, res): Promise<void> => {
+  const query = z.object({
+    academicYearId: z.coerce.number().int().positive(),
+    studentId: z.coerce.number().int().positive().optional(),
+    from: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).optional(),
+    to: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).optional(),
+  }).safeParse(req.query);
+  if (!query.success) { res.status(400).json({ error: "Invalid attendance filters" }); return; }
+  const filters = [eq(attendanceTable.academicYearId, query.data.academicYearId)];
+  if (query.data.studentId) filters.push(eq(attendanceTable.studentId, query.data.studentId));
+  if (query.data.from) filters.push(gte(attendanceTable.attendanceDate, query.data.from));
+  if (query.data.to) filters.push(lte(attendanceTable.attendanceDate, query.data.to));
+  res.json(await db.select().from(attendanceTable).where(and(...filters)).orderBy(desc(attendanceTable.attendanceDate)));
+});
+
+router.post("/attendance", async (req, res): Promise<void> => {
+  const parsed = attendanceInput.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid attendance record" }); return; }
+  const [student] = await db.select({ id: studentsTable.id }).from(studentsTable).where(eq(studentsTable.id, parsed.data.studentId));
+  if (!student) { res.status(404).json({ error: "Student not found" }); return; }
+  const [record] = await db.insert(attendanceTable).values(parsed.data).returning();
+  res.status(201).json(record);
 });
 
 router.get("/academic-years", async (_req, res): Promise<void> => {
