@@ -1,4 +1,5 @@
-import { db, academicYearsTable, booksTable, employeesTable, studentsTable, teachersTable } from "./index";
+import { eq } from "drizzle-orm";
+import { db, academicYearsTable, booksTable, borrowsTable, employeesTable, studentsTable, teachersTable } from "./index";
 
 export async function seedDatabase() {
   const [yearCount] = await db.select({ id: academicYearsTable.id }).from(academicYearsTable).limit(1);
@@ -158,7 +159,28 @@ export async function seedDatabase() {
       language: "Arabic",
       shelf: "D-01",
     },
+    {
+      title: "كتاب التجارب",
+      author: "وزارة التعليم",
+      isbn: "9789953456790",
+      category: "Science",
+      copies: 5,
+      availableCopies: 4,
+      language: "Arabic",
+      shelf: "A-14",
+    },
   ]);
+
+  const [borrower] = await db.select().from(studentsTable).where(eq(studentsTable.studentNumber, "AB-2025-001"));
+  const [borrowedBook] = await db.select().from(booksTable).where(eq(booksTable.isbn, "9780981775470"));
+  if (borrower && borrowedBook) {
+    await db.insert(borrowsTable).values({
+      bookId: borrowedBook.id,
+      studentId: borrower.id,
+      dueDate: "2025-09-15",
+    });
+    await db.update(booksTable).set({ availableCopies: borrowedBook.availableCopies - 1 }).where(eq(booksTable.id, borrowedBook.id));
+  }
 
   return true;
 }

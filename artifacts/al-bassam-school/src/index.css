@@ -69,72 +69,72 @@
 
 /* LIGHT MODE */
 :root {
-  --button-outline: rgba(0, 0, 0, 0.1);
-  --badge-outline: rgba(0, 0, 0, 0.05);
+  --button-outline: rgba(38, 48, 100, 0.1);
+  --badge-outline: rgba(38, 48, 100, 0.05);
 
   /* Automatic computation of border around primary / danger buttons */
   --opaque-button-border-intensity: -8; /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(0, 0, 0, 0.03);
-  --elevate-2: rgba(0, 0, 0, 0.08);
+  --elevate-1: rgba(38, 48, 100, 0.03);
+  --elevate-2: rgba(38, 48, 100, 0.08);
 
-  --background: 204 38% 96%;
+  --background: 55 67% 96%;
 
-  --foreground: 222 42% 17%;
+  --foreground: 230 45% 27%;
 
-  --border: 204 25% 86%;
+  --border: 230 22% 86%;
 
-  --card: 0 0% 100%;
+  --card: 55 67% 97%;
 
-  --card-foreground: 222 42% 17%;
+  --card-foreground: 230 45% 27%;
 
-  --card-border: 204 25% 88%;
+  --card-border: 230 20% 88%;
 
-  --sidebar: 222 50% 17%;
+  --sidebar: 230 45% 27%;
 
-  --sidebar-foreground: 204 30% 91%;
+  --sidebar-foreground: 55 40% 91%;
 
-  --sidebar-border: 222 38% 24%;
+  --sidebar-border: 39 30% 34%;
 
-  --sidebar-primary: 194 73% 52%;
+  --sidebar-primary: 184 82% 43%;
 
-  --sidebar-primary-foreground: 222 50% 13%;
+  --sidebar-primary-foreground: 230 45% 20%;
 
-  --sidebar-accent: 222 38% 24%;
+  --sidebar-accent: 230 36% 33%;
 
-  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-accent-foreground: 55 67% 97%;
 
-  --sidebar-ring: 194 73% 52%;
+  --sidebar-ring: 184 82% 43%;
 
-  --popover: 0 0% 100%;
+  --popover: 55 67% 97%;
 
-  --popover-foreground: 222 42% 17%;
+  --popover-foreground: 230 45% 27%;
 
-  --popover-border: 204 25% 86%;
+  --popover-border: 230 22% 86%;
 
-  --primary: 194 73% 43%;
+  --primary: 184 82% 43%;
 
-  --primary-foreground: 0 0% 100%;
+  --primary-foreground: 230 45% 15%;
 
-  --secondary: 194 44% 92%;
+  --secondary: 184 40% 92%;
 
-  --secondary-foreground: 199 65% 26%;
+  --secondary-foreground: 230 45% 27%;
 
-  --muted: 204 30% 93%;
+  --muted: 230 18% 93%;
 
-  --muted-foreground: 216 18% 47%;
+  --muted-foreground: 230 15% 42%;
 
-  --accent: 42 78% 66%;
+  --accent: 39 61% 64%;
 
-  --accent-foreground: 222 50% 13%;
+  --accent-foreground: 230 45% 27%;
 
-  --destructive: 2 73% 53%;
+  --destructive: 358 68% 43%;
 
-  --destructive-foreground: 0 0% 100%;
+  --destructive-foreground: 55 67% 97%;
 
-  --input: 204 25% 82%;
-  --ring: 194 73% 43%;
+  --input: 230 18% 78%;
+  --ring: 184 82% 43%;
   --chart-1: 194 73% 43%;
   --chart-2: 177 57% 40%;
   --chart-3: 42 78% 66%;
@@ -322,7 +322,7 @@
 }
 
 @layer base {
-  html { background: #edf4f7; }
+  html { background: #FCFBF0; }
   body { min-width: 320px; font-family: var(--app-font-sans); }
   button, a, input, select { -webkit-tap-highlight-color: transparent; }
   ::selection { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
@@ -368,7 +368,7 @@
 [dir='rtl'] .pr-3 { padding-right: 0; padding-left: 0.75rem; }
 [dir='rtl'] .border-l { border-left: none; border-right: 1px solid; }
 [dir='rtl'] .border-r { border-right: none; border-left: 1px solid; }
-.soft-shadow { box-shadow: 0 14px 38px rgba(30, 70, 89, .08); }
+.soft-shadow { box-shadow: 0 14px 38px rgba(38, 48, 100, .08); }
 .nav-active { box-shadow: inset 3px 0 0 hsl(var(--accent)); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
