@@ -22,6 +22,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      additionalArguments: [`--local-api-port=${localApi.port}`, `--app-version=${app.getVersion()}`],
       webSecurity: true,
     },
   });
@@ -36,7 +37,7 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, "..", "dist", "public", "index.html"));
   }
 
-  window.webContents.setWindowOpenHandler(({ url }) => {
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: "deny" };
   });
@@ -62,12 +63,15 @@ ipcMain.handle('restore-database', async () => {
 });
 
 app.whenReady().then(async () => {
-  localApi = await startLocalApi(app.getPath('userData'));
-  process.env.LOCAL_API_PORT = String(localApi.port);
+  localApi = await startLocalApi(app.getPath("userData"));
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+}).catch((error) => {
+  console.error('Failed to start Al-Bassam School:', error);
+  dialog.showErrorBox('Al-Bassam School failed to start', error instanceof Error ? error.message : String(error));
+  app.quit();
 });
 
 app.on("before-quit", () => {

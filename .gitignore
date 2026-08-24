@@ -5,6 +5,9 @@ dist
 tmp
 out-tsc
 *.tsbuildinfo
+artifacts/**/.electron-deploy/
+artifacts/**/.electron-deploy-*/
+artifacts/**/release-*/
 .expo
 .expo-shared
 

@@ -29,6 +29,28 @@ import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
 
+function useDesktopLocation() {
+  const readLocation = () => window.location.hash.slice(1) || '/';
+  const [location, setLocation] = useState(readLocation);
+
+  useEffect(() => {
+    const onHashChange = () => setLocation(readLocation());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const navigate = (nextLocation: string, options?: { replace?: boolean }) => {
+    if (options?.replace) {
+      window.history.replaceState(null, '', `#${nextLocation}`);
+      setLocation(nextLocation);
+    } else {
+      window.location.hash = nextLocation;
+    }
+  };
+
+  return [location, navigate] as const;
+}
+
 const fallbackSummary: DashboardSummary = {
   students: 0, teachers: 0, books: 0, attendanceRate: 0, recentActivity: [],
 };
@@ -714,7 +736,9 @@ function Router() {
 }
 
 function App() {
-  return <LanguageProvider><QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider></LanguageProvider>;
+  const routerBase = import.meta.env.BASE_URL === './' ? '' : import.meta.env.BASE_URL.replace(/\/$/, '');
+  const routerHook = window.location.protocol === 'file:' ? useDesktopLocation : undefined;
+  return <LanguageProvider><QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={routerBase} hook={routerHook}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider></LanguageProvider>;
 }
 
 export default App;
