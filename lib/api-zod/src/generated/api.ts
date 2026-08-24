@@ -160,10 +160,28 @@ export const GetTeachersResponseItem = zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
   "fullNameArabic": zod.string(),
-  "employeeNumber": zod.string(),
+  "name": zod.string(),
+  "surname": zod.string(),
+  "username": zod.string(),
+  "englishName": zod.string(),
+  "employeeCode": zod.string(),
   "nationalId": zod.string(),
-  "subject": zod.string(),
+  "nationality": zod.string(),
+  "gender": zod.string(),
+  "maritalStatus": zod.string(),
+  "religion": zod.string(),
   "phone": zod.string(),
+  "email": zod.string(),
+  "address": zod.string(),
+  "area": zod.string(),
+  "country": zod.string(),
+  "height": zod.number(),
+  "weight": zod.number(),
+  "branch": zod.string(),
+  "academicLevel": zod.string(),
+  "subject": zod.string(),
+  "weeklyClasses": zod.number(),
+  "isEmployee": zod.boolean(),
   "status": zod.enum(['active', 'inactive'])
 })
 export const GetTeachersResponse = zod.array(GetTeachersResponseItem)
@@ -175,18 +193,40 @@ export const GetTeachersResponse = zod.array(GetTeachersResponseItem)
 
 
 
+export const createTeacherBodyHeightMin = 0;
 
+export const createTeacherBodyWeightMin = 0;
 
+export const createTeacherBodyWeeklyClassesMin = 0;
 
 
 
 export const CreateTeacherBody = zod.object({
-  "fullName": zod.string().min(1),
-  "fullNameArabic": zod.string().min(1),
-  "employeeNumber": zod.string().min(1),
-  "nationalId": zod.string().min(1),
-  "subject": zod.string().min(1),
-  "phone": zod.string().min(1),
+  "name": zod.string().min(1),
+  "surname": zod.string().min(1),
+  "username": zod.string().optional(),
+  "password": zod.string().optional(),
+  "englishName": zod.string().optional(),
+  "fullName": zod.string().optional(),
+  "fullNameArabic": zod.string().optional(),
+  "employeeCode": zod.string().min(1),
+  "nationalId": zod.string().optional(),
+  "nationality": zod.string().optional(),
+  "gender": zod.enum(['male', 'female']).optional(),
+  "maritalStatus": zod.enum(['single', 'married', 'divorced', 'widowed']).optional(),
+  "religion": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "email": zod.string().optional(),
+  "address": zod.string().optional(),
+  "area": zod.string().optional(),
+  "country": zod.string().optional(),
+  "height": zod.number().min(createTeacherBodyHeightMin).optional(),
+  "weight": zod.number().min(createTeacherBodyWeightMin).optional(),
+  "branch": zod.string().optional(),
+  "academicLevel": zod.string().optional(),
+  "subject": zod.string().optional(),
+  "weeklyClasses": zod.number().min(createTeacherBodyWeeklyClassesMin).optional(),
+  "isEmployee": zod.boolean().optional(),
   "status": zod.enum(['active', 'inactive']).optional()
 })
 
@@ -194,10 +234,28 @@ export const CreateTeacherResponse = zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
   "fullNameArabic": zod.string(),
-  "employeeNumber": zod.string(),
+  "name": zod.string(),
+  "surname": zod.string(),
+  "username": zod.string(),
+  "englishName": zod.string(),
+  "employeeCode": zod.string(),
   "nationalId": zod.string(),
-  "subject": zod.string(),
+  "nationality": zod.string(),
+  "gender": zod.string(),
+  "maritalStatus": zod.string(),
+  "religion": zod.string(),
   "phone": zod.string(),
+  "email": zod.string(),
+  "address": zod.string(),
+  "area": zod.string(),
+  "country": zod.string(),
+  "height": zod.number(),
+  "weight": zod.number(),
+  "branch": zod.string(),
+  "academicLevel": zod.string(),
+  "subject": zod.string(),
+  "weeklyClasses": zod.number(),
+  "isEmployee": zod.boolean(),
   "status": zod.enum(['active', 'inactive'])
 })
 
@@ -212,18 +270,40 @@ export const UpdateTeacherParams = zod.object({
 
 
 
+export const updateTeacherBodyHeightMin = 0;
 
+export const updateTeacherBodyWeightMin = 0;
 
+export const updateTeacherBodyWeeklyClassesMin = 0;
 
 
 
 export const UpdateTeacherBody = zod.object({
-  "fullName": zod.string().min(1),
-  "fullNameArabic": zod.string().min(1),
-  "employeeNumber": zod.string().min(1),
-  "nationalId": zod.string().min(1),
-  "subject": zod.string().min(1),
-  "phone": zod.string().min(1),
+  "name": zod.string().min(1).optional(),
+  "surname": zod.string().min(1).optional(),
+  "username": zod.string().optional(),
+  "password": zod.string().optional(),
+  "englishName": zod.string().optional(),
+  "fullName": zod.string().optional(),
+  "fullNameArabic": zod.string().optional(),
+  "employeeCode": zod.string().min(1).optional(),
+  "nationalId": zod.string().optional(),
+  "nationality": zod.string().optional(),
+  "gender": zod.enum(['male', 'female']).optional(),
+  "maritalStatus": zod.enum(['single', 'married', 'divorced', 'widowed']).optional(),
+  "religion": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "email": zod.string().optional(),
+  "address": zod.string().optional(),
+  "area": zod.string().optional(),
+  "country": zod.string().optional(),
+  "height": zod.number().min(updateTeacherBodyHeightMin).optional(),
+  "weight": zod.number().min(updateTeacherBodyWeightMin).optional(),
+  "branch": zod.string().optional(),
+  "academicLevel": zod.string().optional(),
+  "subject": zod.string().optional(),
+  "weeklyClasses": zod.number().min(updateTeacherBodyWeeklyClassesMin).optional(),
+  "isEmployee": zod.boolean().optional(),
   "status": zod.enum(['active', 'inactive']).optional()
 })
 
@@ -231,10 +311,28 @@ export const UpdateTeacherResponse = zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
   "fullNameArabic": zod.string(),
-  "employeeNumber": zod.string(),
+  "name": zod.string(),
+  "surname": zod.string(),
+  "username": zod.string(),
+  "englishName": zod.string(),
+  "employeeCode": zod.string(),
   "nationalId": zod.string(),
-  "subject": zod.string(),
+  "nationality": zod.string(),
+  "gender": zod.string(),
+  "maritalStatus": zod.string(),
+  "religion": zod.string(),
   "phone": zod.string(),
+  "email": zod.string(),
+  "address": zod.string(),
+  "area": zod.string(),
+  "country": zod.string(),
+  "height": zod.number(),
+  "weight": zod.number(),
+  "branch": zod.string(),
+  "academicLevel": zod.string(),
+  "subject": zod.string(),
+  "weeklyClasses": zod.number(),
+  "isEmployee": zod.boolean(),
   "status": zod.enum(['active', 'inactive'])
 })
 
@@ -364,9 +462,19 @@ export const GetBooksResponseItem = zod.object({
   "author": zod.string(),
   "isbn": zod.string(),
   "category": zod.string(),
+  "language": zod.enum(['Arabic', 'English', 'French']),
+  "volume": zod.string(),
   "copies": zod.number(),
   "availableCopies": zod.number(),
-  "language": zod.enum(['Arabic', 'English', 'French']),
+  "dateAdded": zod.coerce.date(),
+  "depositNumber": zod.string(),
+  "status": zod.enum(['available', 'borrowed', 'lost', 'damaged']),
+  "publicationPlace": zod.string(),
+  "publicationDate": zod.string(),
+  "generalNumber": zod.string(),
+  "specialNumber": zod.string(),
+  "description": zod.string(),
+  "coverImage": zod.string(),
   "shelf": zod.string().optional()
 })
 export const GetBooksResponse = zod.array(GetBooksResponseItem)
@@ -376,19 +484,27 @@ export const GetBooksResponse = zod.array(GetBooksResponseItem)
  * @summary Add a library book
  */
 
-
-
 export const createBookBodyCopiesMin = 0;
 
 
 
 export const CreateBookBody = zod.object({
   "title": zod.string().min(1),
-  "author": zod.string().min(1),
-  "isbn": zod.string(),
-  "category": zod.string().min(1),
-  "copies": zod.number().min(createBookBodyCopiesMin),
-  "language": zod.enum(['Arabic', 'English', 'French']),
+  "author": zod.string().optional(),
+  "isbn": zod.string().optional(),
+  "category": zod.string().optional(),
+  "language": zod.enum(['Arabic', 'English', 'French']).optional(),
+  "volume": zod.string().optional(),
+  "copies": zod.number().min(createBookBodyCopiesMin).optional(),
+  "dateAdded": zod.coerce.date().optional(),
+  "depositNumber": zod.string().optional(),
+  "status": zod.enum(['available', 'borrowed', 'lost', 'damaged']).optional(),
+  "publicationPlace": zod.string().optional(),
+  "publicationDate": zod.string().optional(),
+  "generalNumber": zod.string().optional(),
+  "specialNumber": zod.string().optional(),
+  "description": zod.string().optional(),
+  "coverImage": zod.string().optional(),
   "shelf": zod.string().optional()
 })
 
@@ -398,9 +514,19 @@ export const CreateBookResponse = zod.object({
   "author": zod.string(),
   "isbn": zod.string(),
   "category": zod.string(),
+  "language": zod.enum(['Arabic', 'English', 'French']),
+  "volume": zod.string(),
   "copies": zod.number(),
   "availableCopies": zod.number(),
-  "language": zod.enum(['Arabic', 'English', 'French']),
+  "dateAdded": zod.coerce.date(),
+  "depositNumber": zod.string(),
+  "status": zod.enum(['available', 'borrowed', 'lost', 'damaged']),
+  "publicationPlace": zod.string(),
+  "publicationDate": zod.string(),
+  "generalNumber": zod.string(),
+  "specialNumber": zod.string(),
+  "description": zod.string(),
+  "coverImage": zod.string(),
   "shelf": zod.string().optional()
 })
 
@@ -413,19 +539,27 @@ export const UpdateBookParams = zod.object({
 })
 
 
-
-
-export const updateBookBodyOneCopiesMin = 0;
+export const updateBookBodyCopiesMin = 0;
 
 
 
 export const UpdateBookBody = zod.object({
-  "title": zod.string().min(1),
-  "author": zod.string().min(1),
-  "isbn": zod.string(),
-  "category": zod.string().min(1),
-  "copies": zod.number().min(updateBookBodyOneCopiesMin),
-  "language": zod.enum(['Arabic', 'English', 'French']),
+  "title": zod.string().min(1).optional(),
+  "author": zod.string().optional(),
+  "isbn": zod.string().optional(),
+  "category": zod.string().optional(),
+  "language": zod.enum(['Arabic', 'English', 'French']).optional(),
+  "volume": zod.string().optional(),
+  "copies": zod.number().min(updateBookBodyCopiesMin).optional(),
+  "dateAdded": zod.coerce.date().optional(),
+  "depositNumber": zod.string().optional(),
+  "status": zod.enum(['available', 'borrowed', 'lost', 'damaged']).optional(),
+  "publicationPlace": zod.string().optional(),
+  "publicationDate": zod.string().optional(),
+  "generalNumber": zod.string().optional(),
+  "specialNumber": zod.string().optional(),
+  "description": zod.string().optional(),
+  "coverImage": zod.string().optional(),
   "shelf": zod.string().optional()
 })
 
@@ -435,9 +569,19 @@ export const UpdateBookResponse = zod.object({
   "author": zod.string(),
   "isbn": zod.string(),
   "category": zod.string(),
+  "language": zod.enum(['Arabic', 'English', 'French']),
+  "volume": zod.string(),
   "copies": zod.number(),
   "availableCopies": zod.number(),
-  "language": zod.enum(['Arabic', 'English', 'French']),
+  "dateAdded": zod.coerce.date(),
+  "depositNumber": zod.string(),
+  "status": zod.enum(['available', 'borrowed', 'lost', 'damaged']),
+  "publicationPlace": zod.string(),
+  "publicationDate": zod.string(),
+  "generalNumber": zod.string(),
+  "specialNumber": zod.string(),
+  "description": zod.string(),
+  "coverImage": zod.string(),
   "shelf": zod.string().optional()
 })
 

@@ -440,30 +440,93 @@ components:
         - $ref: "#/components/schemas/StudentInput"
     Teacher:
       type: object
-      required: [id, fullName, fullNameArabic, employeeNumber, nationalId, subject, phone, status]
+      required: [id, fullName, fullNameArabic, name, surname, username, englishName, employeeCode, nationalId, nationality, gender, maritalStatus, religion, phone, email, address, area, country, height, weight, branch, academicLevel, subject, weeklyClasses, isEmployee, status]
       properties:
         id: { type: number }
         fullName: { type: string }
         fullNameArabic: { type: string }
-        employeeNumber: { type: string }
+        name: { type: string }
+        surname: { type: string }
+        username: { type: string }
+        englishName: { type: string }
+        employeeCode: { type: string }
         nationalId: { type: string }
-        subject: { type: string }
+        nationality: { type: string }
+        gender: { type: string }
+        maritalStatus: { type: string }
+        religion: { type: string }
         phone: { type: string }
+        email: { type: string }
+        address: { type: string }
+        area: { type: string }
+        country: { type: string }
+        height: { type: number }
+        weight: { type: number }
+        branch: { type: string }
+        academicLevel: { type: string }
+        subject: { type: string }
+        weeklyClasses: { type: number }
+        isEmployee: { type: boolean }
         status: { type: string, enum: [active, inactive] }
     TeacherInput:
       type: object
-      required: [fullName, fullNameArabic, employeeNumber, nationalId, subject, phone]
+      required: [name, surname, employeeCode]
       properties:
-        fullName: { type: string, minLength: 1 }
-        fullNameArabic: { type: string, minLength: 1 }
-        employeeNumber: { type: string, minLength: 1 }
-        nationalId: { type: string, minLength: 1 }
-        subject: { type: string, minLength: 1 }
-        phone: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        surname: { type: string, minLength: 1 }
+        username: { type: string }
+        password: { type: string, format: password }
+        englishName: { type: string }
+        fullName: { type: string }
+        fullNameArabic: { type: string }
+        employeeCode: { type: string, minLength: 1 }
+        nationalId: { type: string }
+        nationality: { type: string }
+        gender: { type: string, enum: [male, female] }
+        maritalStatus: { type: string, enum: [single, married, divorced, widowed] }
+        religion: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        address: { type: string }
+        area: { type: string }
+        country: { type: string }
+        height: { type: number, minimum: 0 }
+        weight: { type: number, minimum: 0 }
+        branch: { type: string }
+        academicLevel: { type: string }
+        subject: { type: string }
+        weeklyClasses: { type: number, minimum: 0 }
+        isEmployee: { type: boolean }
         status: { type: string, enum: [active, inactive] }
     TeacherUpdate:
-      allOf:
-        - $ref: "#/components/schemas/TeacherInput"
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        surname: { type: string, minLength: 1 }
+        username: { type: string }
+        password: { type: string, format: password }
+        englishName: { type: string }
+        fullName: { type: string }
+        fullNameArabic: { type: string }
+        employeeCode: { type: string, minLength: 1 }
+        nationalId: { type: string }
+        nationality: { type: string }
+        gender: { type: string, enum: [male, female] }
+        maritalStatus: { type: string, enum: [single, married, divorced, widowed] }
+        religion: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        address: { type: string }
+        area: { type: string }
+        country: { type: string }
+        height: { type: number, minimum: 0 }
+        weight: { type: number, minimum: 0 }
+        branch: { type: string }
+        academicLevel: { type: string }
+        subject: { type: string }
+        weeklyClasses: { type: number, minimum: 0 }
+        isEmployee: { type: boolean }
+        status: { type: string, enum: [active, inactive] }
     Employee:
       type: object
       required: [id, fullName, fullNameArabic, employeeNumber, nationalId, jobTitle, phone, status]
@@ -492,31 +555,68 @@ components:
         - $ref: "#/components/schemas/EmployeeInput"
     Book:
       type: object
-      required: [id, title, author, isbn, category, copies, availableCopies, language]
+      required: [id, title, author, isbn, category, language, volume, copies, availableCopies, dateAdded, depositNumber, status, publicationPlace, publicationDate, generalNumber, specialNumber, description, coverImage]
       properties:
         id: { type: number }
         title: { type: string }
         author: { type: string }
         isbn: { type: string }
         category: { type: string }
+        language: { type: string, enum: [Arabic, English, French] }
+        volume: { type: string }
         copies: { type: number }
         availableCopies: { type: number }
-        language: { type: string, enum: [Arabic, English, French] }
+        dateAdded: { type: string, format: date }
+        depositNumber: { type: string }
+        status: { type: string, enum: [available, borrowed, lost, damaged] }
+        publicationPlace: { type: string }
+        publicationDate: { type: string }
+        generalNumber: { type: string }
+        specialNumber: { type: string }
+        description: { type: string }
+        coverImage: { type: string }
         shelf: { type: string }
     BookInput:
       type: object
-      required: [title, author, isbn, category, copies, language]
+      required: [title]
       properties:
         title: { type: string, minLength: 1 }
-        author: { type: string, minLength: 1 }
+        author: { type: string }
         isbn: { type: string }
-        category: { type: string, minLength: 1 }
-        copies: { type: number, minimum: 0 }
+        category: { type: string }
         language: { type: string, enum: [Arabic, English, French] }
+        volume: { type: string }
+        copies: { type: number, minimum: 0 }
+        dateAdded: { type: string, format: date }
+        depositNumber: { type: string }
+        status: { type: string, enum: [available, borrowed, lost, damaged] }
+        publicationPlace: { type: string }
+        publicationDate: { type: string }
+        generalNumber: { type: string }
+        specialNumber: { type: string }
+        description: { type: string }
+        coverImage: { type: string }
         shelf: { type: string }
     BookUpdate:
-      allOf:
-        - $ref: "#/components/schemas/BookInput"
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        author: { type: string }
+        isbn: { type: string }
+        category: { type: string }
+        language: { type: string, enum: [Arabic, English, French] }
+        volume: { type: string }
+        copies: { type: number, minimum: 0 }
+        dateAdded: { type: string, format: date }
+        depositNumber: { type: string }
+        status: { type: string, enum: [available, borrowed, lost, damaged] }
+        publicationPlace: { type: string }
+        publicationDate: { type: string }
+        generalNumber: { type: string }
+        specialNumber: { type: string }
+        description: { type: string }
+        coverImage: { type: string }
+        shelf: { type: string }
     Borrow:
       type: object
       required: [id, bookId, studentId, borrowedAt]

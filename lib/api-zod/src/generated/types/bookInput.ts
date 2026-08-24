@@ -6,17 +6,26 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BookInputLanguage } from './bookInputLanguage';
+import type { BookInputStatus } from './bookInputStatus';
 
 export interface BookInput {
   /** @minLength 1 */
   title: string;
-  /** @minLength 1 */
-  author: string;
-  isbn: string;
-  /** @minLength 1 */
-  category: string;
+  author?: string;
+  isbn?: string;
+  category?: string;
+  language?: BookInputLanguage;
+  volume?: string;
   /** @minimum 0 */
-  copies: number;
-  language: BookInputLanguage;
+  copies?: number;
+  dateAdded?: Date;
+  depositNumber?: string;
+  status?: BookInputStatus;
+  publicationPlace?: string;
+  publicationDate?: string;
+  generalNumber?: string;
+  specialNumber?: string;
+  description?: string;
+  coverImage?: string;
   shelf?: string;
 }

@@ -158,11 +158,18 @@ router.post("/teachers", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const { password, isEmployee, fullName, fullNameArabic, ...rest } = parsed.data;
   const [teacher] = await db.insert(teachersTable).values({
-    ...parsed.data,
-    status: parsed.data.status ?? "active",
+    ...rest,
+    fullName: fullName || [rest.name, rest.surname].filter(Boolean).join(" "),
+    fullNameArabic: fullNameArabic || [rest.name, rest.surname].filter(Boolean).join(" "),
+    password: password ?? "",
+    isEmployee: isEmployee ?? true,
+    status: rest.status ?? "active",
   }).returning();
-  res.status(201).json(CreateTeacherResponse.parse(teacher));
+  const { password: _omit, ...safe } = teacher;
+  void _omit;
+  res.status(201).json(CreateTeacherResponse.parse(safe));
 });
 
 router.patch("/teachers/:id", async (req, res): Promise<void> => {
@@ -176,15 +183,24 @@ router.patch("/teachers/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const { password, isEmployee, fullName, fullNameArabic, ...rest } = parsed.data;
   const [teacher] = await db.update(teachersTable).set({
-    ...parsed.data,
-    status: parsed.data.status ?? "active",
+    ...rest,
+    ...(fullName || rest.name || rest.surname
+      ? { fullName: fullName || [rest.name, rest.surname].filter(Boolean).join(" ") }
+      : {}),
+    ...(fullNameArabic ? { fullNameArabic } : {}),
+    ...(password !== undefined ? { password } : {}),
+    ...(isEmployee !== undefined ? { isEmployee } : {}),
+    status: rest.status ?? "active",
   }).where(eq(teachersTable.id, params.data.id)).returning();
   if (!teacher) {
     res.status(404).json({ error: "Teacher not found" });
     return;
   }
-  res.json(UpdateTeacherResponse.parse(teacher));
+  const { password: _omit, ...safe } = teacher;
+  void _omit;
+  res.json(UpdateTeacherResponse.parse(safe));
 });
 
 router.delete("/teachers/:id", async (req, res): Promise<void> => {
@@ -288,9 +304,18 @@ router.post("/library/books", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const copies = parsed.data.copies ?? 1;
   const [book] = await db.insert(booksTable).values({
     ...parsed.data,
-    availableCopies: parsed.data.copies,
+    category: parsed.data.category ?? "",
+    author: parsed.data.author ?? "",
+    language: parsed.data.language ?? "Arabic",
+    status: parsed.data.status ?? "available",
+    dateAdded: parsed.data.dateAdded
+      ? new Date(parsed.data.dateAdded).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10),
+    copies,
+    availableCopies: copies,
   }).returning();
   res.status(201).json(CreateBookResponse.parse(book));
 });
@@ -312,9 +337,16 @@ router.patch("/library/books/:id", async (req, res): Promise<void> => {
     return;
   }
   const borrowed = existing.copies - existing.availableCopies;
-  const availableCopies = Math.max(0, parsed.data.copies - borrowed);
+  const copies = parsed.data.copies ?? existing.copies;
+  const availableCopies = Math.max(0, copies - borrowed);
+  const { dateAdded: incomingDateAdded, ...bookRest } = parsed.data;
   const [book] = await db.update(booksTable).set({
-    ...parsed.data,
+    ...bookRest,
+    ...(parsed.data.category !== undefined ? { category: parsed.data.category } : {}),
+    ...(incomingDateAdded !== undefined
+      ? { dateAdded: new Date(incomingDateAdded).toISOString().slice(0, 10) }
+      : {}),
+    copies,
     availableCopies,
   }).where(eq(booksTable.id, params.data.id)).returning();
   res.json(UpdateBookResponse.parse(book));

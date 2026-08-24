@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BookLanguage } from './bookLanguage';
+import type { BookStatus } from './bookStatus';
 
 export interface Book {
   id: number;
@@ -13,8 +14,18 @@ export interface Book {
   author: string;
   isbn: string;
   category: string;
+  language: BookLanguage;
+  volume: string;
   copies: number;
   availableCopies: number;
-  language: BookLanguage;
+  dateAdded: Date;
+  depositNumber: string;
+  status: BookStatus;
+  publicationPlace: string;
+  publicationDate: string;
+  generalNumber: string;
+  specialNumber: string;
+  description: string;
+  coverImage: string;
   shelf?: string;
 }

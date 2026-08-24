@@ -89,12 +89,48 @@ export interface Teacher {
   id: number;
   fullName: string;
   fullNameArabic: string;
-  employeeNumber: string;
+  name: string;
+  surname: string;
+  username: string;
+  englishName: string;
+  employeeCode: string;
   nationalId: string;
-  subject: string;
+  nationality: string;
+  gender: string;
+  maritalStatus: string;
+  religion: string;
   phone: string;
+  email: string;
+  address: string;
+  area: string;
+  country: string;
+  height: number;
+  weight: number;
+  branch: string;
+  academicLevel: string;
+  subject: string;
+  weeklyClasses: number;
+  isEmployee: boolean;
   status: TeacherStatus;
 }
+
+export type TeacherInputGender = typeof TeacherInputGender[keyof typeof TeacherInputGender];
+
+
+export const TeacherInputGender = {
+  male: 'male',
+  female: 'female',
+} as const;
+
+export type TeacherInputMaritalStatus = typeof TeacherInputMaritalStatus[keyof typeof TeacherInputMaritalStatus];
+
+
+export const TeacherInputMaritalStatus = {
+  single: 'single',
+  married: 'married',
+  divorced: 'divorced',
+  widowed: 'widowed',
+} as const;
 
 export type TeacherInputStatus = typeof TeacherInputStatus[keyof typeof TeacherInputStatus];
 
@@ -106,21 +142,99 @@ export const TeacherInputStatus = {
 
 export interface TeacherInput {
   /** @minLength 1 */
-  fullName: string;
+  name: string;
   /** @minLength 1 */
-  fullNameArabic: string;
+  surname: string;
+  username?: string;
+  password?: string;
+  englishName?: string;
+  fullName?: string;
+  fullNameArabic?: string;
   /** @minLength 1 */
-  employeeNumber: string;
-  /** @minLength 1 */
-  nationalId: string;
-  /** @minLength 1 */
-  subject: string;
-  /** @minLength 1 */
-  phone: string;
+  employeeCode: string;
+  nationalId?: string;
+  nationality?: string;
+  gender?: TeacherInputGender;
+  maritalStatus?: TeacherInputMaritalStatus;
+  religion?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  area?: string;
+  country?: string;
+  /** @minimum 0 */
+  height?: number;
+  /** @minimum 0 */
+  weight?: number;
+  branch?: string;
+  academicLevel?: string;
+  subject?: string;
+  /** @minimum 0 */
+  weeklyClasses?: number;
+  isEmployee?: boolean;
   status?: TeacherInputStatus;
 }
 
-export type TeacherUpdate = TeacherInput;
+export type TeacherUpdateGender = typeof TeacherUpdateGender[keyof typeof TeacherUpdateGender];
+
+
+export const TeacherUpdateGender = {
+  male: 'male',
+  female: 'female',
+} as const;
+
+export type TeacherUpdateMaritalStatus = typeof TeacherUpdateMaritalStatus[keyof typeof TeacherUpdateMaritalStatus];
+
+
+export const TeacherUpdateMaritalStatus = {
+  single: 'single',
+  married: 'married',
+  divorced: 'divorced',
+  widowed: 'widowed',
+} as const;
+
+export type TeacherUpdateStatus = typeof TeacherUpdateStatus[keyof typeof TeacherUpdateStatus];
+
+
+export const TeacherUpdateStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export interface TeacherUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  surname?: string;
+  username?: string;
+  password?: string;
+  englishName?: string;
+  fullName?: string;
+  fullNameArabic?: string;
+  /** @minLength 1 */
+  employeeCode?: string;
+  nationalId?: string;
+  nationality?: string;
+  gender?: TeacherUpdateGender;
+  maritalStatus?: TeacherUpdateMaritalStatus;
+  religion?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  area?: string;
+  country?: string;
+  /** @minimum 0 */
+  height?: number;
+  /** @minimum 0 */
+  weight?: number;
+  branch?: string;
+  academicLevel?: string;
+  subject?: string;
+  /** @minimum 0 */
+  weeklyClasses?: number;
+  isEmployee?: boolean;
+  status?: TeacherUpdateStatus;
+}
 
 export type EmployeeStatus = typeof EmployeeStatus[keyof typeof EmployeeStatus];
 
@@ -176,15 +290,35 @@ export const BookLanguage = {
   French: 'French',
 } as const;
 
+export type BookStatus = typeof BookStatus[keyof typeof BookStatus];
+
+
+export const BookStatus = {
+  available: 'available',
+  borrowed: 'borrowed',
+  lost: 'lost',
+  damaged: 'damaged',
+} as const;
+
 export interface Book {
   id: number;
   title: string;
   author: string;
   isbn: string;
   category: string;
+  language: BookLanguage;
+  volume: string;
   copies: number;
   availableCopies: number;
-  language: BookLanguage;
+  dateAdded: string;
+  depositNumber: string;
+  status: BookStatus;
+  publicationPlace: string;
+  publicationDate: string;
+  generalNumber: string;
+  specialNumber: string;
+  description: string;
+  coverImage: string;
   shelf?: string;
 }
 
@@ -197,21 +331,78 @@ export const BookInputLanguage = {
   French: 'French',
 } as const;
 
+export type BookInputStatus = typeof BookInputStatus[keyof typeof BookInputStatus];
+
+
+export const BookInputStatus = {
+  available: 'available',
+  borrowed: 'borrowed',
+  lost: 'lost',
+  damaged: 'damaged',
+} as const;
+
 export interface BookInput {
   /** @minLength 1 */
   title: string;
-  /** @minLength 1 */
-  author: string;
-  isbn: string;
-  /** @minLength 1 */
-  category: string;
+  author?: string;
+  isbn?: string;
+  category?: string;
+  language?: BookInputLanguage;
+  volume?: string;
   /** @minimum 0 */
-  copies: number;
-  language: BookInputLanguage;
+  copies?: number;
+  dateAdded?: string;
+  depositNumber?: string;
+  status?: BookInputStatus;
+  publicationPlace?: string;
+  publicationDate?: string;
+  generalNumber?: string;
+  specialNumber?: string;
+  description?: string;
+  coverImage?: string;
   shelf?: string;
 }
 
-export type BookUpdate = BookInput;
+export type BookUpdateLanguage = typeof BookUpdateLanguage[keyof typeof BookUpdateLanguage];
+
+
+export const BookUpdateLanguage = {
+  Arabic: 'Arabic',
+  English: 'English',
+  French: 'French',
+} as const;
+
+export type BookUpdateStatus = typeof BookUpdateStatus[keyof typeof BookUpdateStatus];
+
+
+export const BookUpdateStatus = {
+  available: 'available',
+  borrowed: 'borrowed',
+  lost: 'lost',
+  damaged: 'damaged',
+} as const;
+
+export interface BookUpdate {
+  /** @minLength 1 */
+  title?: string;
+  author?: string;
+  isbn?: string;
+  category?: string;
+  language?: BookUpdateLanguage;
+  volume?: string;
+  /** @minimum 0 */
+  copies?: number;
+  dateAdded?: string;
+  depositNumber?: string;
+  status?: BookUpdateStatus;
+  publicationPlace?: string;
+  publicationDate?: string;
+  generalNumber?: string;
+  specialNumber?: string;
+  description?: string;
+  coverImage?: string;
+  shelf?: string;
+}
 
 export interface Borrow {
   id: number;

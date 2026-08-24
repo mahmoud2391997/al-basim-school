@@ -44,7 +44,7 @@ export async function seedDatabase() {
     {
       fullName: "Adel Khamis",
       fullNameArabic: "عادل خميس",
-      employeeNumber: "TCH-001",
+      employeeCode: "TCH-001",
       nationalId: "1023456789012",
       subject: "Arabic Language",
       phone: "+966 50 123 4567",
@@ -53,7 +53,7 @@ export async function seedDatabase() {
     {
       fullName: "Ahmad Al Hares",
       fullNameArabic: "أحمد الحارث",
-      employeeNumber: "TCH-002",
+      employeeCode: "TCH-002",
       nationalId: "1034567890123",
       subject: "English Language",
       phone: "+966 55 234 5678",
@@ -62,7 +62,7 @@ export async function seedDatabase() {
     {
       fullName: "Ahmed Sami",
       fullNameArabic: "أحمد سامي",
-      employeeNumber: "TCH-003",
+      employeeCode: "TCH-003",
       nationalId: "1045678901234",
       subject: "Mathematics",
       phone: "+966 54 345 6789",
@@ -71,7 +71,7 @@ export async function seedDatabase() {
     {
       fullName: "Sara Al-Mutairi",
       fullNameArabic: "سارة المطيري",
-      employeeNumber: "TCH-004",
+      employeeCode: "TCH-004",
       nationalId: "1056789012345",
       subject: "Science",
       phone: "+966 56 456 7890",

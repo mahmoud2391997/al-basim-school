@@ -5,20 +5,41 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { TeacherInputGender } from './teacherInputGender';
+import type { TeacherInputMaritalStatus } from './teacherInputMaritalStatus';
 import type { TeacherInputStatus } from './teacherInputStatus';
 
 export interface TeacherInput {
   /** @minLength 1 */
-  fullName: string;
+  name: string;
   /** @minLength 1 */
-  fullNameArabic: string;
+  surname: string;
+  username?: string;
+  password?: string;
+  englishName?: string;
+  fullName?: string;
+  fullNameArabic?: string;
   /** @minLength 1 */
-  employeeNumber: string;
-  /** @minLength 1 */
-  nationalId: string;
-  /** @minLength 1 */
-  subject: string;
-  /** @minLength 1 */
-  phone: string;
+  employeeCode: string;
+  nationalId?: string;
+  nationality?: string;
+  gender?: TeacherInputGender;
+  maritalStatus?: TeacherInputMaritalStatus;
+  religion?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  area?: string;
+  country?: string;
+  /** @minimum 0 */
+  height?: number;
+  /** @minimum 0 */
+  weight?: number;
+  branch?: string;
+  academicLevel?: string;
+  subject?: string;
+  /** @minimum 0 */
+  weeklyClasses?: number;
+  isEmployee?: boolean;
   status?: TeacherInputStatus;
 }

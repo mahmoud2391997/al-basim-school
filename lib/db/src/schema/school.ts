@@ -1,5 +1,6 @@
 import { createInsertSchema } from "drizzle-zod";
-import { date, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, date, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { z } from "zod/v4";
 
 export const academicYearsTable = pgTable("academic_years", {
@@ -28,11 +29,30 @@ export const studentsTable = pgTable("students", {
 export const teachersTable = pgTable("teachers", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   fullName: text("full_name").notNull(),
-  fullNameArabic: text("full_name_arabic").notNull(),
-  employeeNumber: text("employee_number").notNull().unique(),
+  fullNameArabic: text("full_name_arabic").notNull().default(""),
+  name: text("name").notNull().default(""),
+  surname: text("surname").notNull().default(""),
+  username: text("username").notNull().default(""),
+  password: text("password").notNull().default(""),
+  englishName: text("english_name").notNull().default(""),
+  employeeCode: text("employee_code").notNull().unique(),
   nationalId: text("national_id").notNull().default(""),
-  subject: text("subject").notNull(),
-  phone: text("phone").notNull(),
+  nationality: text("nationality").notNull().default(""),
+  gender: text("gender").notNull().default(""),
+  maritalStatus: text("marital_status").notNull().default(""),
+  religion: text("religion").notNull().default(""),
+  phone: text("phone").notNull().default(""),
+  email: text("email").notNull().default(""),
+  address: text("address").notNull().default(""),
+  area: text("area").notNull().default(""),
+  country: text("country").notNull().default(""),
+  height: integer("height").notNull().default(0),
+  weight: integer("weight").notNull().default(0),
+  branch: text("branch").notNull().default(""),
+  academicLevel: text("academic_level").notNull().default(""),
+  subject: text("subject").notNull().default(""),
+  weeklyClasses: integer("weekly_classes").notNull().default(0),
+  isEmployee: boolean("is_employee").notNull().default(true),
   status: text("status").notNull().default("active"),
 });
 
@@ -50,12 +70,22 @@ export const employeesTable = pgTable("employees", {
 export const booksTable = pgTable("books", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   title: text("title").notNull(),
-  author: text("author").notNull(),
+  author: text("author").notNull().default(""),
   isbn: text("isbn").notNull().default(""),
   category: text("category").notNull(),
+  language: text("language").notNull().default("Arabic"),
+  volume: text("volume").notNull().default(""),
   copies: integer("copies").notNull().default(1),
   availableCopies: integer("available_copies").notNull().default(1),
-  language: text("language").notNull().default("Arabic"),
+  dateAdded: date("date_added", { mode: "string" }).notNull().default(sql`CURRENT_DATE`),
+  depositNumber: text("deposit_number").notNull().default(""),
+  status: text("status").notNull().default("available"),
+  publicationPlace: text("publication_place").notNull().default(""),
+  publicationDate: text("publication_date").notNull().default(""),
+  generalNumber: text("general_number").notNull().default(""),
+  specialNumber: text("special_number").notNull().default(""),
+  description: text("description").notNull().default(""),
+  coverImage: text("cover_image").notNull().default(""),
   shelf: text("shelf").notNull().default(""),
 });
 

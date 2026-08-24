@@ -5,6 +5,27 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { BookInput } from './bookInput';
+import type { BookUpdateLanguage } from './bookUpdateLanguage';
+import type { BookUpdateStatus } from './bookUpdateStatus';
 
-export type BookUpdate = BookInput;
+export interface BookUpdate {
+  /** @minLength 1 */
+  title?: string;
+  author?: string;
+  isbn?: string;
+  category?: string;
+  language?: BookUpdateLanguage;
+  volume?: string;
+  /** @minimum 0 */
+  copies?: number;
+  dateAdded?: Date;
+  depositNumber?: string;
+  status?: BookUpdateStatus;
+  publicationPlace?: string;
+  publicationDate?: string;
+  generalNumber?: string;
+  specialNumber?: string;
+  description?: string;
+  coverImage?: string;
+  shelf?: string;
+}
