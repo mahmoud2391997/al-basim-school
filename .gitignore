@@ -8,6 +8,7 @@ out-tsc
 artifacts/**/.electron-deploy/
 artifacts/**/.electron-deploy-*/
 artifacts/**/release-*/
+artifacts/**/deploy-test/
 .expo
 .expo-shared
 
