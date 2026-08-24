@@ -6,7 +6,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 
 import './index.css';
 
-setBaseUrl(import.meta.env.VITE_API_URL ?? null);
+setBaseUrl(window.alBassamDesktop?.apiBaseUrl || import.meta.env.VITE_API_URL || null);
 
 createRoot(document.getElementById('root')!, {
   // Keeps caught errors off reportError(), which would raise the dev overlay.
