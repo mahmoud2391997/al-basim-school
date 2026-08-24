@@ -13,6 +13,7 @@ export const academicYearsTable = pgTable("academic_years", {
 
 export const studentsTable = pgTable("students", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  academicYearId: integer("academic_year_id").notNull().default(0),
   fullName: text("full_name").notNull(),
   fullNameArabic: text("full_name_arabic").notNull(),
   studentNumber: text("student_number").notNull().unique(),
@@ -28,6 +29,7 @@ export const studentsTable = pgTable("students", {
 
 export const teachersTable = pgTable("teachers", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  academicYearId: integer("academic_year_id").notNull().default(0),
   fullName: text("full_name").notNull(),
   fullNameArabic: text("full_name_arabic").notNull().default(""),
   name: text("name").notNull().default(""),
@@ -89,6 +91,16 @@ export const booksTable = pgTable("books", {
   shelf: text("shelf").notNull().default(""),
 });
 
+export const attendanceTable = pgTable("attendance", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  studentId: integer("student_id").notNull().references(() => studentsTable.id, { onDelete: "cascade" }),
+  academicYearId: integer("academic_year_id").notNull(),
+  attendanceDate: date("attendance_date", { mode: "string" }).notNull(),
+  status: text("status").notNull(),
+  note: text("note").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const borrowsTable = pgTable("borrows", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   bookId: integer("book_id").notNull().references(() => booksTable.id, { onDelete: "cascade" }),
@@ -104,6 +116,7 @@ export const insertTeacherSchema = createInsertSchema(teachersTable);
 export const insertEmployeeSchema = createInsertSchema(employeesTable);
 export const insertBookSchema = createInsertSchema(booksTable);
 export const insertBorrowSchema = createInsertSchema(borrowsTable);
+export const insertAttendanceSchema = createInsertSchema(attendanceTable);
 
 export type InsertAcademicYear = z.infer<typeof insertAcademicYearSchema>;
 export type AcademicYear = typeof academicYearsTable.$inferSelect;
@@ -117,3 +130,5 @@ export type InsertBook = z.infer<typeof insertBookSchema>;
 export type Book = typeof booksTable.$inferSelect;
 export type InsertBorrow = z.infer<typeof insertBorrowSchema>;
 export type Borrow = typeof borrowsTable.$inferSelect;
+export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
+export type Attendance = typeof attendanceTable.$inferSelect;
