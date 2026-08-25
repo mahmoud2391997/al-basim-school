@@ -30,6 +30,12 @@ function run(command, args, cwd = appDir) {
 }
 
 run(npm, ['run', 'build']);
+for (const asset of ['al-bassam-logo-mark.png', 'al-bassam-logo-trim.png']) {
+  const assetPath = path.join(appDir, 'dist', 'public', asset);
+  if (!fs.existsSync(assetPath)) {
+    throw new Error(`Production asset missing after Vite build: ${asset}`);
+  }
+}
 fs.mkdirSync(stagingDir, { recursive: true });
 const appPackage = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
 delete appPackage.devDependencies;

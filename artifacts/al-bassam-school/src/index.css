@@ -67,6 +67,10 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+[data-testid='button-scan-add-new'] {
+  color: white;
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(38, 48, 100, 0.1);

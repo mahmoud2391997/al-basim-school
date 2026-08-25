@@ -48,7 +48,7 @@ import {
 const router: IRouter = Router();
 
 router.get("/dashboard/summary", async (_req, res): Promise<void> => {
-  const [students, teachers, books, recent] = await Promise.all([
+  const [students, teachers, books, recent, borrowedBooks] = await Promise.all([
     db.select({ id: studentsTable.id }).from(studentsTable).where(eq(studentsTable.status, "active")),
     db.select({ id: teachersTable.id }).from(teachersTable).where(eq(teachersTable.status, "active")),
     db.select({ id: booksTable.id }).from(booksTable),
@@ -57,19 +57,16 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       title: studentsTable.fullName,
       timestamp: studentsTable.createdAt,
     }).from(studentsTable).orderBy(desc(studentsTable.createdAt)).limit(4),
+    db.select({ count: count(borrowsTable.id) }).from(borrowsTable).where(isNull(borrowsTable.returnedAt)),
   ]);
-  const attendance = await db.select({
-    present: sum(sql`case when ${attendanceTable.status} = 'present' then 1 else 0 end`),
-    total: count(attendanceTable.id),
-  }).from(attendanceTable);
-  const attendanceRate = Number(attendance[0]?.total) > 0
-    ? Math.round((Number(attendance[0]?.present ?? 0) / Number(attendance[0]?.total)) * 1000) / 10
+  const borrowedRate = books.length > 0
+    ? Math.round((Number(borrowedBooks[0]?.count ?? 0) / books.length) * 1000) / 10
     : 0;
   res.json(GetDashboardSummaryResponse.parse({
     students: students.length,
     teachers: teachers.length,
     books: books.length,
-    attendanceRate,
+    attendanceRate: borrowedRate,
     recentActivity: recent.map((item) => ({
       id: item.id,
       type: "student",

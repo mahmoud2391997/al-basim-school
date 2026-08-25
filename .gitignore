@@ -9,6 +9,7 @@ artifacts/**/.electron-deploy/
 artifacts/**/.electron-deploy-*/
 artifacts/**/release-*/
 artifacts/**/deploy-test/
+artifacts/**/.web-data/
 .expo
 .expo-shared
 

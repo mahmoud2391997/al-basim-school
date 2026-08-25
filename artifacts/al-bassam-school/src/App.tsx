@@ -74,8 +74,8 @@ function LanguageProvider({ children }: { children: ReactNode }) {
 
 function LogoMark({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={`flex min-w-0 ${compact ? '' : 'flex-1'}`} data-testid="brand-logo">
-      <div className={`flex items-center justify-center overflow-hidden rounded-lg bg-[#FCFBF0] shadow-[0_0_0_1px_rgba(219,180,108,.45),0_3px_12px_rgba(0,0,0,.28)] ${compact ? 'h-10 w-10 shrink-0' : 'h-14 w-full px-2'}`}>
+    <div className={`flex min-w-0 justify-center ${compact ? 'mx-auto' : 'flex-1'}`} data-testid="brand-logo">
+      <div className={`flex items-center justify-center overflow-hidden rounded-lg bg-[#FCFBF0] shadow-[0_0_0_1px_rgba(219,180,108,.45),0_3px_12px_rgba(0,0,0,.28)] ${compact ? 'h-14 w-14 shrink-0' : 'h-14 w-[176px] max-w-full px-2'}`}>
         <img src={compact ? '/al-bassam-logo-mark.png' : '/al-bassam-logo-trim.png'} alt="Al-Bassam School" className="h-full w-full object-contain" />
       </div>
     </div>
@@ -86,7 +86,7 @@ const navItems = [
   { href: '/', label: 'Overview', arabic: 'نظرة عامة', icon: LayoutDashboard, tabs: [] },
   { href: '/employees', label: 'Employees', arabic: 'الموظفون', icon: Briefcase, tabs: [{ label: 'Teachers', arabic: 'المعلمون', href: '/teachers' }, { label: 'Staff records', arabic: 'سجلات الموظفين', href: '/employees' }] },
   { href: '/students', label: 'Students', arabic: 'الطلاب', icon: GraduationCap, tabs: [{ label: 'Student records', arabic: 'سجلات الطلاب', href: '/students' }, { label: 'Student distribution', arabic: 'توزيع الطلاب', href: '/students/distribution' }] },
-  { href: '/library', label: 'Library', arabic: 'المكتبة', icon: Library, tabs: [{ label: 'Books', arabic: 'الكتب', href: '/library' }, { label: 'Categories', arabic: 'تصنيفات الكتب', href: '/library/categories' }, { label: 'Index', arabic: 'الفهرس', href: '/library/index' }] },
+  { href: '/library', label: 'Library', arabic: 'المكتبة', icon: Library, tabs: [{ label: 'Books', arabic: 'الكتب', href: '/library' }, { label: 'Categories', arabic: 'تصنيفات الكتب', href: '/library/categories' }, { label: 'Borrows', arabic: 'الاستعارات', href: '/library/borrows' }, { label: 'Index', arabic: 'الفهرس', href: '/library/index' }, { label: 'Analytics', arabic: 'التحليلات', href: '/library/analytics' }] },
 ];
 
 function Shell({ children }: { children: ReactNode }) {
@@ -99,7 +99,7 @@ function Shell({ children }: { children: ReactNode }) {
   const academic = useGetAcademicYears({
     query: { queryKey: getGetAcademicYearsQueryKey() },
   });
-  const years = academic.data ?? [];
+  const years = Array.isArray(academic.data) ? academic.data : [];
   const current = years.find((year) => year.isCurrent) ?? years[0];
   const [selectedYear, setSelectedYear] = useState<string | undefined>(() => localStorage.getItem('al-bassam-year') ?? undefined);
 
@@ -113,7 +113,7 @@ function Shell({ children }: { children: ReactNode }) {
   return (
     <div className={`app-noise min-h-[100dvh] bg-background text-foreground ${language === 'ar' ? 'font-arabic' : ''}`}>
       <aside style={{ width: sidebarWidth }} className={`fixed inset-y-0 z-40 flex flex-col transition-[width] duration-300 bg-sidebar text-sidebar-foreground transition-transform duration-300 md:translate-x-0 ${language === 'ar' ? 'right-0' : 'left-0'} ${mobileOpen ? 'translate-x-0' : language === 'ar' ? 'translate-x-full' : '-translate-x-full'}`} dir={language === 'ar' ? 'rtl' : 'ltr'} data-testid="sidebar-navigation">
-        <div className="flex h-[88px] items-center border-b border-sidebar-border px-1">
+        <div className="flex h-[88px] shrink-0 items-center border-b border-sidebar-border px-1">
           <LogoMark compact={collapsed} />
           <button onClick={() => setMobileOpen(false)} className={`${language === 'ar' ? 'mr-auto' : 'ml-auto'} rounded-md p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-[#FCFBF0] md:hidden`} data-testid="button-close-mobile-menu" aria-label={text('Close menu', '\u0625\u063A\u0644\u0627\u0642\u0020\u0627\u0644\u0642\u0627\u0626\u0645\u0629')}><X size={18} /></button>
         </div>
@@ -202,6 +202,19 @@ function LoadingCards({ count = 4 }: { count?: number }) {
   return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: count }).map((_, index) => <div className="h-[126px] rounded-xl border border-border bg-card p-5" key={index}><div className="skeleton mb-4 h-3 w-20 rounded" /><div className="skeleton h-8 w-28 rounded" /><div className="skeleton mt-3 h-2 w-16 rounded" /></div>)}</div>;
 }
 
+function Pagination({ page, pageCount, onPageChange }: { page: number; pageCount: number; onPageChange: (page: number) => void }) {
+  if (pageCount <= 1) return null;
+  return <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>{page} / {pageCount}</span><div className="flex gap-1"><button disabled={page === 1} onClick={() => onPageChange(page - 1)} className="rounded-md border border-border p-1 disabled:opacity-40" aria-label="Previous page"><ChevronLeft size={14} /></button><button disabled={page === pageCount} onClick={() => onPageChange(page + 1)} className="rounded-md border border-border p-1 disabled:opacity-40" aria-label="Next page"><ChevronRight size={14} /></button></div></div>;
+}
+
+function usePagination<T>(items: T[], pageSize = 8) {
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [items]);
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  return { page: currentPage, pageItems: items.slice((currentPage - 1) * pageSize, currentPage * pageSize), pageCount, setPage };
+}
+
 function ErrorState({ label, labelAr, onRetry }: { label: string; labelAr?: string; onRetry: () => void }) {
   const { t } = useT();
   return <div className="flex flex-col items-center justify-center rounded-xl border border-[#B92327]/25 bg-[#FCFBF0] px-6 py-16 text-center"><div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#B92327]/10 text-[#B92327]"><AlertTriangle size={19} /></div><h3 className="font-semibold text-[#B92327]">{t(`Could not load ${label}`, `تعذّر تحميل ${labelAr ?? label}`)}</h3><p className="mt-1 text-sm text-[#B92327]/70">{t('The workspace will try again when you ask it to.', 'ستحاول مساحة العمل مجددًا بمجرد طلب ذلك.')}</p><Button variant="outline" size="sm" onClick={onRetry} className="mt-5 border-[#B92327]/35 bg-transparent text-[#B92327]" data-testid={`button-retry-${label.toLowerCase().replaceAll(' ', '-')}`}><RefreshCw size={14} /> {t('Try again', 'حاول مجددًا')}</Button></div>;
@@ -221,12 +234,19 @@ function Dashboard() {
   const [, setLocation] = useLocation();
   const { t } = useT();
   const summaryQuery = useGetDashboardSummary({ query: { queryKey: getGetDashboardSummaryQueryKey() } });
-  const summary = summaryQuery.data ?? fallbackSummary;
+  const summaryData = summaryQuery.data ?? fallbackSummary;
+  const summary: DashboardSummary = {
+    students: Number(summaryData.students ?? 0),
+    teachers: Number(summaryData.teachers ?? 0),
+    books: Number(summaryData.books ?? 0),
+    attendanceRate: Number(summaryData.attendanceRate ?? 0),
+    recentActivity: summaryData.recentActivity ?? [],
+  };
   const activity = summary.recentActivity ?? [];
   const activityIcon = (type: string) => type === 'library' ? <Library size={15} /> : type === 'teacher' ? <UsersRound size={15} /> : type === 'student' ? <GraduationCap size={15} /> : <Activity size={15} />;
   return <div className="rise-in">
     <PageHeading eyebrow="School pulse · 01" eyebrowAr="نبض المدرسة · 01" title={t('Good morning, admin.', 'صباح الخير، أيها المدير.')} arabic={t('صباح الخير', 'Good morning')} description={t('A composed view of the people, places and pages moving through Al-Bassam today.', 'نظرة هادئة على الأشخاص والأماكن والصفحات المتحركة في البسام اليوم.')} action={<Button onClick={() => setLocation('/students')} className="h-11 rounded-lg bg-[#263064] px-5 text-sm text-[#FCFBF0] hover:bg-[#263064]/85" data-testid="button-open-students"><ArrowUpRight size={16} /> {t('Open student records', 'فتح سجلات الطلاب')}</Button>} />
-    {summaryQuery.isLoading ? <LoadingCards /> : summaryQuery.isError ? <ErrorState label="dashboard data" labelAr="بيانات لوحة التحكم" onRetry={() => summaryQuery.refetch()} /> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="Students" arabic="الطلاب" value={summary.students.toLocaleString()} icon={GraduationCap} tone="navy" note={t('Active enrolment', 'التحاق نشط')} /><StatCard label="Teachers" arabic="المعلمون" value={summary.teachers.toLocaleString()} icon={UsersRound} tone="teal" note={t('Faculty directory', 'دليل أعضاء هيئة التدريس')} /><StatCard label="Library books" arabic="كتب المكتبة" value={summary.books.toLocaleString()} icon={BookOpen} tone="gold" note={t('Titles in catalogue', 'عناوين في الفهرس')} /><StatCard label="Attendance" arabic="الحضور" value={`${summary.attendanceRate}%`} icon={CircleCheck} tone="sky" note={t('This academic year', 'هذا العام الدراسي')} /></div>}
+    {summaryQuery.isLoading ? <LoadingCards /> : summaryQuery.isError ? <ErrorState label="dashboard data" labelAr="بيانات لوحة التحكم" onRetry={() => summaryQuery.refetch()} /> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="Students" arabic="الطلاب" value={summary.students.toLocaleString()} icon={GraduationCap} tone="navy" note={t('Active enrolment', 'التحاق نشط')} /><StatCard label="Teachers" arabic="المعلمون" value={summary.teachers.toLocaleString()} icon={UsersRound} tone="teal" note={t('Faculty directory', 'دليل أعضاء هيئة التدريس')} /><StatCard label="Library books" arabic="كتب المكتبة" value={summary.books.toLocaleString()} icon={BookOpen} tone="gold" note={t('Titles in catalogue', 'عناوين في الفهرس')} /><StatCard label="Borrowed books" arabic="الكتب المستعارة" value={`${summary.attendanceRate}%`} icon={BookOpen} tone="sky" note={t('Share of catalogue currently on loan', 'نسبة الكتب المعارة حاليًا')} /></div>}
     <div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
       <section className="rounded-xl border border-border bg-card p-6 soft-shadow"><div className="mb-6 flex items-start justify-between"><div><div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{t('Recent activity', 'النشاط الأخير')}</div><h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-[#263064]">{t('The school, in motion', 'المدرسة في حِركة مستمرة')}</h2></div><button className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-primary" data-testid="button-activity-options" aria-label={t('Activity options', 'خيارات النشاط')}><MoreHorizontal size={18} /></button></div>{summaryQuery.isLoading ? <div className="space-y-5">{[1, 2, 3, 4].map((item) => <div className="flex gap-4" key={item}><div className="skeleton h-9 w-9 rounded-lg" /><div className="flex-1"><div className="skeleton h-3 w-3/5 rounded" /><div className="skeleton mt-2 h-2 w-2/5 rounded" /></div></div>)}</div> : activity.length ? <div className="space-y-1">{activity.slice(0, 6).map((item) => <div className="group flex items-center gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-secondary/60" key={item.id} data-testid={`activity-item-${item.id}`}><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">{activityIcon(item.type)}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-[#263064]">{item.title}</p><p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 size={11} />{formatDate(item.timestamp)}</p></div><ArrowUpRight size={14} className="text-border transition-colors group-hover:text-primary" /></div>)}</div> : <div className="py-10 text-center text-sm text-muted-foreground">{t('Your activity stream will appear here.', 'سيظهر سجل نشاطاتك هنا.')}</div>}</section>
       <section className="relative overflow-hidden rounded-xl bg-[#14BAC6] p-7 text-[#FCFBF0]"><div className="relative z-10"><div className="mb-10 flex h-9 w-9 items-center justify-center rounded-lg bg-[#FCFBF0]/15 text-[#DBB46C]"><Sparkles size={18} /></div><div className="text-[10px] font-bold uppercase tracking-[.2em] text-[#14BAC6]/80">{t('A note from the office', 'ملاحظة من الإدارة')}</div><h2 className="mt-3 max-w-xs text-2xl font-bold leading-tight tracking-[-.04em]">{t('Small records build a remarkable school.', 'السجلات الصغيرة تبني مدرسة متميزة.')}</h2><p className="mt-3 max-w-xs text-sm leading-6 text-[#FCFBF0]/85">{t('Keep today’s details close. The right information, at the right moment, makes room for better teaching.', 'حافظ على تفاصيل اليوم قريبة؛ فالمعلومة الصحيحة في اللحظة المناسبة تصنع مساحة أفضل للتعليم.')}</p></div><div className="absolute -bottom-14 -right-12 h-48 w-48 rounded-full border-[22px] border-[#FCFBF0]/10" /><div className="absolute -right-5 top-10 h-24 w-24 rounded-full border border-[#DBB46C]/50" /></section>
@@ -288,15 +308,16 @@ function StudentsPage() {
   const query = useGetStudents({ search: search || undefined, status: (status || undefined) as 'active' | 'inactive' | 'graduated' | undefined }, { query: { queryKey: getGetStudentsQueryKey({ search: search || undefined, status: (status || undefined) as 'active' | 'inactive' | 'graduated' | undefined }) } });
   const deletion = useDeleteStudent();
   const queryClient = useQueryClient();
-  const students = query.data ?? [];
+  const students = Array.isArray(query.data) ? query.data : [];
   const filtered = useMemo(() => students, [students]);
+  const studentPages = usePagination(filtered);
   const openNew = () => { setEditing(undefined); setDialogOpen(true); };
   const edit = (student: Student) => { setEditing(student); setDialogOpen(true); };
   const remove = (student: Student) => { if (!window.confirm(t(`Delete ${student.fullName} from the directory?`, `حذف ${student.fullName} من الدليل؟`))) return; deletion.mutate({ id: student.id }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() }); setToast(t('Student record deleted', 'تم حذف سجل الطالب')); } }); };
   return <div className="rise-in"><PageHeading eyebrow="People · 03" eyebrowAr="الأشخاص · 03" title="Students" arabic="الطلاب" description="A clear, current directory for every learner in the Al-Bassam community." descriptionAr="دليل واضح ومحدّث لكل متعلم في مجتمع البسام التعليمية." action={<Button onClick={openNew} className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85" data-testid="button-add-student"><Plus size={17} /> {t('Add student', 'إضافة طالب')}</Button>} />
     <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row"><div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 sm:max-w-md"><Search size={16} className="text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('Search by name or student number', 'ابحث بالاسم أو رقم الطالب')} className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60" data-testid="input-search-students" /></div><div className="flex gap-2"><div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3"><Filter size={14} className="text-muted-foreground" /><select value={status} onChange={(event) => setStatus(event.target.value)} className="h-10 bg-transparent text-xs font-medium outline-none" data-testid="select-student-status"><option value="">{t('All statuses', 'جميع الحالات')}</option><option value="active">{t('Active', 'نشط')}</option><option value="inactive">{t('Inactive', 'غير نشط')}</option><option value="graduated">{t('Graduated', 'متخرج')}</option></select></div><button onClick={() => query.refetch()} className="rounded-lg border border-border bg-card px-3 text-muted-foreground transition-colors hover:border-primary hover:text-primary" data-testid="button-refresh-students" aria-label={t('Refresh students', 'تحديث الطلاب')}><RefreshCw size={16} className={query.isFetching ? 'animate-spin' : ''} /></button></div></div>
     {toast && <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#32B77E]/35 bg-[#32B77E]/10 px-4 py-3 text-sm text-[#32B77E] rise-in" data-testid="status-student-action"><Check size={16} />{toast}<button className="ml-auto text-[#32B77E]/60 hover:text-[#32B77E]" onClick={() => setToast('')} data-testid="button-dismiss-student-toast"><X size={14} /></button></div>}
-    {query.isLoading ? <div className="rounded-xl border border-border bg-card p-5"><div className="space-y-5">{[1, 2, 3, 4, 5].map((item) => <div className="flex gap-4" key={item}><div className="skeleton h-9 w-9 rounded-full" /><div className="skeleton h-4 w-48 rounded" /></div>)}</div></div> : query.isError ? <ErrorState label="students" labelAr="الطلاب" onRetry={() => query.refetch()} /> : !filtered.length ? <EmptyState icon={GraduationCap} title={search || status ? t('No students match this view', 'لا يوجد طلاب مطابقون لهذا العرض') : t('Start your student directory', 'ابدأ دليل الطلاب')} detail={search || status ? t('Try another search term or clear the filters.', 'جرّب كلمة بحث أخرى أو امسح عوامل التصفية.') : t('Add the first student record to begin building the directory.', 'أضف أول سجل طالب لبدء بناء الدليل.')} action={!search && !status ? <Button onClick={openNew} data-testid="button-empty-add-student"><Plus size={15} /> {t('Add first student', 'إضافة أول طالب')}</Button> : undefined} /> : <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow"><div className="grid min-w-[940px] grid-cols-[2fr_1fr_1.15fr_.8fr_1.25fr_1fr_.75fr_88px] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground"><span>{t('Student', 'الطالب')}</span><span className="text-center">{t('Number', 'الرقم')}</span><span className="text-center">{t('National ID', 'الهوية الوطنية')}</span><span>{t('Class', 'الفصل')}</span><span>{t('Guardian', 'ولي الأمر')}</span><span className="text-center">{t('Enrolled', 'تاريخ التسجيل')}</span><span className="text-center">{t('Status', 'الحالة')}</span><span /></div>{filtered.map((student) => <StudentRow key={student.id} student={student} onEdit={edit} onDelete={remove} />)}</div>}
+    {query.isLoading ? <div className="rounded-xl border border-border bg-card p-5"><div className="space-y-5">{[1, 2, 3, 4, 5].map((item) => <div className="flex gap-4" key={item}><div className="skeleton h-9 w-9 rounded-full" /><div className="skeleton h-4 w-48 rounded" /></div>)}</div></div> : query.isError ? <ErrorState label="students" labelAr="الطلاب" onRetry={() => query.refetch()} /> : !filtered.length ? <EmptyState icon={GraduationCap} title={search || status ? t('No students match this view', 'لا يوجد طلاب مطابقون لهذا العرض') : t('Start your student directory', 'ابدأ دليل الطلاب')} detail={search || status ? t('Try another search term or clear the filters.', 'جرّب كلمة بحث أخرى أو امسح عوامل التصفية.') : t('Add the first student record to begin building the directory.', 'أضف أول سجل طالب لبدء بناء الدليل.')} action={!search && !status ? <Button onClick={openNew} data-testid="button-empty-add-student"><Plus size={15} /> {t('Add first student', 'إضافة أول طالب')}</Button> : undefined} /> : <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow"><div className="grid min-w-[940px] grid-cols-[2fr_1fr_1.15fr_.8fr_1.25fr_1fr_.75fr_88px] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground"><span>{t('Student', 'الطالب')}</span><span className="text-center">{t('Number', 'الرقم')}</span><span className="text-center">{t('National ID', 'الهوية الوطنية')}</span><span>{t('Class', 'الفصل')}</span><span>{t('Guardian', 'ولي الأمر')}</span><span className="text-center">{t('Enrolled', 'تاريخ التسجيل')}</span><span className="text-center">{t('Status', 'الحالة')}</span><span /></div>{studentPages.pageItems.map((student) => <StudentRow key={student.id} student={student} onEdit={edit} onDelete={remove} />)}<Pagination page={studentPages.page} pageCount={studentPages.pageCount} onPageChange={studentPages.setPage} /></div>}
     <StudentDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} onSaved={setToast} />
   </div>;
 }
@@ -447,7 +468,7 @@ function EmployeesPage() {
   const query = useGetEmployees({ search: search || undefined }, { query: { queryKey: getGetEmployeesQueryKey({ search: search || undefined }) } });
   const deletion = useDeleteEmployee();
   const queryClient = useQueryClient();
-  const employees = query.data ?? [];
+  const employees = Array.isArray(query.data) ? query.data : [];
   const openNew = () => { setEditing(undefined); setDialogOpen(true); };
   const edit = (employee: Employee) => { setEditing(employee); setDialogOpen(true); };
   const remove = (employee: Employee) => { if (!window.confirm(t(`Delete ${employee.fullName} from the staff directory?`, `هل تريد حذف ${employee.fullName} من سجل الموظفين؟`))) return; deletion.mutate({ id: employee.id }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetEmployeesQueryKey() }); setToast(t('Employee record deleted', 'تم حذف سجل الموظف')); } }); };
@@ -468,7 +489,7 @@ function TeachersPage() {
   const query = useGetTeachers({ search: search || undefined }, { query: { queryKey: getGetTeachersQueryKey({ search: search || undefined }) } });
   const deletion = useDeleteTeacher();
   const queryClient = useQueryClient();
-  const teachers = query.data ?? [];
+  const teachers = Array.isArray(query.data) ? query.data : [];
   const openNew = () => { setEditing(undefined); setDialogOpen(true); };
   const edit = (teacher: Teacher) => { setEditing(teacher); setDialogOpen(true); };
   const remove = (teacher: Teacher) => { if (!window.confirm(t(`Delete ${teacher.fullName} from the faculty directory?`, `هل تريد حذف ${teacher.fullName} من دليل هيئة التدريس؟`))) return; deletion.mutate({ id: teacher.id }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetTeachersQueryKey() }); setToast(t('Teacher record deleted', 'تم حذف سجل المعلم')); } }); };
@@ -573,7 +594,7 @@ function BorrowDialog({ open, onOpenChange, book, onSaved }: { open: boolean; on
     if (open) { setStudentId(''); setDueDate(dueDefault); }
   }, [open, dueDefault]);
   const studentsQuery = useGetStudents(undefined, { query: { queryKey: getGetStudentsQueryKey(undefined) } });
-  const students = studentsQuery.data ?? [];
+  const students = Array.isArray(studentsQuery.data) ? studentsQuery.data : [];
   const create = useCreateBorrow();
   const queryClient = useQueryClient();
   const submit = (event: FormEvent) => {
@@ -626,7 +647,7 @@ function LibraryPage() {
   const borrowsQuery = useGetBorrows({ active: true }, { query: { queryKey: getGetBorrowsQueryKey({ active: true }) } });
   const returnBorrow = useReturnBorrow();
   const queryClient = useQueryClient();
-  const books = query.data ?? [];
+  const books = Array.isArray(query.data) ? query.data : [];
   const categories = useMemo(() => Array.from(new Set(books.map((book) => book.category).filter(Boolean))), [books]);
   const openNew = () => { setPresetBarcode(undefined); setEditing(undefined); setDialogOpen(true); };
   const edit = (book: Book) => { setEditing(book); setDialogOpen(true); };
@@ -657,7 +678,7 @@ function LibraryPage() {
     {query.isLoading ? <LoadingCards count={3} /> : query.isError ? <ErrorState label="library books" labelAr="\u0643\u062A\u0628\u0020\u0627\u0644\u0645\u0643\u062A\u0628\u0629" onRetry={() => query.refetch()} /> : !books.length ? <EmptyState icon={Library} title={search || category ? t('No books match this view', '\u0644\u0627\u0020\u062A\u0648\u062C\u062F\u0020\u0643\u062A\u0628\u0020\u0645\u0637\u0627\u0628\u0642\u0629\u0020\u0644\u0647\u0630\u0627\u0020\u0627\u0644\u0639\u0631\u0636') : t('The shelves are waiting', '\u0627\u0644\u0631\u0641\u0648\u0641\u0020\u0628\u0627\u0646\u062A\u0638\u0627\u0631\u0643')} detail={search || category ? t('Try another search term or clear the filters.', '\u062C\u0631\u0651\u0628\u0020\u0643\u0644\u0645\u0629\u0020\u0628\u062D\u062B\u0020\u0623\u062E\u0631\u0649\u0020\u0623\u0648\u0020\u0627\u0645\u0633\u062D\u0020\u0639\u0648\u0627\u0645\u0644\u0020\u0627\u0644\u062A\u0635\u0641\u064A\u0629\u002E') : t('Add the first title to give your library a useful beginning.', '\u0623\u0636\u0641\u0020\u0623\u0648\u0644\u0020\u0639\u0646\u0648\u0627\u0646\u0020\u0644\u0628\u062F\u0627\u064A\u0629\u0020\u0645\u0641\u064A\u062F\u0629\u0020\u0644\u0645\u0643\u062A\u0628\u062A\u0643\u002E')} action={!search && !category ? <Button onClick={openNew} data-testid="button-empty-add-book"><Plus size={15} /> {t('Add first book', '\u0623\u0636\u0641\u0020\u0623\u0648\u0644\u0020\u0643\u062A\u0627\u0628')}</Button> : undefined} /> : <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow"><div className="grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_88px] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground"><span>{t('Book', '\u0627\u0644\u0643\u062A\u0627\u0628')}</span><span>{t('Author', '\u0627\u0644\u0645\u0624\u0644\u0641')}</span><span className="text-center">{t('Language', '\u0627\u0644\u0644\u063A\u0629')}</span><span className="text-center">{t('Copies', '\u0627\u0644\u0646\u0633\u062E')}</span><span className="text-center">{t('Shelf', 'الرف')}</span><span className="text-center">{t('Barcode', 'الباركود')}</span><span /></div>{books.map((book) => <BookRow key={book.id} book={book} onEdit={edit} onDelete={remove} />)}</div>}
     <BookDialog open={dialogOpen} onOpenChange={(value) => { if (!value) setPresetBarcode(undefined); setDialogOpen(value); }} editing={editing} onSaved={setToast} presetBarcode={presetBarcode} />
     {(() => {
-      const borrows = borrowsQuery.data ?? [];
+      const borrows = Array.isArray(borrowsQuery.data) ? borrowsQuery.data : [];
       if (!borrows.length) return null;
       return <section className="mt-6 overflow-hidden rounded-xl border border-border bg-card soft-shadow"><div className="flex items-center justify-between border-b border-border px-5 py-4"><div><div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{t('Lending desk', 'مكتب الإعارة')}</div><h2 className="mt-0.5 text-sm font-bold text-[#263064]">{t('Active borrows', 'الاستعارات النشطة')}</h2></div><span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold text-primary" data-testid="status-active-borrows">{borrows.length}</span></div>{borrows.map((borrow) => <div key={borrow.id} className="flex flex-wrap items-center gap-3 border-b border-border/70 px-5 py-3 last:border-b-0 transition-colors hover:bg-secondary/40" data-testid={`row-borrow-${borrow.id}`}><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#14BAC6]/10 text-xs font-bold text-[#14BAC6]"><UsersRound size={15} /></div><div className="min-w-0 flex-1"><div className="line-clamp-1 text-sm font-semibold text-[#263064]">{borrow.studentName}</div><div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{borrow.bookTitle}{borrow.bookBarcode ? <> · <span className="font-mono" dir="ltr">{borrow.bookBarcode}</span></> : null}</div></div><div className="text-right text-[11px] text-muted-foreground" dir="ltr"><div>{formatDate(borrow.borrowedAt.toString())}</div><div>{t('due', 'يُسترجع في')} {borrow.dueDate ? formatDate(borrow.dueDate.toString()) : '—'}</div></div><Button variant="outline" onClick={() => returnBorrow.mutate({ id: borrow.id }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetBorrowsQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetBooksQueryKey() }); setToast(t('Book returned to the shelf', 'عاد الكتاب إلى الرف')); } })} className="h-8 shrink-0 px-3 text-xs hover:border-[#32B77E] hover:text-[#32B77E]" disabled={returnBorrow.isPending && returnBorrow.variables?.id === borrow.id} data-testid={`button-return-borrow-${borrow.id}`}>{t('Return', 'إرجاع')}</Button></div>)}</section>;
     })()}
@@ -674,7 +695,7 @@ function BookRow({ book, onEdit, onDelete }: { book: Book; onEdit: (book: Book) 
 function DistributionPage() {
   const { t } = useT();
   const query = useGetStudents(undefined, { query: { queryKey: getGetStudentsQueryKey(undefined) } });
-  const students = query.data ?? [];
+  const students = Array.isArray(query.data) ? query.data : [];
   const groups = useMemo(() => {
     const map = new Map<string, Map<string, number>>();
     for (const student of students) {
@@ -694,10 +715,87 @@ function DistributionPage() {
   </div>;
 }
 
+function BorrowsPage() {
+  const { t } = useT();
+  const [search, setSearch] = useState('');
+  const [scan, setScan] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [scannerAt, setScannerAt] = useState<Date | null>(null);
+  const [scanned, setScanned] = useState<Book>();
+  const [missingScan, setMissingScan] = useState<string>();
+  const [borrowing, setBorrowing] = useState<Book>();
+  const query = useGetBorrows({ active: true }, { query: { queryKey: getGetBorrowsQueryKey({ active: true }) } });
+  const booksQuery = useGetBooks(undefined, { query: { queryKey: getGetBooksQueryKey(undefined) } });
+  const returnBorrow = useReturnBorrow();
+  const queryClient = useQueryClient();
+  const borrows = Array.isArray(query.data) ? query.data : [];
+  const filteredBorrows = useMemo(() => borrows.filter((borrow) => `${borrow.studentName} ${borrow.bookTitle} ${borrow.bookBarcode || ''}`.toLowerCase().includes(search.toLowerCase())), [borrows, search]);
+  const borrowPages = usePagination(filteredBorrows);
+  useEffect(() => {
+    let stamps: number[] = [];
+    const onKey = (event: KeyboardEvent) => {
+      const now = Date.now();
+      if (event.key === 'Enter') {
+        if (stamps.length >= 4 && now - stamps[stamps.length - 1] < 120 && stamps.every((stamp, index) => index === 0 || stamp - stamps[index - 1] < 60)) setScannerAt(new Date());
+        stamps = [];
+        return;
+      }
+      if (event.key.length === 1) {
+        stamps = stamps.filter((stamp) => now - stamp < 1000);
+        stamps.push(now);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const handleScan = async (event: FormEvent) => {
+    event.preventDefault();
+    const code = scan.trim();
+    if (!code || scanning) return;
+    setScanning(true);
+    try {
+      const books = await getBooks({ search: code });
+      const match = books.find((book) => (book.isbn || '').trim() === code);
+      setScanned(match);
+      setMissingScan(match ? undefined : code);
+    } catch {
+      setScanned(undefined);
+      setMissingScan(code);
+    } finally {
+      setScanning(false);
+      setScan('');
+    }
+  };
+  return <div className="rise-in"><PageHeading eyebrow="Resources · 04 · Lending" title="Borrows" arabic="الاستعارات" description={t('Keep track of books currently away from the shelves.', 'تابع الكتب الموجودة حاليًا خارج الرفوف.')} />
+    <form onSubmit={handleScan} className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center" data-testid="form-borrows-scan-barcode"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#263064] text-[#DBB46C]"><Barcode size={22} /></div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-[.14em] text-[#EC9F42]">{t('Scanner station', 'محطة الماسح الضوئي')}</span><span className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${scannerAt ? 'bg-[#32B77E]/15 text-[#32B77E]' : 'bg-muted text-muted-foreground'}`} data-testid="status-borrows-scanner"><span className={`h-1.5 w-1.5 rounded-full ${scannerAt ? 'animate-pulse bg-[#32B77E]' : 'bg-muted-foreground/50'}`} /><span>{scannerAt ? `${t('Connected', 'متصل')} · ${scannerAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : t('Not detected', 'غير مكتشف')}</span></span></div><input autoFocus value={scan} onChange={(event) => setScan(event.target.value)} placeholder={t('Scan a book barcode, then press Enter…', 'امسح باركود الكتاب ثم اضغط Enter…')} className="mt-1 h-10 w-full rounded-lg border border-input bg-card px-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" data-testid="input-borrows-scan-barcode" /></div>{scanning && <span className="text-xs text-muted-foreground">{t('Looking up…', 'جارٍ البحث…')}</span>}</form>
+    <div className="mb-5 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"><Search size={16} className="text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('Search borrowed books or students', 'ابحث في الكتب المستعارة أو الطلاب')} className="w-full bg-transparent text-sm outline-none" data-testid="input-search-borrows" /></div>
+    {scanned && <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-[#32B77E]/35 bg-[#32B77E]/10 p-4" data-testid="panel-borrows-scanned-book"><div className="min-w-0 flex-1"><div className="text-sm font-bold text-[#263064]">{scanned.title}</div><div className="text-xs text-muted-foreground">{scanned.author} · {scanned.isbn} · {scanned.availableCopies ?? scanned.copies}/{scanned.copies} {t('available', 'متاح')}</div></div><Button onClick={() => setBorrowing(scanned)} disabled={!((scanned.availableCopies ?? scanned.copies) > 0)} data-testid="button-borrows-scan-borrow"><UsersRound size={14} /> {t('Borrow', 'إعارة')}</Button><button onClick={() => { setScanned(undefined); setMissingScan(undefined); }} className="rounded-md p-2 text-muted-foreground hover:text-primary" aria-label={t('Dismiss', 'إغلاق')} data-testid="button-borrows-scan-dismiss"><X size={16} /></button></div>}
+    {missingScan && <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-destructive/25 bg-destructive/10 p-4" data-testid="panel-borrows-missing-book"><Barcode size={20} className="text-destructive" /><div className="min-w-0 flex-1"><div className="text-sm font-bold text-destructive">{t('Barcode not found', 'لم يتم العثور على الباركود')}</div><div className="text-xs text-destructive/75">{t(`No book matches barcode ${missingScan}. Add it to the Books tab first.`, `لا يوجد كتاب يطابق الباركود ${missingScan}. أضفه أولًا من تبويب الكتب.`)}</div></div><button onClick={() => setMissingScan(undefined)} className="rounded-md p-2 text-destructive/70 hover:text-destructive" aria-label={t('Dismiss', 'إغلاق')} data-testid="button-borrows-missing-dismiss"><X size={16} /></button></div>}
+    {query.isLoading ? <LoadingCards count={3} /> : query.isError ? <ErrorState label="active borrows" labelAr="الاستعارات النشطة" onRetry={() => query.refetch()} /> : !filteredBorrows.length ? <EmptyState icon={BookOpen} title={t('No active borrows', 'لا توجد استعارات نشطة')} detail={t('Borrowed books will appear here until they are returned.', 'ستظهر الكتب المستعارة هنا حتى إعادتها.')} /> : <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow"><div className="grid min-w-[760px] grid-cols-[1.5fr_1.5fr_1fr_1fr_100px] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground"><span>{t('Student', 'الطالب')}</span><span>{t('Book', 'الكتاب')}</span><span>{t('Borrowed', 'تاريخ الإعارة')}</span><span>{t('Due date', 'تاريخ الاستحقاق')}</span><span /></div>{borrowPages.pageItems.map((borrow) => <div key={borrow.id} className="grid min-w-[760px] grid-cols-[1.5fr_1.5fr_1fr_1fr_100px] items-center border-b border-border/70 px-5 py-4 text-sm last:border-b-0"><div className="font-semibold text-[#263064]">{borrow.studentName}</div><div className="text-muted-foreground">{borrow.bookTitle}</div><div className="text-xs text-muted-foreground" dir="ltr">{formatDate(borrow.borrowedAt.toString())}</div><div className="text-xs text-muted-foreground" dir="ltr">{borrow.dueDate ? formatDate(borrow.dueDate.toString()) : '—'}</div><Button variant="outline" size="sm" onClick={() => returnBorrow.mutate({ id: borrow.id }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetBorrowsQueryKey({ active: true }) }); queryClient.invalidateQueries({ queryKey: getGetBooksQueryKey() }); } })} disabled={returnBorrow.isPending} data-testid={`button-return-borrow-${borrow.id}`}>{t('Return', 'إرجاع')}</Button></div>)}<Pagination page={borrowPages.page} pageCount={borrowPages.pageCount} onPageChange={borrowPages.setPage} /></div>}
+    <BorrowDialog open={Boolean(borrowing)} onOpenChange={(open) => { if (!open) setBorrowing(undefined); }} book={borrowing} onSaved={() => { setScanned(undefined); queryClient.invalidateQueries({ queryKey: getGetBorrowsQueryKey({ active: true }) }); booksQuery.refetch(); }} />
+  </div>;
+}
+
+function AnalyticsPage() {
+  const { t } = useT();
+  const booksQuery = useGetBooks(undefined, { query: { queryKey: getGetBooksQueryKey(undefined) } });
+  const borrowsQuery = useGetBorrows({ active: true }, { query: { queryKey: getGetBorrowsQueryKey({ active: true }) } });
+  const books = Array.isArray(booksQuery.data) ? booksQuery.data : [];
+  const borrows = Array.isArray(borrowsQuery.data) ? borrowsQuery.data : [];
+  const copies = books.reduce((total, book) => total + book.copies, 0);
+  const available = books.reduce((total, book) => total + (book.availableCopies ?? book.copies), 0);
+  const borrowedCopies = Math.max(copies - available, 0);
+  const categories = new Set(books.map((book) => book.category).filter(Boolean)).size;
+  const borrowedPercent = copies ? Math.round((borrowedCopies / copies) * 1000) / 10 : 0;
+  return <div className="rise-in"><PageHeading eyebrow="Resources · 04 · Analytics" title="Library analytics" arabic="تحليلات المكتبة" description={t('A quick read on catalogue size, availability and lending activity.', 'نظرة سريعة على حجم الفهرس والتوفر ونشاط الإعارة.')} />
+    {booksQuery.isLoading || borrowsQuery.isLoading ? <LoadingCards count={4} /> : <><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="Titles" arabic="العناوين" value={books.length.toLocaleString()} icon={BookOpen} tone="navy" note={t('In the catalogue', 'في الفهرس')} /><StatCard label="Total copies" arabic="إجمالي النسخ" value={copies.toLocaleString()} icon={Library} tone="teal" note={t('Across all titles', 'عبر جميع العناوين')} /><StatCard label="Borrowed" arabic="مستعارة" value={`${borrowedPercent}%`} icon={BookOpen} tone="gold" note={t(`${borrows.length} active loans`, `${borrows.length} إعارات نشطة`)} /><StatCard label="Categories" arabic="التصنيفات" value={categories.toLocaleString()} icon={Activity} tone="sky" note={t('Organised sections', 'الأقسام المنظمة')} /></div><section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow"><div className="flex items-center justify-between"><div><div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{t('Availability', 'التوفر')}</div><h2 className="mt-1 text-xl font-bold text-[#263064]">{t('Copies on the shelf', 'النسخ الموجودة على الرف')}</h2></div><span className="font-mono text-lg font-bold text-[#263064]">{available}/{copies}</span></div><div className="mt-5 h-3 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${copies ? Math.min((available / copies) * 100, 100) : 0}%` }} /></div></section></>}
+  </div>;
+}
+
 function CategoriesPage() {
   const { t } = useT();
   const query = useGetBooks(undefined, { query: { queryKey: getGetBooksQueryKey(undefined) } });
-  const books = query.data ?? [];
+  const books = Array.isArray(query.data) ? query.data : [];
   const groups = useMemo(() => {
     const map = new Map<string, Book[]>();
     for (const book of books) {
@@ -715,7 +813,7 @@ function IndexPage() {
   const { t } = useT();
   const [search, setSearch] = useState('');
   const query = useGetBooks({ search: search || undefined }, { query: { queryKey: getGetBooksQueryKey({ search: search || undefined }) } });
-  const books = useMemo(() => [...(query.data ?? [])].sort((a, b) => a.title.localeCompare(b.title)), [query.data]);
+  const books = useMemo(() => [...(Array.isArray(query.data) ? query.data : [])].sort((a, b) => a.title.localeCompare(b.title)), [query.data]);
   return <div className="rise-in"><PageHeading eyebrow="Resources · 04 · Index" title={t('Library index', '\u0641\u0647\u0631\u0633\u0020\u0627\u0644\u0645\u0643\u062A\u0628\u0629')} arabic={t('\u0641\u0647\u0631\u0633\u0020\u0627\u0644\u0645\u0643\u062A\u0628\u0629', 'Library index')} description={t('The complete catalogue in one alphabetical listing, ready for quick lookup.', '\u0627\u0644\u0643\u0627\u062A\u0627\u0644\u0648\u062C\u0020\u0627\u0644\u0643\u0627\u0645\u0644\u0020\u0641\u064A\u0020\u0642\u0627\u0626\u0645\u0629\u0020\u0623\u0628\u062C\u062F\u064A\u0629\u0020\u0648\u0627\u062D\u062F\u0629\u060C\u0020\u062C\u0627\u0647\u0632\u0020\u0644\u0644\u0628\u062D\u062B\u0020\u0627\u0644\u0633\u0631\u064A\u0639\u002E')} />
     <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row"><div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 sm:max-w-md"><Search size={16} className="text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('Filter the index by title or author', 'تصفية الفهرس بالعنوان أو المؤلف')} className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60" data-testid="input-search-index" /></div></div>
     {query.isLoading ? <LoadingCards count={3} /> : query.isError ? <ErrorState label="the library index" labelAr="\u0627\u0644\u0641\u0647\u0631\u0633\u0020\u0627\u0644\u0639\u0627\u0645\u0020\u0644\u0644\u0645\u0643\u062A\u0628\u0629" onRetry={() => query.refetch()} /> : !books.length ? <EmptyState icon={BookOpen} title={search ? t('Nothing in the index matches', '\u0644\u0627\u0020\u0634\u064A\u0621\u0020\u0641\u064A\u0020\u0627\u0644\u0641\u0647\u0631\u0633\u0020\u064A\u0637\u0627\u0628\u0642\u0020\u0627\u0644\u0628\u062D\u062B') : t('The index is empty', '\u0627\u0644\u0641\u0647\u0631\u0633\u0020\u0641\u0627\u0631\u063A')} detail={search ? t('Try another search term or clear the filters.', '\u062C\u0631\u0651\u0628\u0020\u0643\u0644\u0645\u0629\u0020\u0628\u062D\u062B\u0020\u0623\u062E\u0631\u0649\u0020\u0623\u0648\u0020\u0627\u0645\u0633\u062D\u0020\u0639\u0648\u0627\u0645\u0644\u0020\u0627\u0644\u062A\u0635\u0641\u064A\u0629\u002E') : t('Add books to build the master index of the library.', '\u0623\u0636\u0641\u0020\u0643\u062A\u0628\u0627\u064B\u0020\u0644\u0628\u0646\u0627\u0621\u0020\u0627\u0644\u0641\u0647\u0631\u0633\u0020\u0627\u0644\u0639\u0627\u0645\u0020\u0644\u0644\u0645\u0643\u062A\u0628\u0629\u002E')} action={!search ? <Link href="/library"><Button data-testid="button-empty-index-add"><Plus size={15} /> {t('Add first book', '\u0623\u0636\u0641\u0020\u0623\u0648\u0644\u0020\u0643\u062A\u0627\u0628')}</Button></Link> : undefined} /> : <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow"><div className="grid min-w-[880px] grid-cols-[2fr_1.2fr_1fr_.7fr_.7fr_1.1fr_.7fr] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground"><span>{t('Title', 'العنوان')}</span><span>{t('Author', 'المؤلف')}</span><span>{t('Category', 'التصنيف')}</span><span className="text-center">{t('Language', 'اللغة')}</span><span className="text-center">{t('Shelf', 'الرف')}</span><span className="text-center">{t('Barcode', 'الباركود')}</span><span className="text-center">{t('Copies', 'النسخ')}</span></div>{books.map((book) => <div key={book.id} className="grid min-w-[880px] grid-cols-[2fr_1.2fr_1fr_.7fr_.7fr_1.1fr_.7fr] items-center border-b border-border/70 px-5 py-2.5 transition-colors hover:bg-secondary/40" data-testid={`row-index-book-${book.id}`}><span className="line-clamp-1 text-sm font-medium text-[#263064]">{book.title}</span><span className="line-clamp-1 text-xs text-muted-foreground">{book.author}</span><span className="text-xs text-muted-foreground">{book.category}</span><span className="justify-self-center text-center text-xs text-muted-foreground">{book.language}</span><span className="justify-self-center text-center font-mono text-xs text-muted-foreground" dir="ltr">{book.shelf || '—'}</span><span className="justify-self-center text-center font-mono text-xs text-muted-foreground" dir="ltr">{book.isbn || '—'}</span><span className="justify-self-center text-center font-mono text-xs font-bold text-[#263064]">{book.availableCopies ?? book.copies}/{book.copies}</span></div>)}</div>}
@@ -725,14 +823,14 @@ function IndexPage() {
 function SettingsPage() {
   const { t } = useT();
   const query = useGetAcademicYears({ query: { queryKey: getGetAcademicYearsQueryKey() } });
-  const years = query.data ?? [];
+  const years = Array.isArray(query.data) ? query.data : [];
   const [selected, setSelected] = useState<number | undefined>();
   return <div className="rise-in"><PageHeading eyebrow="Administration · 05" title="Settings" arabic="الإعدادات" description={t('Keep the school workspace aligned with its current academic rhythm.', '\u062D\u0627\u0641\u0638\u0020\u0639\u0644\u0649\u0020\u062A\u0648\u0627\u0641\u0642\u0020\u0645\u0633\u0627\u062D\u0629\u0020\u0639\u0645\u0644\u0020\u0627\u0644\u0645\u062F\u0631\u0633\u0629\u0020\u0645\u0639\u0020\u0625\u064A\u0642\u0627\u0639\u0647\u0627\u0020\u0627\u0644\u062F\u0631\u0627\u0633\u064A\u0020\u0627\u0644\u062D\u0627\u0644\u064A\u002E')} descriptionAr="إبقاء مساحة العمل متوافقة مع الإيقاع الأكاديمي" /><div className="grid gap-6 lg:grid-cols-[1.3fr_.7fr]"><section className="rounded-xl border border-border bg-card p-6 soft-shadow"><div className="flex items-start justify-between"><div><div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{t('Academic years', '\u0627\u0644\u0633\u0646\u0648\u0627\u062A\u0020\u0627\u0644\u062F\u0631\u0627\u0633\u064A\u0629')}</div><h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-[#263064]">{t('Choose your school year', '\u0627\u062E\u062A\u0631\u0020\u0639\u0627\u0645\u0643\u0020\u0627\u0644\u062F\u0631\u0627\u0633\u064A')}</h2><p className="mt-2 text-sm text-muted-foreground">{t('The selected year stays with this device and shapes your workspace context.', '\u064A\u0628\u0642\u0649\u0020\u0627\u0644\u0639\u0627\u0645\u0020\u0627\u0644\u0645\u062E\u062A\u0627\u0631\u0020\u0639\u0644\u0649\u0020\u0647\u0630\u0627\u0020\u0627\u0644\u062C\u0647\u0627\u0632\u0020\u0648\u064A\u0634\u0643\u0644\u0020\u0633\u064A\u0627\u0642\u0020\u0645\u0633\u0627\u062D\u0629\u0020\u0639\u0645\u0644\u0643\u002E')}</p></div><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-primary"><CalendarDays size={18} /></div></div>{query.isLoading ? <div className="mt-7 space-y-3">{[1, 2, 3].map((item) => <div className="skeleton h-16 rounded-lg" key={item} />)}</div> : query.isError ? <div className="mt-7"><ErrorState label="academic years" labelAr="\u0627\u0644\u0633\u0646\u0648\u0627\u062A\u0020\u0627\u0644\u062F\u0631\u0627\u0633\u064A\u0629" onRetry={() => query.refetch()} /></div> : !years.length ? <div className="mt-7"><EmptyState icon={CalendarDays} title={t('No academic years yet', '\u0644\u0627\u0020\u062A\u0648\u062C\u062F\u0020\u0633\u0646\u0648\u0627\u062A\u0020\u062F\u0631\u0627\u0633\u064A\u0629\u0020\u0628\u0639\u062F')} detail={t('Academic years will appear once they are configured by the school office.', '\u0633\u062A\u0638\u0647\u0631\u0020\u0627\u0644\u0633\u0646\u0648\u0627\u062A\u0020\u0627\u0644\u062F\u0631\u0627\u0633\u064A\u0629\u0020\u0628\u0645\u062C\u0631\u062F\u0020\u0625\u0639\u062F\u0627\u062F\u0647\u0627\u0020\u0645\u0646\u0020\u0642\u0628\u0644\u0020\u0625\u062F\u0627\u0631\u0629\u0020\u0627\u0644\u0645\u062F\u0631\u0633\u0629\u002E')} /></div> : <div className="mt-7 space-y-3">{years.map((year) => { const active = year.isCurrent || selected === year.id; return <button key={year.id} onClick={() => setSelected(year.id)} className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${active ? 'border-primary bg-secondary/70' : 'border-border hover:border-primary/40 hover:bg-muted/50'}`} data-testid={`button-academic-year-${year.id}`}><div className={`flex h-9 w-9 items-center justify-center rounded-lg ${active ? 'bg-primary text-[#FCFBF0]' : 'bg-muted text-muted-foreground'}`}>{active ? <Check size={16} /> : <CalendarDays size={16} />}</div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="font-semibold text-[#263064]">{year.label}</span>{year.isCurrent && <span className="rounded-full bg-[#32B77E]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#32B77E]">{t('Current', '\u0627\u0644\u062D\u0627\u0644\u064A')}</span>}</div><div className="mt-1 text-xs text-muted-foreground">{formatDate(year.startDate)} — {formatDate(year.endDate)}</div></div><ChevronDown size={16} className="-rotate-90 text-muted-foreground" /></button>; })}</div>}</section><section className="rounded-xl bg-[#263064] p-7 text-[#FCFBF0]"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#DBB46C] text-[#263064]"><SlidersHorizontal size={18} /></div><h2 className="mt-7 text-2xl font-bold leading-tight tracking-[-.04em]">{t('Workspace preferences', '\u062A\u0641\u0636\u064A\u0644\u0627\u062A\u0020\u0645\u0633\u0627\u062D\u0629\u0020\u0627\u0644\u0639\u0645\u0644')}</h2><p className="mt-3 text-sm leading-6 text-[#FCFBF0]/70">{t('A few quiet choices keep the command center feeling like yours.', '\u0628\u0636\u0639\u0020\u0627\u062E\u062A\u064A\u0627\u0631\u0627\u062A\u0020\u0647\u0627\u062F\u0626\u0629\u0020\u062A\u062C\u0639\u0644\u0020\u0645\u0631\u0643\u0632\u0020\u0627\u0644\u062A\u062D\u0643\u0645\u0020\u064A\u0634\u0639\u0631\u0643\u0020\u0623\u0646\u0647\u0020\u0645\u0646\u0020\u0646\u0635\u064A\u0628\u0643\u002E')}</p><div className="mt-8 space-y-4 border-t border-[#FCFBF0]/10 pt-5"><div className="flex items-center justify-between"><span className="text-sm">{t('Interface language', '\u0644\u063A\u0629\u0020\u0627\u0644\u0648\u0627\u062C\u0647\u0629')}</span><span className="ar text-xs text-[#FCFBF0]/70">ثنائي اللغة</span></div><div className="flex items-center justify-between"><span className="text-sm">{t('Date format', '\u062A\u0646\u0633\u064A\u0642\u0020\u0627\u0644\u062A\u0627\u0631\u064A\u062E')}</span><span className="font-mono text-[11px] text-[#DBB46C]">{t('MMM DD, YYYY', 'YYYY، MMM DD')}</span></div><div className="flex items-center justify-between"><span className="text-sm">{t('Product edition', '\u0625\u0635\u062F\u0627\u0631\u0020\u0627\u0644\u0645\u0646\u062A\u062C')}</span><span className="text-[11px] text-[#FCFBF0]/70">{t('Staff workspace', '\u0645\u0633\u0627\u062D\u0629\u0020\u0639\u0645\u0644\u0020\u0627\u0644\u0645\u0648\u0638\u0641\u064A\u0646')}</span></div></div></section></div></div>;
 }
 
 function Router() {
   const [location] = useLocation();
-  return <ErrorBoundary resetKey={location}><Shell><Switch><Route path="/" component={Dashboard} /><Route path="/students" component={StudentsPage} /><Route path="/students/distribution" component={DistributionPage} /><Route path="/teachers" component={TeachersPage} /><Route path="/employees" component={EmployeesPage} /><Route path="/library" component={LibraryPage} /><Route path="/library/categories" component={CategoriesPage} /><Route path="/library/index" component={IndexPage} /><Route path="/settings" component={SettingsPage} /><Route component={NotFound} /></Switch></Shell></ErrorBoundary>;
+  return <ErrorBoundary resetKey={location}><Shell><Switch><Route path="/" component={Dashboard} /><Route path="/students" component={StudentsPage} /><Route path="/students/distribution" component={DistributionPage} /><Route path="/teachers" component={TeachersPage} /><Route path="/employees" component={EmployeesPage} /><Route path="/library" component={LibraryPage} /><Route path="/library/categories" component={CategoriesPage} /><Route path="/library/borrows" component={BorrowsPage} /><Route path="/library/index" component={IndexPage} /><Route path="/library/analytics" component={AnalyticsPage} /><Route path="/settings" component={SettingsPage} /><Route component={NotFound} /></Switch></Shell></ErrorBoundary>;
 }
 
 function App() {
