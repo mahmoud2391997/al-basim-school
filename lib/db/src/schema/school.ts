@@ -104,7 +104,9 @@ export const attendanceTable = pgTable("attendance", {
 export const borrowsTable = pgTable("borrows", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   bookId: integer("book_id").notNull().references(() => booksTable.id, { onDelete: "cascade" }),
-  studentId: integer("student_id").notNull().references(() => studentsTable.id, { onDelete: "cascade" }),
+  studentId: integer("student_id").references(() => studentsTable.id, { onDelete: "cascade" }),
+  borrowerType: text("borrower_type").notNull().default("student"),
+  borrowerId: integer("borrower_id"),
   borrowedAt: timestamp("borrowed_at", { withTimezone: true }).notNull().defaultNow(),
   dueDate: date("due_date", { mode: "string" }),
   returnedAt: timestamp("returned_at", { withTimezone: true }),

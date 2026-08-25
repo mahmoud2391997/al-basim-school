@@ -1511,7 +1511,7 @@ export const getCreateBorrowUrl = () => {
 }
 
 /**
- * @summary Borrow a book for a student
+ * @summary Borrow a book for a student, teacher, or employee
  */
 export const createBorrow = async (borrowInput: BorrowInput, options?: Parameters<typeof customFetch>[1]): Promise<Borrow> => {
 
@@ -1560,7 +1560,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateBorrowMutationError = ErrorType<unknown>
 
     /**
- * @summary Borrow a book for a student
+ * @summary Borrow a book for a student, teacher, or employee
  */
 export const useCreateBorrow = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBorrow>>, TError,{data: BodyType<BorrowInput>}, TContext>, request?: SecondParameter<typeof customFetch>}

@@ -404,21 +404,42 @@ export interface BookUpdate {
   shelf?: string;
 }
 
+export type BorrowBorrowerType = typeof BorrowBorrowerType[keyof typeof BorrowBorrowerType];
+
+
+export const BorrowBorrowerType = {
+  student: 'student',
+  teacher: 'teacher',
+  employee: 'employee',
+} as const;
+
 export interface Borrow {
   id: number;
   bookId: number;
-  studentId: number;
+  studentId?: number | null;
+  borrowerType: BorrowBorrowerType;
+  borrowerId: number;
   borrowedAt: string;
   dueDate?: string | null;
   returnedAt?: string | null;
   bookTitle?: string;
   bookBarcode?: string;
-  studentName?: string;
+  borrowerName?: string;
 }
+
+export type BorrowInputBorrowerType = typeof BorrowInputBorrowerType[keyof typeof BorrowInputBorrowerType];
+
+
+export const BorrowInputBorrowerType = {
+  student: 'student',
+  teacher: 'teacher',
+  employee: 'employee',
+} as const;
 
 export interface BorrowInput {
   bookId: number;
-  studentId: number;
+  borrowerType: BorrowInputBorrowerType;
+  borrowerId: number;
   dueDate?: string;
 }
 

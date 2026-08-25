@@ -336,7 +336,7 @@ paths:
     post:
       operationId: createBorrow
       tags: [library]
-      summary: Borrow a book for a student
+      summary: Borrow a book for a student, teacher, or employee
       requestBody:
         required: true
         content:
@@ -619,23 +619,26 @@ components:
         shelf: { type: string }
     Borrow:
       type: object
-      required: [id, bookId, studentId, borrowedAt]
+      required: [id, bookId, borrowerType, borrowerId, borrowedAt]
       properties:
         id: { type: number }
         bookId: { type: number }
-        studentId: { type: number }
+        studentId: { type: number, nullable: true }
+        borrowerType: { type: string, enum: [student, teacher, employee] }
+        borrowerId: { type: number }
         borrowedAt: { type: string, format: date-time }
         dueDate: { type: string, format: date, nullable: true }
         returnedAt: { type: string, format: date-time, nullable: true }
         bookTitle: { type: string }
         bookBarcode: { type: string }
-        studentName: { type: string }
+        borrowerName: { type: string }
     BorrowInput:
       type: object
-      required: [bookId, studentId]
+      required: [bookId, borrowerType, borrowerId]
       properties:
         bookId: { type: number }
-        studentId: { type: number }
+        borrowerType: { type: string, enum: [student, teacher, employee] }
+        borrowerId: { type: number }
         dueDate: { type: string, format: date }
     AcademicYear:
       type: object

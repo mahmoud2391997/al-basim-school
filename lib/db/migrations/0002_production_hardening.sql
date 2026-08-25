@@ -16,3 +16,8 @@ CREATE INDEX IF NOT EXISTS attendance_student_idx ON attendance (student_id);
 CREATE INDEX IF NOT EXISTS students_academic_year_idx ON students (academic_year_id);
 CREATE INDEX IF NOT EXISTS teachers_academic_year_idx ON teachers (academic_year_id);
 -- Remove the legacy teachers.password column only after authentication migration is deployed.
+ALTER TABLE borrows ALTER COLUMN student_id DROP NOT NULL;
+ALTER TABLE borrows ADD COLUMN IF NOT EXISTS borrower_type text NOT NULL DEFAULT 'student';
+ALTER TABLE borrows ADD COLUMN IF NOT EXISTS borrower_id integer;
+UPDATE borrows SET borrower_id = student_id WHERE borrower_id IS NULL;
+CREATE INDEX IF NOT EXISTS borrows_book_active_idx ON borrows (book_id, returned_at);

@@ -379,19 +379,27 @@ router.get("/library/borrows", async (req, res): Promise<void> => {
     id: borrowsTable.id,
     bookId: borrowsTable.bookId,
     studentId: borrowsTable.studentId,
+    borrowerType: borrowsTable.borrowerType,
+    borrowerId: borrowsTable.borrowerId,
     borrowedAt: borrowsTable.borrowedAt,
     dueDate: borrowsTable.dueDate,
     returnedAt: borrowsTable.returnedAt,
     bookTitle: booksTable.title,
     bookBarcode: booksTable.isbn,
     studentName: studentsTable.fullName,
+    teacherName: teachersTable.fullName,
+    employeeName: employeesTable.fullName,
   }).from(borrowsTable)
     .innerJoin(booksTable, eq(borrowsTable.bookId, booksTable.id))
-    .innerJoin(studentsTable, eq(borrowsTable.studentId, studentsTable.id))
+    .leftJoin(studentsTable, eq(borrowsTable.studentId, studentsTable.id))
+    .leftJoin(teachersTable, and(eq(borrowsTable.borrowerType, "teacher"), eq(borrowsTable.borrowerId, teachersTable.id)))
+    .leftJoin(employeesTable, and(eq(borrowsTable.borrowerType, "employee"), eq(borrowsTable.borrowerId, employeesTable.id)))
     .where(filters.length ? and(...filters) : undefined)
     .orderBy(desc(borrowsTable.borrowedAt));
   res.json(GetBorrowsResponse.parse(rows.map((row) => ({
     ...row,
+    borrowerId: row.borrowerId ?? row.studentId ?? 0,
+    borrowerName: row.studentName ?? row.teacherName ?? row.employeeName ?? "Unknown borrower",
     dueDate: row.dueDate ? new Date(row.dueDate) : null,
   }))));
 });
@@ -411,9 +419,21 @@ router.post("/library/borrows", async (req, res): Promise<void> => {
     res.status(409).json({ error: "No copies of this book are currently available" });
     return;
   }
+  const [existingBorrow] = await db.select({ id: borrowsTable.id }).from(borrowsTable).where(and(
+    eq(borrowsTable.bookId, parsed.data.bookId),
+    eq(borrowsTable.borrowerType, parsed.data.borrowerType),
+    eq(borrowsTable.borrowerId, parsed.data.borrowerId),
+    isNull(borrowsTable.returnedAt),
+  ));
+  if (existingBorrow) {
+    res.status(409).json({ error: "This borrower already has an active loan for this book" });
+    return;
+  }
   const [borrow] = await db.insert(borrowsTable).values({
     bookId: parsed.data.bookId,
-    studentId: parsed.data.studentId,
+    studentId: parsed.data.borrowerType === "student" ? parsed.data.borrowerId : null,
+    borrowerType: parsed.data.borrowerType,
+    borrowerId: parsed.data.borrowerId,
     dueDate: parsed.data.dueDate ? parsed.data.dueDate.toISOString().slice(0, 10) : null,
   }).returning();
   await db.update(booksTable).set({ availableCopies: book.availableCopies - 1 }).where(eq(booksTable.id, book.id));

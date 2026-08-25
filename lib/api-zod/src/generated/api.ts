@@ -606,36 +606,41 @@ export const GetBorrowsQueryParams = zod.object({
 export const GetBorrowsResponseItem = zod.object({
   "id": zod.number(),
   "bookId": zod.number(),
-  "studentId": zod.number(),
+  "studentId": zod.number().nullish(),
+  "borrowerType": zod.enum(['student', 'teacher', 'employee']),
+  "borrowerId": zod.number(),
   "borrowedAt": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
   "returnedAt": zod.coerce.date().nullish(),
   "bookTitle": zod.string().optional(),
   "bookBarcode": zod.string().optional(),
-  "studentName": zod.string().optional()
+  "borrowerName": zod.string().optional()
 })
 export const GetBorrowsResponse = zod.array(GetBorrowsResponseItem)
 
 
 /**
- * @summary Borrow a book for a student
+ * @summary Borrow a book for a student, teacher, or employee
  */
 export const CreateBorrowBody = zod.object({
   "bookId": zod.number(),
-  "studentId": zod.number(),
+  "borrowerType": zod.enum(['student', 'teacher', 'employee']),
+  "borrowerId": zod.number(),
   "dueDate": zod.coerce.date().optional()
 })
 
 export const CreateBorrowResponse = zod.object({
   "id": zod.number(),
   "bookId": zod.number(),
-  "studentId": zod.number(),
+  "studentId": zod.number().nullish(),
+  "borrowerType": zod.enum(['student', 'teacher', 'employee']),
+  "borrowerId": zod.number(),
   "borrowedAt": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
   "returnedAt": zod.coerce.date().nullish(),
   "bookTitle": zod.string().optional(),
   "bookBarcode": zod.string().optional(),
-  "studentName": zod.string().optional()
+  "borrowerName": zod.string().optional()
 })
 
 
@@ -649,13 +654,15 @@ export const ReturnBorrowParams = zod.object({
 export const ReturnBorrowResponse = zod.object({
   "id": zod.number(),
   "bookId": zod.number(),
-  "studentId": zod.number(),
+  "studentId": zod.number().nullish(),
+  "borrowerType": zod.enum(['student', 'teacher', 'employee']),
+  "borrowerId": zod.number(),
   "borrowedAt": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
   "returnedAt": zod.coerce.date().nullish(),
   "bookTitle": zod.string().optional(),
   "bookBarcode": zod.string().optional(),
-  "studentName": zod.string().optional()
+  "borrowerName": zod.string().optional()
 })
 
 

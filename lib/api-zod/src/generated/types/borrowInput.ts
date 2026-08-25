@@ -5,9 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BorrowInputBorrowerType } from './borrowInputBorrowerType';
 
 export interface BorrowInput {
   bookId: number;
-  studentId: number;
+  borrowerType: BorrowInputBorrowerType;
+  borrowerId: number;
   dueDate?: Date;
 }

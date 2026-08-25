@@ -5,15 +5,18 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BorrowBorrowerType } from './borrowBorrowerType';
 
 export interface Borrow {
   id: number;
   bookId: number;
-  studentId: number;
+  studentId?: number | null;
+  borrowerType: BorrowBorrowerType;
+  borrowerId: number;
   borrowedAt: Date;
   dueDate?: Date | null;
   returnedAt?: Date | null;
   bookTitle?: string;
   bookBarcode?: string;
-  studentName?: string;
+  borrowerName?: string;
 }
