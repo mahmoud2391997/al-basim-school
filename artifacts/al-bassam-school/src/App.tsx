@@ -3772,11 +3772,11 @@ function LibraryPage() {
                   className="text-right text-[11px] text-muted-foreground"
                   dir="ltr"
                 >
-                  <div>{formatDate(borrow.borrowedAt.toString())}</div>
+                  <div>{borrow.borrowedAt ? formatDate(String(borrow.borrowedAt)) : "—"}</div>
                   <div>
                     {t("due", "يُسترجع في")}{" "}
                     {borrow.dueDate
-                      ? formatDate(borrow.dueDate.toString())
+                      ? formatDate(String(borrow.dueDate))
                       : "—"}
                   </div>
                 </div>
@@ -4327,7 +4327,7 @@ function BorrowsPage() {
                 {formatDate(borrow.borrowedAt.toString())}
               </div>
               <div className="text-xs text-muted-foreground" dir="ltr">
-                {borrow.dueDate ? formatDate(borrow.dueDate.toString()) : "—"}
+                {borrow.dueDate ? formatDate(String(borrow.dueDate)) : "—"}
               </div>
               <Button
                 variant="outline"
