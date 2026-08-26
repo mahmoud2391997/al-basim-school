@@ -131,7 +131,7 @@ function useDesktopLocation() {
     }
   };
 
-  return [location, navigate] as const;
+  return [location, navigate] as [string, (path: string, ...args: any[]) => any];
 }
 
 const fallbackSummary: DashboardSummary = {
@@ -1761,7 +1761,13 @@ function TeacherDialog({
 }) {
   const [form, setForm] = useState<TeacherFormValue>(blankTeacher);
   useEffect(() => {
-    if (open) setForm(editing ? { ...editing } : blankTeacher);
+    if (open) {
+      setForm(
+        editing
+          ? ({ ...editing } as TeacherFormValue)
+          : blankTeacher,
+      );
+    }
   }, [open, editing]);
   const create = useCreateTeacher();
   const update = useUpdateTeacher();
@@ -3215,7 +3221,7 @@ function BorrowDialog({
                 </option>
                 {borrowerOptions.map((borrower) => (
                   <option value={borrower.id} key={borrower.id}>
-                    {"fullName" in borrower ? borrower.fullName : borrower.fullNameArabic}
+                    {borrower.fullName}
                   </option>
                 ))}
               </select>
@@ -3766,11 +3772,11 @@ function LibraryPage() {
                   className="text-right text-[11px] text-muted-foreground"
                   dir="ltr"
                 >
-                  <div>{formatDate(borrow.borrowedAt.toString())}</div>
+                  <div>{borrow.borrowedAt ? formatDate(String(borrow.borrowedAt)) : "—"}</div>
                   <div>
                     {t("due", "يُسترجع في")}{" "}
                     {borrow.dueDate
-                      ? formatDate(borrow.dueDate.toString())
+                      ? formatDate(String(borrow.dueDate))
                       : "—"}
                   </div>
                 </div>
@@ -4145,7 +4151,7 @@ function BorrowsPage() {
       <PageHeading
         eyebrow="Resources · 04 · Lending"
         title="Borrows"
-        arabic="الاستعارات"
+        arabic="��لاستعارات"
         description={t(
           "Keep track of books currently away from the shelves.",
           "تابع الكتب الموجودة حاليًا خارج الرفوف.",
@@ -4318,10 +4324,10 @@ function BorrowsPage() {
               </div>
               <div className="text-muted-foreground">{borrow.bookTitle}</div>
               <div className="text-xs text-muted-foreground" dir="ltr">
-                {formatDate(borrow.borrowedAt.toString())}
+                {borrow.borrowedAt ? formatDate(String(borrow.borrowedAt)) : "—"}
               </div>
               <div className="text-xs text-muted-foreground" dir="ltr">
-                {borrow.dueDate ? formatDate(borrow.dueDate.toString()) : "—"}
+                {borrow.dueDate ? formatDate(String(borrow.dueDate)) : "—"}
               </div>
               <Button
                 variant="outline"
