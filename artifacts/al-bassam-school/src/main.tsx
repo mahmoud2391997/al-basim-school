@@ -3,10 +3,15 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { setBaseUrl } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { createMockFetch } from './mock-api';
 
 import './index.css';
 
-setBaseUrl(window.alBassamDesktop?.apiBaseUrl || import.meta.env.VITE_API_URL || null);
+const frontendOnly = import.meta.env.VITE_FRONTEND_ONLY === 'true' || (!window.alBassamDesktop && !import.meta.env.VITE_API_URL);
+const runtimeApiUrl = window.alBassamDesktop?.apiBaseUrl || import.meta.env.VITE_API_URL || '/api';
+if (frontendOnly) setBaseUrl(null);
+else setBaseUrl(runtimeApiUrl);
+if (frontendOnly) window.fetch = createMockFetch();
 
 createRoot(document.getElementById('root')!, {
   // Keeps caught errors off reportError(), which would raise the dev overlay.
