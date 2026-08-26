@@ -1,5 +1,6 @@
 {
-  "buildCommand": "cp package.web.json package.json && pnpm install && pnpm build",
+  "installCommand": "node prepare-deploy.cjs && npm install --legacy-peer-deps",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": null,
   "rewrites": [
