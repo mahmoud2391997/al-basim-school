@@ -1,4 +1,4 @@
-import express, { type Request, type Response, type NextFunction } from "express";
+import express from "express";
 import cors from "cors";
 import pinoHttpModule from "pino-http";
 import router from "./routes/index.js";
@@ -11,14 +11,14 @@ app.use(
   pinoHttp({
     logger,
     serializers: {
-      req(req: Request) {
+      req(req: { id?: string; method?: string; url?: string }) {
         return {
           id: req.id,
           method: req.method,
           url: req.url?.split("?")[0],
         };
       },
-      res(res: Response) {
+      res(res: { statusCode?: number }) {
         return {
           statusCode: res.statusCode,
         };
@@ -42,8 +42,8 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
-app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
-  req.log?.error({ err: error }, "Unhandled API error");
+app.use((error: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  logger.error({ err: error, requestId: req.header("x-request-id") }, "Unhandled API error");
   if (res.headersSent) return;
   res.status(500).json({ error: "Internal server error" });
 });
