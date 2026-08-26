@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "vite build --config vite.config.ts",
+    "build": "PORT=24438 BASE_PATH=/ pnpm exec vite build --config vite.config.ts",
+    "web:build": "PORT=24438 BASE_PATH=/ pnpm exec vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "desktop": "electron electron/main.cjs",
     "desktop:dev": "concurrently -k \"pnpm dev -- --port 24438\" \"wait-on http://localhost:24438 && ELECTRON_START_URL=http://localhost:24438 electron electron/main.cjs\"",
