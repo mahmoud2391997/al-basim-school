@@ -131,7 +131,7 @@ function useDesktopLocation() {
     }
   };
 
-  return [location, navigate] as const;
+  return [location, navigate] as [string, (path: string, ...args: any[]) => any];
 }
 
 const fallbackSummary: DashboardSummary = {
@@ -1761,7 +1761,13 @@ function TeacherDialog({
 }) {
   const [form, setForm] = useState<TeacherFormValue>(blankTeacher);
   useEffect(() => {
-    if (open) setForm(editing ? { ...editing } : blankTeacher);
+    if (open) {
+      setForm(
+        editing
+          ? ({ ...editing } as TeacherFormValue)
+          : blankTeacher,
+      );
+    }
   }, [open, editing]);
   const create = useCreateTeacher();
   const update = useUpdateTeacher();
@@ -3215,7 +3221,7 @@ function BorrowDialog({
                 </option>
                 {borrowerOptions.map((borrower) => (
                   <option value={borrower.id} key={borrower.id}>
-                    {"fullName" in borrower ? borrower.fullName : borrower.fullNameArabic}
+                    {borrower.fullName}
                   </option>
                 ))}
               </select>
