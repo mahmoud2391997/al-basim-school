@@ -1,6 +1,8 @@
+import type { Request, Response } from "express";
 import app from "../artifacts/api-server/src/app";
 
 export const config = { runtime: "nodejs" };
-export default function handler(req: Parameters<typeof app>[0], res: Parameters<typeof app>[1]) {
-  return app(req, res);
+
+export default function handler(req: Request, res: Response) {
+  return (app as unknown as (request: Request, response: Response) => unknown)(req, res);
 }
