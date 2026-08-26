@@ -4151,7 +4151,7 @@ function BorrowsPage() {
       <PageHeading
         eyebrow="Resources · 04 · Lending"
         title="Borrows"
-        arabic="الاستعارات"
+        arabic="��لاستعارات"
         description={t(
           "Keep track of books currently away from the shelves.",
           "تابع الكتب الموجودة حاليًا خارج الرفوف.",
@@ -4324,7 +4324,7 @@ function BorrowsPage() {
               </div>
               <div className="text-muted-foreground">{borrow.bookTitle}</div>
               <div className="text-xs text-muted-foreground" dir="ltr">
-                {formatDate(borrow.borrowedAt.toString())}
+                {borrow.borrowedAt ? formatDate(String(borrow.borrowedAt)) : "—"}
               </div>
               <div className="text-xs text-muted-foreground" dir="ltr">
                 {borrow.dueDate ? formatDate(String(borrow.dueDate)) : "—"}
