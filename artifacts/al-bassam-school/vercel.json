@@ -1,5 +1,5 @@
 {
-  "installCommand": "node prepare-deploy.cjs && pnpm install --legacy-peer-deps",
+  "installCommand": "pnpm install --legacy-peer-deps",
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist/public",
   "framework": null,
