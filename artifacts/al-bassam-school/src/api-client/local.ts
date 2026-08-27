@@ -1,0 +1,629 @@
+/**
+ * localStorage-backed API client for the standalone web version.
+ * Exports the exact same interface as the generated api.ts so App.tsx
+ * can import from '@workspace/api-client-react' unchanged.
+ */
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import type {
+  MutationFunction,
+  QueryFunction,
+  QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
+  UseQueryOptions,
+  UseQueryResult,
+} from '@tanstack/react-query';
+
+import type {
+  AcademicYear,
+  Book,
+  BookInput,
+  Borrow,
+  BorrowInput,
+  DashboardSummary,
+  Employee,
+  EmployeeInput,
+  GetBooksParams,
+  GetBorrowsParams,
+  GetEmployeesParams,
+  GetStudentsParams,
+  GetTeachersParams,
+  Student,
+  StudentInput,
+  Teacher,
+  TeacherInput,
+} from './generated/api.schemas';
+
+// ── localStorage helpers ──────────────────────────────────────────────
+
+const LS = {
+  students: 'al-bassam-students',
+  teachers: 'al-bassam-teachers',
+  books: 'al-bassam-books',
+  employees: 'al-bassam-employees',
+  borrows: 'al-bassam-borrows',
+  years: 'al-bassam-academic-years',
+  activity: 'al-bassam-activity',
+} as const;
+
+function read<T>(key: string): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function write<T>(key: string, data: T[]) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+function nextId(key: string): number {
+  const counterKey = key + '-next-id';
+  const current = Number(localStorage.getItem(counterKey) || '1');
+  localStorage.setItem(counterKey, String(current + 1));
+  return current;
+}
+
+// ── Seed data (runs once) ─────────────────────────────────────────────
+
+const SEED_KEY = 'al-bassam-seeded';
+
+function seedIfEmpty() {
+  if (localStorage.getItem(SEED_KEY)) return;
+
+  const years: AcademicYear[] = [
+    { id: 1, label: '2024 / 2025', startDate: '2024-09-01', endDate: '2025-06-30', isCurrent: false },
+    { id: 2, label: '2025 / 2026', startDate: '2025-09-01', endDate: '2026-06-30', isCurrent: true },
+  ];
+  write(LS.years, years);
+  localStorage.setItem('al-bassam-academic-years-next-id', '3');
+
+  const teachers: Teacher[] = [
+    {
+      id: 1, fullName: 'Adel Khamis', fullNameArabic: 'عادل خميس', name: 'Adel', surname: 'Khamis',
+      username: 'adel.khamis', englishName: 'Adel Khamis', employeeCode: 'TCH-001',
+      nationalId: '1012345678', nationality: 'Saudi', gender: 'male', maritalStatus: 'married',
+      religion: 'Islam', phone: '+966501234567', email: 'adel@school.com', address: 'Riyadh',
+      area: 'Al Olaya', country: 'Saudi Arabia', height: 175, weight: 78, branch: 'Main',
+      academicLevel: 'Secondary', subject: 'Mathematics', weeklyClasses: 18, isEmployee: false,
+      status: 'active',
+    },
+    {
+      id: 2, fullName: 'Nora Al-Harbi', fullNameArabic: 'نورة الحربي', name: 'Nora', surname: 'Al-Harbi',
+      username: 'nora.harbi', englishName: 'Nora Al-Harbi', employeeCode: 'TCH-002',
+      nationalId: '1098765432', nationality: 'Saudi', gender: 'female', maritalStatus: 'single',
+      religion: 'Islam', phone: '+966551234567', email: 'nora@school.com', address: 'Jeddah',
+      area: 'Al Andalus', country: 'Saudi Arabia', height: 162, weight: 55, branch: 'Main',
+      academicLevel: 'Intermediate', subject: 'English', weeklyClasses: 20, isEmployee: false,
+      status: 'active',
+    },
+  ];
+  write(LS.teachers, teachers);
+  localStorage.setItem('al-bassam-teachers-next-id', '3');
+
+  const students: Student[] = [
+    { id: 1, fullName: 'Sara Al-Harbi', fullNameArabic: 'سارة الحربي', studentNumber: 'AB-2024-014', nationalId: '1023456789', grade: 'Grade 8', className: '8A', guardianName: 'Khalid Al-Harbi', guardianPhone: '+966501112233', status: 'active', enrollmentDate: '2024-09-01' },
+    { id: 2, fullName: 'Omar Al-Qahtani', fullNameArabic: 'عمر القحطاني', studentNumber: 'AB-2024-015', nationalId: '1023456790', grade: 'Grade 7', className: '7B', guardianName: 'Noura Al-Qahtani', guardianPhone: '+966502223344', status: 'active', enrollmentDate: '2024-09-01' },
+    { id: 3, fullName: 'Lina Saeed', fullNameArabic: 'لينا سعيد', studentNumber: 'AB-2025-003', nationalId: '1055566677', grade: 'Grade 9', className: '9A', guardianName: 'Ahmed Saeed', guardianPhone: '+966503334455', status: 'active', enrollmentDate: '2023-09-01' },
+  ];
+  write(LS.students, students);
+  localStorage.setItem('al-bassam-students-next-id', '4');
+
+  const books: Book[] = [
+    { id: 1, title: 'Complete ICT IGCSE', author: 'Paul Culling', isbn: '9780981775470', category: 'Technology', language: 'English', volume: '1', copies: 8, availableCopies: 5, dateAdded: '2024-09-15', depositNumber: 'DEP-001', status: 'available', publicationPlace: 'London', publicationDate: '2020', generalNumber: 'GN-001', specialNumber: '', description: '', coverImage: '', shelf: 'B-04' },
+    { id: 2, title: 'Our Planet', author: 'David Attenborough', isbn: '9780521536608', category: 'Science', language: 'English', volume: '', copies: 5, availableCopies: 4, dateAdded: '2024-10-01', depositNumber: 'DEP-002', status: 'available', publicationPlace: 'Cambridge', publicationDate: '2021', generalNumber: 'GN-002', specialNumber: '', description: '', coverImage: '', shelf: 'A-12' },
+    { id: 3, title: 'The University Murderers', author: 'Richard MacAndrew', isbn: '9780521184954', category: 'Literature', language: 'English', volume: '', copies: 3, availableCopies: 2, dateAdded: '2024-10-10', depositNumber: 'DEP-003', status: 'available', publicationPlace: 'Cambridge', publicationDate: '2019', generalNumber: 'GN-003', specialNumber: '', description: '', coverImage: '', shelf: 'C-07' },
+  ];
+  write(LS.books, books);
+  localStorage.setItem('al-bassam-books-next-id', '4');
+
+  const employees: Employee[] = [
+    { id: 1, fullName: 'Khalid Al-Otaibi', fullNameArabic: 'خالد العتيبي', employeeNumber: 'EMP-001', nationalId: '1065432109', jobTitle: 'Administrator', phone: '+966561234567', status: 'active' },
+    { id: 2, fullName: 'Fatimah Al-Zahrani', fullNameArabic: 'فاطمة الزهراني', employeeNumber: 'EMP-002', nationalId: '1054321098', jobTitle: 'Librarian', phone: '+966571234567', status: 'active' },
+    { id: 3, fullName: 'Nasser Al-Dosari', fullNameArabic: 'ناصر الدوسري', employeeNumber: 'EMP-003', nationalId: '1043210987', jobTitle: 'Accountant', phone: '+966581234567', status: 'active' },
+  ];
+  write(LS.employees, employees);
+  localStorage.setItem('al-bassam-employees-next-id', '4');
+
+  write(LS.activity, [
+    { id: 1, type: 'student', title: 'New student enrolled', timestamp: new Date().toISOString() },
+    { id: 2, type: 'library', title: 'Book "Our Planet" added', timestamp: new Date(Date.now() - 3600000).toISOString() },
+    { id: 3, type: 'teacher', title: 'Teacher profile updated', timestamp: new Date(Date.now() - 7200000).toISOString() },
+  ] as DashboardSummary['recentActivity']);
+
+  localStorage.setItem(SEED_KEY, '1');
+}
+
+// Run seed immediately on module load
+seedIfEmpty();
+
+// ── withQueryKey helper (matches generated api.ts) ────────────────────
+
+const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
+  const result = { queryKey } as T & { queryKey: K };
+  for (const key of Object.keys(query)) {
+    if (key === 'queryKey') continue;
+    Object.defineProperty(result, key, {
+      enumerable: true,
+      configurable: true,
+      get: () => (query as Record<string, unknown>)[key],
+    });
+  }
+  return result;
+};
+
+// ── Query key functions ───────────────────────────────────────────────
+
+export const getGetAcademicYearsQueryKey = () => ['/api/academic-years'] as const;
+export const getGetDashboardSummaryQueryKey = () => ['/api/dashboard/summary'] as const;
+export const getGetStudentsQueryKey = (params?: GetStudentsParams) =>
+  ['/api/students', ...(params ? [params] : [])] as const;
+export const getGetTeachersQueryKey = (params?: GetTeachersParams) =>
+  ['/api/teachers', ...(params ? [params] : [])] as const;
+export const getGetBooksQueryKey = (params?: GetBooksParams) =>
+  ['/api/library/books', ...(params ? [params] : [])] as const;
+export const getGetEmployeesQueryKey = (params?: GetEmployeesParams) =>
+  ['/api/employees', ...(params ? [params] : [])] as const;
+export const getGetBorrowsQueryKey = (params?: GetBorrowsParams) =>
+  ['/api/library/borrows', ...(params ? [params] : [])] as const;
+
+// ── Query hooks ───────────────────────────────────────────────────────
+
+export function useGetAcademicYears<TData = AcademicYear[], TError = Error>(
+  options?: { query?: UseQueryOptions<AcademicYear[], TError, TData> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = {
+    queryKey: getGetAcademicYearsQueryKey(),
+    queryFn: () => read<AcademicYear>(LS.years),
+    ...options?.query,
+  };
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export function useGetDashboardSummary<TData = DashboardSummary, TError = Error>(
+  options?: { query?: UseQueryOptions<DashboardSummary, TError, TData> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = {
+    queryKey: getGetDashboardSummaryQueryKey(),
+    queryFn: (): DashboardSummary => {
+      const students = read<Student>(LS.students);
+      const teachers = read<Teacher>(LS.teachers);
+      const books = read<Book>(LS.books);
+      const activity = read<DashboardSummary['recentActivity'][0]>(LS.activity);
+      return {
+        students: students.filter((s) => s.status === 'active').length,
+        teachers: teachers.filter((t) => t.status === 'active').length,
+        books: books.reduce((sum, b) => sum + (b.copies || 0), 0),
+        availableBooks: books.reduce((sum, b) => sum + (b.availableCopies ?? b.copies || 0), 0),
+        borrowedBooks: books.reduce((sum, b) => sum + ((b.copies || 0) - (b.availableCopies ?? b.copies || 0)), 0),
+        employees: read<import("@workspace/api-client").Employee>(LS.employees).filter((e) => e.status === 'active').length,
+        attendanceRate: 94,
+        recentActivity: activity.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 10),
+      };
+    },
+    ...options?.query,
+  };
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export function useGetStudents<TData = Student[], TError = Error>(
+  params?: GetStudentsParams,
+  options?: { query?: UseQueryOptions<Student[], TError, TData> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = {
+    queryKey: getGetStudentsQueryKey(params),
+    queryFn: (): Student[] => {
+      let items = read<Student>(LS.students);
+      if (params?.status) items = items.filter((s) => s.status === params.status);
+      if (params?.search) {
+        const q = params.search.toLowerCase();
+        items = items.filter(
+          (s) =>
+            s.fullName.toLowerCase().includes(q) ||
+            s.fullNameArabic.includes(params.search!) ||
+            s.studentNumber.toLowerCase().includes(q),
+        );
+      }
+      return items;
+    },
+    ...options?.query,
+  };
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export function useGetTeachers<TData = Teacher[], TError = Error>(
+  params?: GetTeachersParams,
+  options?: { query?: UseQueryOptions<Teacher[], TError, TData> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = {
+    queryKey: getGetTeachersQueryKey(params),
+    queryFn: (): Teacher[] => {
+      let items = read<Teacher>(LS.teachers);
+      if (params?.status) items = items.filter((t) => t.status === params.status);
+      if (params?.search) {
+        const q = params.search.toLowerCase();
+        items = items.filter(
+          (t) =>
+            t.fullName.toLowerCase().includes(q) ||
+            t.fullNameArabic.includes(params.search!) ||
+            t.username.toLowerCase().includes(q),
+        );
+      }
+      return items;
+    },
+    ...options?.query,
+  };
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export function useGetBooks<TData = Book[], TError = Error>(
+  params?: GetBooksParams,
+  options?: { query?: UseQueryOptions<Book[], TError, TData> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = {
+    queryKey: getGetBooksQueryKey(params),
+    queryFn: (): Book[] => {
+      let items = read<Book>(LS.books);
+      if (params?.category) items = items.filter((b) => b.category === params.category);
+      if (params?.search) {
+        const q = params.search.toLowerCase();
+        items = items.filter(
+          (b) =>
+            b.title.toLowerCase().includes(q) ||
+            b.author.toLowerCase().includes(q) ||
+            b.isbn.toLowerCase().includes(q),
+        );
+      }
+      return items;
+    },
+    ...options?.query,
+  };
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export function useGetEmployees<TData = Employee[], TError = Error>(
+  params?: GetEmployeesParams,
+  options?: { query?: UseQueryOptions<Employee[], TError, TData> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = {
+    queryKey: getGetEmployeesQueryKey(params),
+    queryFn: (): Employee[] => {
+      let items = read<Employee>(LS.employees);
+      if (params?.status) items = items.filter((e) => e.status === params.status);
+      return items;
+    },
+    ...options?.query,
+  };
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export function useGetBorrows<TData = Borrow[], TError = Error>(
+  params?: GetBorrowsParams,
+  options?: { query?: UseQueryOptions<Borrow[], TError, TData> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = {
+    queryKey: getGetBorrowsQueryKey(params),
+    queryFn: (): Borrow[] => {
+      let items = read<Borrow>(LS.borrows);
+      if (params?.active !== undefined) {
+        items = params.active ? items.filter((b) => !b.returnedAt) : items.filter((b) => !!b.returnedAt);
+      }
+      return items;
+    },
+    ...options?.query,
+  };
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+// ── Mutation hooks ────────────────────────────────────────────────────
+
+function makeMutation<TInput, TResult>(
+  mutationKey: string,
+  fn: (input: TInput) => TResult,
+): { useMutate: (opts?: any) => UseMutationResult<TResult, Error, TInput, unknown>; fn: typeof fn } {
+  const useMutate = (options?: { mutation?: UseMutationOptions<TResult, Error, TInput, unknown> }) =>
+    useMutation<TResult, Error, TInput, unknown>({
+      mutationKey: [mutationKey],
+      mutationFn: fn,
+      ...options?.mutation,
+    });
+  return { useMutate, fn };
+}
+
+const studentMutations = makeMutation<{ data: StudentInput }, Student>('createStudent', ({ data }) => {
+  const items = read<Student>(LS.students);
+  const id = nextId(LS.students);
+  const student: Student = {
+    ...data,
+    id,
+    status: 'active',
+    fullName: data.fullName,
+    fullNameArabic: data.fullNameArabic,
+  };
+  items.push(student);
+  write(LS.students, items);
+  return student;
+});
+
+export const useCreateStudent = studentMutations.useMutate;
+
+const updateStudentFn = (_opts?: any) =>
+  useMutation<Student, Error, { id: number; data: StudentInput }, unknown>({
+    mutationKey: ['updateStudent'],
+    mutationFn: ({ id, data }) => {
+      const items = read<Student>(LS.students);
+      const idx = items.findIndex((s) => s.id === id);
+      if (idx === -1) throw new Error('Student not found');
+      items[idx] = { ...items[idx], ...data };
+      write(LS.students, items);
+      return items[idx];
+    },
+  });
+
+export const useUpdateStudent = updateStudentFn;
+
+const deleteStudentFn = (_opts?: any) =>
+  useMutation<void, Error, { id: number }, unknown>({
+    mutationKey: ['deleteStudent'],
+    mutationFn: ({ id }) => {
+      const items = read<Student>(LS.students);
+      write(LS.students, items.filter((s) => s.id !== id));
+    },
+  });
+
+export const useDeleteStudent = deleteStudentFn;
+
+// Teacher mutations
+const createTeacherFn = (_opts?: any) =>
+  useMutation<Teacher, Error, { data: TeacherInput }, unknown>({
+    mutationKey: ['createTeacher'],
+    mutationFn: ({ data }) => {
+      const items = read<Teacher>(LS.teachers);
+      const id = nextId(LS.teachers);
+      const fullName = [data.name, data.surname].filter(Boolean).join(' ') || data.employeeCode || '';
+      const teacher: Teacher = {
+        id,
+        name: data.name ?? '',
+        surname: data.surname ?? '',
+        username: data.username ?? '',
+        englishName: data.englishName ?? '',
+        employeeCode: data.employeeCode ?? '',
+        nationalId: data.nationalId ?? '',
+        nationality: data.nationality ?? '',
+        gender: data.gender ?? '',
+        maritalStatus: data.maritalStatus ?? '',
+        religion: data.religion ?? '',
+        phone: data.phone ?? '',
+        email: data.email ?? '',
+        address: data.address ?? '',
+        area: data.area ?? '',
+        country: data.country ?? '',
+        height: data.height ?? 0,
+        weight: data.weight ?? 0,
+        branch: data.branch ?? '',
+        academicLevel: data.academicLevel ?? '',
+        subject: data.subject ?? '',
+        weeklyClasses: data.weeklyClasses ?? 0,
+        isEmployee: data.isEmployee ?? false,
+        fullName,
+        fullNameArabic: data.fullNameArabic ?? fullName,
+        status: 'active',
+      };
+      items.push(teacher);
+      write(LS.teachers, items);
+      return teacher;
+    },
+  });
+
+export const useCreateTeacher = createTeacherFn;
+
+const updateTeacherFn = (_opts?: any) =>
+  useMutation<Teacher, Error, { id: number; data: TeacherInput }, unknown>({
+    mutationKey: ['updateTeacher'],
+    mutationFn: ({ id, data }) => {
+      const items = read<Teacher>(LS.teachers);
+      const idx = items.findIndex((t) => t.id === id);
+      if (idx === -1) throw new Error('Teacher not found');
+      const merged = { ...items[idx], ...data };
+      merged.fullName = [merged.name, merged.surname].filter(Boolean).join(' ') || merged.employeeCode;
+      items[idx] = merged;
+      write(LS.teachers, items);
+      return items[idx];
+    },
+  });
+
+export const useUpdateTeacher = updateTeacherFn;
+
+const deleteTeacherFn = (_opts?: any) =>
+  useMutation<void, Error, { id: number }, unknown>({
+    mutationKey: ['deleteTeacher'],
+    mutationFn: ({ id }) => {
+      const items = read<Teacher>(LS.teachers);
+      write(LS.teachers, items.filter((t) => t.id !== id));
+    },
+  });
+
+export const useDeleteTeacher = deleteTeacherFn;
+
+// Employee mutations
+const createEmployeeFn = (_opts?: any) =>
+  useMutation<Employee, Error, { data: EmployeeInput }, unknown>({
+    mutationKey: ['createEmployee'],
+    mutationFn: ({ data }) => {
+      const items = read<Employee>(LS.employees);
+      const id = nextId(LS.employees);
+      const employee: Employee = { ...data, id, status: data.status ?? 'active' };
+      items.push(employee);
+      write(LS.employees, items);
+      return employee;
+    },
+  });
+
+export const useCreateEmployee = createEmployeeFn;
+
+const updateEmployeeFn = (_opts?: any) =>
+  useMutation<Employee, Error, { id: number; data: EmployeeInput }, unknown>({
+    mutationKey: ['updateEmployee'],
+    mutationFn: ({ id, data }) => {
+      const items = read<Employee>(LS.employees);
+      const idx = items.findIndex((e) => e.id === id);
+      if (idx === -1) throw new Error('Employee not found');
+      items[idx] = { ...items[idx], ...data };
+      write(LS.employees, items);
+      return items[idx];
+    },
+  });
+
+export const useUpdateEmployee = updateEmployeeFn;
+
+const deleteEmployeeFn = (_opts?: any) =>
+  useMutation<void, Error, { id: number }, unknown>({
+    mutationKey: ['deleteEmployee'],
+    mutationFn: ({ id }) => {
+      const items = read<Employee>(LS.employees);
+      write(LS.employees, items.filter((e) => e.id !== id));
+    },
+  });
+
+export const useDeleteEmployee = deleteEmployeeFn;
+
+// Book mutations
+const createBookFn = (_opts?: any) =>
+  useMutation<Book, Error, { data: BookInput }, unknown>({
+    mutationKey: ['createBook'],
+    mutationFn: ({ data }) => {
+      const items = read<Book>(LS.books);
+      const id = nextId(LS.books);
+      const book: Book = {
+        id,
+        title: data.title,
+        author: data.author ?? '',
+        isbn: data.isbn ?? '',
+        category: data.category ?? '',
+        language: (data.language as Book['language']) ?? 'Arabic',
+        volume: data.volume ?? '',
+        copies: data.copies ?? 1,
+        availableCopies: data.copies ?? 1,
+        dateAdded: data.dateAdded ?? new Date().toISOString().slice(0, 10),
+        depositNumber: data.depositNumber ?? '',
+        status: (data.status as Book['status']) ?? 'available',
+        publicationPlace: data.publicationPlace ?? '',
+        publicationDate: data.publicationDate ?? '',
+        generalNumber: data.generalNumber ?? '',
+        specialNumber: data.specialNumber ?? '',
+        description: data.description ?? '',
+        coverImage: data.coverImage ?? '',
+        shelf: data.shelf ?? '',
+      };
+      items.push(book);
+      write(LS.books, items);
+      return book;
+    },
+  });
+
+export const useCreateBook = createBookFn;
+
+const updateBookFn = (_opts?: any) =>
+  useMutation<Book, Error, { id: number; data: BookInput }, unknown>({
+    mutationKey: ['updateBook'],
+    mutationFn: ({ id, data }) => {
+      const items = read<Book>(LS.books);
+      const idx = items.findIndex((b) => b.id === id);
+      if (idx === -1) throw new Error('Book not found');
+      items[idx] = { ...items[idx], ...data } as Book;
+      write(LS.books, items);
+      return items[idx];
+    },
+  });
+
+export const useUpdateBook = updateBookFn;
+
+const deleteBookFn = (_opts?: any) =>
+  useMutation<void, Error, { id: number }, unknown>({
+    mutationKey: ['deleteBook'],
+    mutationFn: ({ id }) => {
+      const items = read<Book>(LS.books);
+      write(LS.books, items.filter((b) => b.id !== id));
+    },
+  });
+
+export const useDeleteBook = deleteBookFn;
+
+// Borrow mutations
+const createBorrowFn = (_opts?: any) =>
+  useMutation<Borrow, Error, { data: BorrowInput }, unknown>({
+    mutationKey: ['createBorrow'],
+    mutationFn: ({ data }) => {
+      const items = read<Borrow>(LS.borrows);
+      const id = nextId(LS.borrows);
+      const books = read<Book>(LS.books);
+      const book = books.find((b) => b.id === data.bookId);
+      let borrowerName = '';
+      if (data.borrowerType === 'student') {
+        const students = read<Student>(LS.students);
+        const student = students.find((s) => s.id === data.borrowerId);
+        borrowerName = student?.fullName ?? '';
+      } else if (data.borrowerType === 'teacher') {
+        const teachers = read<Teacher>(LS.teachers);
+        const teacher = teachers.find((t) => t.id === data.borrowerId);
+        borrowerName = teacher?.fullName ?? '';
+      } else if (data.borrowerType === 'employee') {
+        const employees = read<Employee>(LS.employees);
+        const employee = employees.find((e) => e.id === data.borrowerId);
+        borrowerName = employee?.fullName ?? '';
+      }
+      const borrow: Borrow = {
+        id,
+        bookId: data.bookId,
+        borrowerType: data.borrowerType,
+        borrowerId: data.borrowerId,
+        borrowerName,
+        bookTitle: book?.title ?? '',
+        bookBarcode: book?.isbn ?? '',
+        borrowedAt: new Date().toISOString(),
+        dueDate: data.dueDate,
+        returnedAt: undefined,
+      };
+      items.push(borrow);
+      write(LS.borrows, items);
+      return borrow;
+    },
+  });
+
+export const useCreateBorrow = createBorrowFn;
+
+const returnBorrowFn = (_opts?: any) =>
+  useMutation<Borrow, Error, { id: number }, unknown>({
+    mutationKey: ['returnBorrow'],
+    mutationFn: ({ id }) => {
+      const items = read<Borrow>(LS.borrows);
+      const idx = items.findIndex((b) => b.id === id);
+      if (idx === -1) throw new Error('Borrow not found');
+      items[idx].returnedAt = new Date().toISOString();
+      write(LS.borrows, items);
+      return items[idx];
+    },
+  });
+
+export const useReturnBorrow = returnBorrowFn;
+
+// Stubs for unused exports
+export const getHealthCheckQueryKey = () => ['/api/healthz'] as const;
+export const useHealthCheck = (opts?: any) =>
+  useQuery({ queryKey: getHealthCheckQueryKey(), queryFn: () => ({ status: 'ok' }), ...opts?.query });
+
+export const setBaseUrl = () => {};
+export const setAuthTokenGetter = () => {};

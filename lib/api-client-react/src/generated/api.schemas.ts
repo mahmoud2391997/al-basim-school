@@ -30,6 +30,9 @@ export interface DashboardSummary {
   students: number;
   teachers: number;
   books: number;
+  availableBooks: number;
+  borrowedBooks: number;
+  employees: number;
   attendanceRate: number;
   recentActivity: Activity[];
 }

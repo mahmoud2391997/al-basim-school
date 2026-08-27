@@ -327,7 +327,7 @@
 
 @layer base {
   html { background: #FCFBF0; }
-  body { min-width: 320px; font-family: var(--app-font-sans); }
+  body { min-width: 320px; font-family: var(--app-font-sans); font-size: 16px; line-height: 1.6; }
   button, a, input, select { -webkit-tap-highlight-color: transparent; }
   ::selection { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
 }

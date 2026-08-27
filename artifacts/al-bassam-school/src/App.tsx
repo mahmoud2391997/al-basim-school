@@ -29,6 +29,7 @@ import {
   CircleCheck,
   Clock3,
   Filter,
+  FileSpreadsheet,
   GraduationCap,
   Languages,
   LayoutDashboard,
@@ -44,9 +45,19 @@ import {
   SlidersHorizontal,
   Sparkles,
   Trash2,
+  Upload,
   UsersRound,
   X,
 } from "lucide-react";
+import {
+  BarChart as RechartsBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from "recharts";
 import {
   Link,
   Route,
@@ -97,6 +108,9 @@ import {
 } from "@workspace/api-client-react";
 import { getBooks } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { ImportDialog } from "@/components/import-dialog";
+import { ExportMenu } from "@/components/export-menu";
+import { downloadTemplate } from "@/utils/import-export";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -134,10 +148,13 @@ function useDesktopLocation() {
   return [location, navigate] as [string, (path: string, ...args: any[]) => any];
 }
 
-const fallbackSummary: DashboardSummary = {
+const fallbackSummary = {
   students: 0,
   teachers: 0,
   books: 0,
+  availableBooks: 0,
+  borrowedBooks: 0,
+  employees: 0,
   attendanceRate: 0,
   recentActivity: [],
 };
@@ -410,11 +427,11 @@ function Shell({ children }: { children: ReactNode }) {
                             {text(tab.label, tab.arabic)}
                           </Link>
                         ))}
-                      </div>
+                        </div>
                     )}
-                </div>
-              );
-            })}
+                    </div>
+                  );
+                })}
           </nav>
           {!collapsed && (
             <p className="mb-3 mt-9 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-sidebar-foreground/45">
@@ -476,20 +493,20 @@ function Shell({ children }: { children: ReactNode }) {
             className={`${collapsed ? "mt-3 justify-center" : "mt-5"} flex items-center gap-3${collapsed ? "" : " border-t border-sidebar-border pt-5"}`}
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064]">
-              SA
+              LA
             </div>
             {!collapsed && (
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-semibold text-[#FCFBF0]">
                   {text(
-                    "School Admin",
-                    "\u0645\u062F\u064A\u0631\u0020\u0627\u0644\u0645\u062F\u0631\u0633\u0629",
+                    "Library Admin",
+                    "آمين المكتبة",
                   )}
                 </div>
                 <div className="truncate text-[10px] text-sidebar-foreground/45">
                   {text(
-                    "Administration office",
-                    "\u0627\u0644\u0645\u0643\u062A\u0628\u0020\u0627\u0644\u0625\u062F\u0627\u0631\u064A",
+                    "Library office",
+                    "مكتب المكتبة",
                   )}
                 </div>
               </div>
@@ -599,10 +616,10 @@ function Shell({ children }: { children: ReactNode }) {
             <div className="hidden h-7 w-px bg-border sm:block" />
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#14BAC6]/10 text-[10px] font-bold text-[#14BAC6]">
-                SA
+                LA
               </div>
               <span className="hidden text-xs font-semibold sm:block">
-                School Admin
+                Library Admin
               </span>
               <ChevronDown
                 size={14}
@@ -696,43 +713,97 @@ function LoadingCards({ count = 4 }: { count?: number }) {
 function Pagination({
   page,
   pageCount,
+  totalItems,
+  pageSize,
   onPageChange,
+  onPageSizeChange,
 }: {
   page: number;
   pageCount: number;
+  totalItems: number;
+  pageSize: number;
   onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 }) {
-  if (pageCount <= 1) return null;
+  const { t, language } = useT();
+  if (pageCount <= 1 && totalItems <= 8) return null;
+  const from = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, totalItems);
   return (
-    <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
-      <span>
-        {page} / {pageCount}
-      </span>
-      <div className="flex gap-1">
-        <button
-          disabled={page === 1}
-          onClick={() => onPageChange(page - 1)}
-          className="rounded-md border border-border p-1 disabled:opacity-40"
-          aria-label="Previous page"
+    <div className="flex flex-col gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <span>
+          {t(
+            `Showing ${from}–${to} of ${totalItems}`,
+            `عرض ${from}–${to} من ${totalItems}`,
+          )}
+        </span>
+        <select
+          value={pageSize}
+          onChange={(e) => onPageSizeChange(Number(e.target.value))}
+          className="rounded-md border border-border bg-card px-2 py-1 text-xs"
         >
-          <ChevronLeft size={14} />
-        </button>
-        <button
-          disabled={page === pageCount}
-          onClick={() => onPageChange(page + 1)}
-          className="rounded-md border border-border p-1 disabled:opacity-40"
-          aria-label="Next page"
-        >
-          <ChevronRight size={14} />
-        </button>
+          <option value={8}>8 / page</option>
+          <option value={16}>16 / page</option>
+          <option value={24}>24 / page</option>
+          <option value={50}>50 / page</option>
+        </select>
+      </div>
+      <div className="flex items-center gap-1" dir={language === "ar" ? "rtl" : "ltr"}>
+        {language === "ar" ? (
+          <>
+            <button
+              disabled={page === pageCount}
+              onClick={() => onPageChange(page + 1)}
+              className="rounded-md border border-border p-1 disabled:opacity-40"
+              aria-label={t("Next page", "الصفحة التالية")}
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-muted-foreground/70">
+              {page} / {pageCount}
+            </span>
+            <button
+              disabled={page === 1}
+              onClick={() => onPageChange(page - 1)}
+              className="rounded-md border border-border p-1 disabled:opacity-40"
+              aria-label={t("Previous page", "الصفحة السابقة")}
+            >
+              <ChevronRight size={14} />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              disabled={page === 1}
+              onClick={() => onPageChange(page - 1)}
+              className="rounded-md border border-border p-1 disabled:opacity-40"
+              aria-label={t("Previous page", "الصفحة السابقة")}
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-muted-foreground/70">
+              {page} / {pageCount}
+            </span>
+            <button
+              disabled={page === pageCount}
+              onClick={() => onPageChange(page + 1)}
+              className="rounded-md border border-border p-1 disabled:opacity-40"
+              aria-label={t("Next page", "الصفحة التالية")}
+            >
+              <ChevronRight size={14} />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function usePagination<T>(items: T[], pageSize = 8) {
+function usePagination<T>(items: T[], initialPageSize = 8) {
   const [page, setPage] = useState(1);
-  useEffect(() => setPage(1), [items]);
+  const [pageSize, setPageSize] = useState(initialPageSize);
+  useEffect(() => setPage(1), [items, pageSize]);
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   return {
@@ -742,7 +813,10 @@ function usePagination<T>(items: T[], pageSize = 8) {
       currentPage * pageSize,
     ),
     pageCount,
+    totalItems: items.length,
+    pageSize,
     setPage,
+    setPageSize,
   };
 }
 
@@ -869,10 +943,13 @@ function Dashboard() {
     query: { queryKey: getGetDashboardSummaryQueryKey() },
   });
   const summaryData = summaryQuery.data ?? fallbackSummary;
-  const summary: DashboardSummary = {
+  const summary = {
     students: Number(summaryData.students ?? 0),
     teachers: Number(summaryData.teachers ?? 0),
     books: Number(summaryData.books ?? 0),
+    availableBooks: Number(summaryData.availableBooks ?? 0),
+    borrowedBooks: Number(summaryData.borrowedBooks ?? 0),
+    employees: Number(summaryData.employees ?? 0),
     attendanceRate: Number(summaryData.attendanceRate ?? 0),
     recentActivity: summaryData.recentActivity ?? [],
   };
@@ -892,7 +969,7 @@ function Dashboard() {
       <PageHeading
         eyebrow="School pulse · 01"
         eyebrowAr="نبض المدرسة · 01"
-        title={t("Good morning, admin.", "صباح الخير، أيها المدير.")}
+        title={t("Good morning, admin.", "صباح الخير، آمين المكتبة.")}
         arabic={t("صباح الخير", "Good morning")}
         description={t(
           "A composed view of the people, places and pages moving through Al-Bassam today.",
@@ -918,7 +995,8 @@ function Dashboard() {
           onRetry={() => summaryQuery.refetch()}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <StatCard
             label="Students"
             arabic="الطلاب"
@@ -936,25 +1014,49 @@ function Dashboard() {
             note={t("Faculty directory", "دليل أعضاء هيئة التدريس")}
           />
           <StatCard
-            label="Library books"
-            arabic="كتب المكتبة"
+            label="Employees"
+            arabic="الموظفون"
+            value={summary.employees.toLocaleString()}
+            icon={Briefcase}
+            tone="sky"
+            note={t("Staff members", "أعضاء الهيئة الإدارية")}
+          />
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Total books"
+            arabic="إجمالي الكتب"
             value={summary.books.toLocaleString()}
             icon={BookOpen}
             tone="gold"
-            note={t("Titles in catalogue", "عناوين في الفهرس")}
+            note={t("All copies in catalogue", "جميع النسخ في الفهرس")}
+          />
+          <StatCard
+            label="Available books"
+            arabic="الكتب المتاحة"
+            value={summary.availableBooks.toLocaleString()}
+            icon={BookOpen}
+            tone="teal"
+            note={t("Currently on shelf", "موجودة على الرف حالياً")}
           />
           <StatCard
             label="Borrowed books"
-            arabic="الكتب المستعارة"
-            value={`${summary.attendanceRate}%`}
+            arabic="الكتب المُعارة"
+            value={summary.borrowedBooks.toLocaleString()}
             icon={BookOpen}
+            tone="navy"
+            note={t("On loan", "مستعارة حالياً")}
+          />
+          <StatCard
+            label="Attendance"
+            arabic="نسبة الحضور"
+            value={`${summary.attendanceRate}%`}
+            icon={Activity}
             tone="sky"
-            note={t(
-              "Share of catalogue currently on loan",
-              "نسبة الكتب المعارة حاليًا",
-            )}
+            note={t("Average attendance rate", "متوسط نسبة الحضور")}
           />
         </div>
+        </>
       )}
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
         <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
@@ -1029,7 +1131,7 @@ function Dashboard() {
               <Sparkles size={18} />
             </div>
             <div className="text-[10px] font-bold uppercase tracking-[.2em] text-[#14BAC6]/80">
-              {t("A note from the office", "ملاحظة من الإدارة")}
+              {t("A note from the library", "ملاحظة من المكتبة")}
             </div>
             <h2 className="mt-3 max-w-xs text-2xl font-bold leading-tight tracking-[-.04em]">
               {t(
@@ -1413,6 +1515,7 @@ function StudentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Student | undefined>();
   const [toast, setToast] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
   const { t } = useT();
   const query = useGetStudents(
     {
@@ -1431,6 +1534,7 @@ function StudentsPage() {
     },
   );
   const deletion = useDeleteStudent();
+  const createStudent = useCreateStudent();
   const queryClient = useQueryClient();
   const students = Array.isArray(query.data) ? query.data : [];
   const filtered = useMemo(() => students, [students]);
@@ -1473,13 +1577,34 @@ function StudentsPage() {
         description="A clear, current directory for every learner in the Al-Bassam community."
         descriptionAr="دليل واضح ومحدّث لكل متعلم في مجتمع البسام التعليمية."
         action={
-          <Button
-            onClick={openNew}
-            className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
-            data-testid="button-add-student"
-          >
-            <Plus size={17} /> {t("Add student", "إضافة طالب")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <ExportMenu entityType="students" data={students} t={t} />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => downloadTemplate("students")}
+              data-testid="button-template-students"
+            >
+              <FileSpreadsheet size={14} /> {t("Template", "القالب")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setImportOpen(true)}
+              data-testid="button-import-students"
+            >
+              <Upload size={14} /> {t("Import", "استيراد")}
+            </Button>
+            <Button
+              onClick={openNew}
+              className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
+              data-testid="button-add-student"
+            >
+              <Plus size={17} /> {t("Add student", "إضافة طالب")}
+            </Button>
+          </div>
         }
       />
       {toast && (
@@ -1572,7 +1697,10 @@ function StudentsPage() {
           <Pagination
             page={studentPages.page}
             pageCount={studentPages.pageCount}
+            totalItems={studentPages.totalItems}
+            pageSize={studentPages.pageSize}
             onPageChange={studentPages.setPage}
+            onPageSizeChange={studentPages.setPageSize}
           />
         </div>
       )}
@@ -1581,6 +1709,24 @@ function StudentsPage() {
         onOpenChange={setDialogOpen}
         editing={editing}
         onSaved={setToast}
+      />
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        entityType="students"
+        t={t}
+        onImport={async (rows) => {
+          for (const row of rows) {
+            await new Promise<void>((resolve) => {
+              createStudent.mutate(
+                { data: row as any },
+                { onSuccess: () => resolve(), onError: () => resolve() },
+              );
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
+          setToast(t(`${rows.length} students imported`, `تم استيراد ${rows.length} طالب`));
+        }}
       />
     </div>
   );
@@ -1723,7 +1869,18 @@ const teacherSections: {
         key: "subject",
         label: "Subject",
         arabic: "المادة",
-        placeholder: "Mathematics",
+        options: [
+          ["Mathematics", "Mathematics", "الرياضيات"],
+          ["Arabic", "Arabic", "اللغة العربية"],
+          ["English", "English", "اللغة الإنجليزية"],
+          ["Science", "Science", "العلوم"],
+          ["Social Studies", "Social Studies", "الدراسات الاجتماعية"],
+          ["Islamic Studies", "Islamic Studies", "التربية الإسلامية"],
+          ["Computer Science", "Computer Science", "علوم الحاسب"],
+          ["Physical Education", "Physical Education", "التربية البدنية"],
+          ["Art", "Art", "الفنون"],
+          ["Music", "Music", "الموسيقى"],
+        ],
       },
       {
         key: "weeklyClasses",
@@ -2347,6 +2504,7 @@ function EmployeesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | undefined>();
   const [toast, setToast] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
   const { t } = useT();
   const query = useGetEmployees(
     { search: search || undefined },
@@ -2357,8 +2515,15 @@ function EmployeesPage() {
     },
   );
   const deletion = useDeleteEmployee();
+  const createEmployee = useCreateEmployee();
   const queryClient = useQueryClient();
   const employees = Array.isArray(query.data) ? query.data : [];
+  const filteredEmployees = useMemo(() => employees.filter((e) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (e.fullName || "").toLowerCase().includes(q) || (e.fullNameArabic || "").toLowerCase().includes(q) || (e.jobTitle || "").toLowerCase().includes(q) || (e.employeeNumber || "").toLowerCase().includes(q);
+  }), [employees, search]);
+  const employeePages = usePagination(filteredEmployees);
   const openNew = () => {
     setEditing(undefined);
     setDialogOpen(true);
@@ -2401,13 +2566,34 @@ function EmployeesPage() {
           "الفريق خلف اليوم الدراسي — الإدارة والتشغيل والدعم.",
         )}
         action={
-          <Button
-            onClick={openNew}
-            className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
-            data-testid="button-add-employee"
-          >
-            <Plus size={17} /> {t("Add employee", "إضافة موظف")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <ExportMenu entityType="employees" data={employees} t={t} />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => downloadTemplate("employees")}
+              data-testid="button-template-employees"
+            >
+              <FileSpreadsheet size={14} /> {t("Template", "القالب")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setImportOpen(true)}
+              data-testid="button-import-employees"
+            >
+              <Upload size={14} /> {t("Import", "استيراد")}
+            </Button>
+            <Button
+              onClick={openNew}
+              className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
+              data-testid="button-add-employee"
+            >
+              <Plus size={17} /> {t("Add employee", "إضافة موظف")}
+            </Button>
+          </div>
         }
       />
       <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row">
@@ -2505,7 +2691,7 @@ function EmployeesPage() {
             <span className="text-center">{t("Status", "الحالة")}</span>
             <span />
           </div>
-          {employees.map((employee) => (
+          {employeePages.pageItems.map((employee) => (
             <EmployeeRow
               key={employee.id}
               employee={employee}
@@ -2515,11 +2701,37 @@ function EmployeesPage() {
           ))}
         </div>
       )}
+      <Pagination
+        page={employeePages.page}
+        pageCount={employeePages.pageCount}
+        totalItems={employeePages.totalItems}
+        pageSize={employeePages.pageSize}
+        onPageChange={employeePages.setPage}
+        onPageSizeChange={employeePages.setPageSize}
+      />
       <EmployeeDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         editing={editing}
         onSaved={setToast}
+      />
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        entityType="employees"
+        t={t}
+        onImport={async (rows) => {
+          for (const row of rows) {
+            await new Promise<void>((resolve) => {
+              createEmployee.mutate(
+                { data: row as any },
+                { onSuccess: () => resolve(), onError: () => resolve() },
+              );
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: getGetEmployeesQueryKey() });
+          setToast(t(`${rows.length} employees imported`, `تم استيراد ${rows.length} موظف`));
+        }}
       />
     </div>
   );
@@ -2530,6 +2742,7 @@ function TeachersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Teacher | undefined>();
   const [toast, setToast] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
   const { t } = useT();
   const query = useGetTeachers(
     { search: search || undefined },
@@ -2540,8 +2753,15 @@ function TeachersPage() {
     },
   );
   const deletion = useDeleteTeacher();
+  const createTeacher = useCreateTeacher();
   const queryClient = useQueryClient();
   const teachers = Array.isArray(query.data) ? query.data : [];
+  const filteredTeachers = useMemo(() => teachers.filter((te) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (te.fullName || "").toLowerCase().includes(q) || (te.fullNameArabic || "").toLowerCase().includes(q) || (te.subject || "").toLowerCase().includes(q) || (te.employeeNumber || "").toLowerCase().includes(q);
+  }), [teachers, search]);
+  const teacherPages = usePagination(filteredTeachers);
   const openNew = () => {
     setEditing(undefined);
     setDialogOpen(true);
@@ -2582,13 +2802,34 @@ function TeachersPage() {
           "دليل هيئة التدريس، مرتبة لسياق سريع قبل المحادثة القادمة.",
         )}
         action={
-          <Button
-            onClick={openNew}
-            className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
-            data-testid="button-add-teacher"
-          >
-            <Plus size={17} /> {t("Add teacher", "إضافة معلم")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <ExportMenu entityType="teachers" data={teachers} t={t} />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => downloadTemplate("teachers")}
+              data-testid="button-template-teachers"
+            >
+              <FileSpreadsheet size={14} /> {t("Template", "القالب")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setImportOpen(true)}
+              data-testid="button-import-teachers"
+            >
+              <Upload size={14} /> {t("Import", "استيراد")}
+            </Button>
+            <Button
+              onClick={openNew}
+              className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
+              data-testid="button-add-teacher"
+            >
+              <Plus size={17} /> {t("Add teacher", "إضافة معلم")}
+            </Button>
+          </div>
         }
       />
       <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row">
@@ -2686,7 +2927,7 @@ function TeachersPage() {
             <span className="text-center">{t("Status", "الحالة")}</span>
             <span />
           </div>
-          {teachers.map((teacher) => (
+          {teacherPages.pageItems.map((teacher) => (
             <TeacherRow
               key={teacher.id}
               teacher={teacher}
@@ -2696,11 +2937,37 @@ function TeachersPage() {
           ))}
         </div>
       )}
+      <Pagination
+        page={teacherPages.page}
+        pageCount={teacherPages.pageCount}
+        totalItems={teacherPages.totalItems}
+        pageSize={teacherPages.pageSize}
+        onPageChange={teacherPages.setPage}
+        onPageSizeChange={teacherPages.setPageSize}
+      />
       <TeacherDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         editing={editing}
         onSaved={setToast}
+      />
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        entityType="teachers"
+        t={t}
+        onImport={async (rows) => {
+          for (const row of rows) {
+            await new Promise<void>((resolve) => {
+              createTeacher.mutate(
+                { data: row as any },
+                { onSuccess: () => resolve(), onError: () => resolve() },
+              );
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: getGetTeachersQueryKey() });
+          setToast(t(`${rows.length} teachers imported`, `تم استيراد ${rows.length} معلم`));
+        }}
       />
     </div>
   );
@@ -3300,6 +3567,7 @@ function LibraryPage() {
   >();
   const [presetBarcode, setPresetBarcode] = useState<string | undefined>();
   const [scannerAt, setScannerAt] = useState<Date | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   useEffect(() => {
     let stamps: number[] = [];
     const onKey = (event: KeyboardEvent) => {
@@ -3337,6 +3605,7 @@ function LibraryPage() {
     },
   );
   const deletion = useDeleteBook();
+  const createBook = useCreateBook();
   const borrowsQuery = useGetBorrows(
     { active: true },
     { query: { queryKey: getGetBorrowsQueryKey({ active: true }) } },
@@ -3344,6 +3613,9 @@ function LibraryPage() {
   const returnBorrow = useReturnBorrow();
   const queryClient = useQueryClient();
   const books = Array.isArray(query.data) ? query.data : [];
+  const borrows = Array.isArray(borrowsQuery.data) ? borrowsQuery.data : [];
+  const borrowPages = usePagination(borrows);
+  const bookPages = usePagination(books);
   const categories = useMemo(
     () =>
       Array.from(new Set(books.map((book) => book.category).filter(Boolean))),
@@ -3411,13 +3683,34 @@ function LibraryPage() {
           "فهرس حيّ للقصص والمراجع والاكتشافات على كل رف.",
         )}
         action={
-          <Button
-            onClick={openNew}
-            className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
-            data-testid="button-add-book"
-          >
-            <Plus size={17} /> {t("Add book", "إضافة كتاب")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <ExportMenu entityType="books" data={books} t={t} />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => downloadTemplate("books")}
+              data-testid="button-template-books"
+            >
+              <FileSpreadsheet size={14} /> {t("Template", "القالب")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setImportOpen(true)}
+              data-testid="button-import-books"
+            >
+              <Upload size={14} /> {t("Import", "استيراد")}
+            </Button>
+            <Button
+              onClick={openNew}
+              className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
+              data-testid="button-add-book"
+            >
+              <Plus size={17} /> {t("Add book", "إضافة كتاب")}
+            </Button>
+          </div>
         }
       />
       <form
@@ -3698,7 +3991,7 @@ function LibraryPage() {
             <span className="text-center">{t("Barcode", "الباركود")}</span>
             <span />
           </div>
-          {books.map((book) => (
+          {bookPages.pageItems.map((book) => (
             <BookRow
               key={book.id}
               book={book}
@@ -3708,6 +4001,14 @@ function LibraryPage() {
           ))}
         </div>
       )}
+      <Pagination
+        page={bookPages.page}
+        pageCount={bookPages.pageCount}
+        totalItems={bookPages.totalItems}
+        pageSize={bookPages.pageSize}
+        onPageChange={bookPages.setPage}
+        onPageSizeChange={bookPages.setPageSize}
+      />
       <BookDialog
         open={dialogOpen}
         onOpenChange={(value) => {
@@ -3720,9 +4021,6 @@ function LibraryPage() {
         categories={categories as string[]}
       />
       {(() => {
-        const borrows = Array.isArray(borrowsQuery.data)
-          ? borrowsQuery.data
-          : [];
         if (!borrows.length) return null;
         return (
           <section className="mt-6 overflow-hidden rounded-xl border border-border bg-card soft-shadow">
@@ -3742,7 +4040,7 @@ function LibraryPage() {
                 {borrows.length}
               </span>
             </div>
-            {borrows.map((borrow) => (
+            {borrowPages.pageItems.map((borrow) => (
               <div
                 key={borrow.id}
                 className="flex flex-wrap items-center gap-3 border-b border-border/70 px-5 py-3 last:border-b-0 transition-colors hover:bg-secondary/40"
@@ -3814,6 +4112,14 @@ function LibraryPage() {
                 </Button>
               </div>
             ))}
+            <Pagination
+              page={borrowPages.page}
+              pageCount={borrowPages.pageCount}
+              totalItems={borrowPages.totalItems}
+              pageSize={borrowPages.pageSize}
+              onPageChange={borrowPages.setPage}
+              onPageSizeChange={borrowPages.setPageSize}
+            />
           </section>
         );
       })()}
@@ -3824,6 +4130,24 @@ function LibraryPage() {
         }}
         book={borrowing}
         onSaved={setToast}
+      />
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        entityType="books"
+        t={t}
+        onImport={async (rows) => {
+          for (const row of rows) {
+            await new Promise<void>((resolve) => {
+              createBook.mutate(
+                { data: row as any },
+                { onSuccess: () => resolve(), onError: () => resolve() },
+              );
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: getGetBooksQueryKey() });
+          setToast(t(`${rows.length} books imported`, `تم استيراد ${rows.length} كتاب`));
+        }}
       />
     </div>
   );
@@ -3923,6 +4247,14 @@ function DistributionPage() {
     );
   }, [students]);
   const total = students.length;
+  const flatRows = useMemo(() => {
+    return groups.flatMap(([grade, classes]) =>
+      Array.from(classes.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([klass, count]) => ({ grade, klass, count, key: `${grade}-${klass}` }))
+    );
+  }, [groups]);
+  const distPages = usePagination(flatRows);
   return (
     <div className="rise-in">
       <PageHeading
@@ -4005,47 +4337,51 @@ function DistributionPage() {
                 )}
               </span>
             </div>
-            {groups.flatMap(([grade, classes]) =>
-              Array.from(classes.entries())
-                .sort((a, b) => a[0].localeCompare(b[0]))
-                .map(([klass, count]) => {
-                  const percent = total ? Math.round((count / total) * 100) : 0;
-                  return (
-                    <div
-                      key={`${grade}-${klass}`}
-                      className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center border-b border-border/70 px-5 py-3 transition-colors last:border-b-0 hover:bg-secondary/40"
-                      data-testid={`row-distribution-${grade.toLowerCase().replaceAll(" ", "-")}-${klass.toLowerCase()}`}
-                    >
-                      <span className="text-sm font-semibold text-[#263064]">
-                        {grade}
-                      </span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {klass}
-                      </span>
-                      <strong className="font-mono text-sm text-[#263064]">
-                        {count}
-                      </strong>
-                      <div className="flex items-center gap-3">
-                        <div className="h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-primary"
-                            style={{ width: `${percent}%` }}
-                          />
-                        </div>
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          {percent}%
-                        </span>
-                      </div>
+            {distPages.pageItems.map(({ grade, klass, count, key }) => {
+              const percent = total ? Math.round((count / total) * 100) : 0;
+              return (
+                <div
+                  key={key}
+                  className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center border-b border-border/70 px-5 py-3 transition-colors last:border-b-0 hover:bg-secondary/40"
+                  data-testid={`row-distribution-${grade.toLowerCase().replaceAll(" ", "-")}-${klass.toLowerCase()}`}
+                >
+                  <span className="text-sm font-semibold text-[#263064]">
+                    {grade}
+                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {klass}
+                  </span>
+                  <strong className="font-mono text-sm text-[#263064]">
+                    {count}
+                  </strong>
+                  <div className="flex items-center gap-3">
+                    <div className="h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${percent}%` }}
+                      />
                     </div>
-                  );
-                }),
-            )}
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {percent}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
             <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center bg-[#263064]/5 px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">
               <span>
                 {t("Total", "\u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A")}
               </span>
               <span />
             </div>
+            <Pagination
+              page={distPages.page}
+              pageCount={distPages.pageCount}
+              totalItems={distPages.totalItems}
+              pageSize={distPages.pageSize}
+              onPageChange={distPages.setPage}
+              onPageSizeChange={distPages.setPageSize}
+            />
           </div>
         </>
       )}
@@ -4357,7 +4693,10 @@ function BorrowsPage() {
           <Pagination
             page={borrowPages.page}
             pageCount={borrowPages.pageCount}
+            totalItems={borrowPages.totalItems}
+            pageSize={borrowPages.pageSize}
             onPageChange={borrowPages.setPage}
+            onPageSizeChange={borrowPages.setPageSize}
           />
         </div>
       )}
@@ -4385,14 +4724,83 @@ function BorrowsPage() {
   );
 }
 
+type ReportColumn = { key: string; header: string };
+
+function ReportSection({ title, titleAr, columns, data, exportType, t }: {
+  title: string;
+  titleAr: string;
+  columns: ReportColumn[];
+  data: Record<string, string>[];
+  exportType: "books" | "borrows";
+  t: (en: string, ar: string) => string;
+}) {
+  const reportPages = usePagination(data, 16);
+  const handleExcel = () => {
+    import("@/utils/import-export").then((mod) => {
+      const rows = data.map((row) => {
+        const obj: Record<string, string> = {};
+        columns.forEach((c) => { obj[c.header] = row[c.key] || "—"; });
+        return obj;
+      });
+      mod.exportToExcel(rows, "books");
+    });
+  };
+  return (
+    <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{title}</div>
+          <h3 className="mt-1 text-lg font-bold text-[#263064]">{titleAr}</h3>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleExcel} className="gap-1.5 text-xs">
+          <FileSpreadsheet size={14} />
+          {t("Export Excel", "تصدير Excel")}
+        </Button>
+      </div>
+      {data.length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">{t("No records found.", "لا توجد سجلات.")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                {columns.map((col) => (
+                  <th key={col.key} className="px-3 py-2 text-xs font-semibold text-muted-foreground">{col.header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {reportPages.pageItems.map((row, i) => (
+                <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
+                  {columns.map((col) => (
+                    <td key={col.key} className="px-3 py-2">{row[col.key] || "—"}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination
+            page={reportPages.page}
+            pageCount={reportPages.pageCount}
+            totalItems={reportPages.totalItems}
+            pageSize={reportPages.pageSize}
+            onPageChange={reportPages.setPage}
+            onPageSizeChange={reportPages.setPageSize}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
 function AnalyticsPage() {
   const { t } = useT();
   const booksQuery = useGetBooks(undefined, {
     query: { queryKey: getGetBooksQueryKey(undefined) },
   });
   const borrowsQuery = useGetBorrows(
-    { active: true },
-    { query: { queryKey: getGetBorrowsQueryKey({ active: true }) } },
+    {},
+    { query: { queryKey: getGetBorrowsQueryKey({}) } },
   );
   const books = Array.isArray(booksQuery.data) ? booksQuery.data : [];
   const borrows = Array.isArray(borrowsQuery.data) ? borrowsQuery.data : [];
@@ -4402,11 +4810,41 @@ function AnalyticsPage() {
     0,
   );
   const borrowedCopies = Math.max(copies - available, 0);
+  const lostBooks = books.filter((b) => b.status === "lost").length;
+  const damagedBooks = books.filter((b) => b.status === "damaged").length;
   const categories = new Set(books.map((book) => book.category).filter(Boolean))
     .size;
   const borrowedPercent = copies
     ? Math.round((borrowedCopies / copies) * 1000) / 10
     : 0;
+  const activeBorrows = borrows.filter((b) => !b.returnedAt);
+  const [reportTab, setReportTab] = useState<"overview" | "borrows" | "books">("overview");
+
+  const gradeDistribution = useMemo(() => {
+    const map = new Map<string, number>();
+    activeBorrows.forEach((b) => {
+      const grade = "Grade " + ((b as any).grade || "");
+      map.set(grade, (map.get(grade) || 0) + 1);
+    });
+    if (map.size === 0) {
+      books.forEach((book) => {
+        const cat = book.category || "Other";
+        map.set(cat, (map.get(cat) || 0) + book.copies);
+      });
+    }
+    return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+  }, [activeBorrows, books]);
+
+  const monthlyBorrows = useMemo(() => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const counts = new Array(12).fill(0);
+    borrows.forEach((b) => {
+      const d = new Date(b.borrowedAt);
+      if (!isNaN(d.getTime())) counts[d.getMonth()]++;
+    });
+    return months.map((m, i) => ({ name: m, count: counts[i] }));
+  }, [borrows]);
+
   return (
     <div className="rise-in">
       <PageHeading
@@ -4414,8 +4852,8 @@ function AnalyticsPage() {
         title="Library analytics"
         arabic="تحليلات المكتبة"
         description={t(
-          "A quick read on catalogue size, availability and lending activity.",
-          "نظرة سريعة على حجم الفهرس والتوفر ونشاط الإعارة.",
+          "Reports, charts and insights for the entire library catalogue.",
+          "تقارير ورسوم بيانية وتحليلات لجميع كتب المكتبة.",
         )}
       />
       {booksQuery.isLoading || borrowsQuery.isLoading ? (
@@ -4440,48 +4878,230 @@ function AnalyticsPage() {
               note={t("Across all titles", "عبر جميع العناوين")}
             />
             <StatCard
-              label="Borrowed"
-              arabic="مستعارة"
-              value={`${borrowedPercent}%`}
+              label="Active borrows"
+              arabic="الإعارات النشطة"
+              value={activeBorrows.length.toLocaleString()}
               icon={BookOpen}
               tone="gold"
-              note={t(
-                `${borrows.length} active loans`,
-                `${borrows.length} إعارات نشطة`,
-              )}
+              note={`${borrowedPercent}% ${t("of catalogue", "من الفهرس")}`}
             />
             <StatCard
-              label="Categories"
-              arabic="التصنيفات"
-              value={categories.toLocaleString()}
-              icon={Activity}
+              label="Lost / Damaged"
+              arabic="مفقود / تالف"
+              value={`${lostBooks + damagedBooks}`}
+              icon={AlertTriangle}
               tone="sky"
-              note={t("Organised sections", "الأقسام المنظمة")}
+              note={`${lostBooks} ${t("lost", "مفقود")} · ${damagedBooks} ${t("damaged", "تالف")}`}
             />
           </div>
-          <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-                  {t("Availability", "التوفر")}
+
+          <div className="mt-6 flex gap-2 border-b border-border pb-px">
+            {(["overview", "borrows", "books"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setReportTab(tab)}
+                className={`rounded-t-lg px-4 py-2 text-xs font-semibold transition-colors ${
+                  reportTab === tab
+                    ? "border-b-2 border-primary bg-primary/5 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab === "overview"
+                  ? t("Overview", "نظرة عامة")
+                  : tab === "borrows"
+                    ? t("Borrow reports", "تقارير الإعارات")
+                    : t("Book reports", "تقارير الكتب")}
+              </button>
+            ))}
+          </div>
+
+          {reportTab === "overview" && (
+            <>
+              <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                      {t("Availability", "التوفر")}
+                    </div>
+                    <h2 className="mt-1 text-xl font-bold text-[#263064]">
+                      {t("Copies on the shelf", "النسخ الموجودة على الرف")}
+                    </h2>
+                  </div>
+                  <span className="font-mono text-lg font-bold text-[#263064]">
+                    {available}/{copies}
+                  </span>
                 </div>
-                <h2 className="mt-1 text-xl font-bold text-[#263064]">
-                  {t("Copies on the shelf", "النسخ الموجودة على الرف")}
-                </h2>
+                <div className="mt-5 h-3 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{
+                      width: `${copies ? Math.min((available / copies) * 100, 100) : 0}%`,
+                    }}
+                  />
+                </div>
+                <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                    {t("Available", "متاح")} ({available})
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-[#DBB46C]" />
+                    {t("Borrowed", "معار")} ({borrowedCopies})
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-[#E53935]" />
+                    {t("Lost + Damaged", "مفقود + تالف")} ({lostBooks + damagedBooks})
+                  </span>
+                </div>
+              </section>
+              <div className="mt-6 grid gap-6 xl:grid-cols-2">
+                <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
+                  <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                    {t("Monthly borrows", "الإعارات الشهرية")}
+                  </div>
+                  <h2 className="mt-1 mb-4 text-lg font-bold text-[#263064]">
+                    {t("Borrowing activity over the year", "نشاط الإعارات على مدار السنة")}
+                  </h2>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsBarChart data={monthlyBorrows}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <RechartsTooltip />
+                        <Bar dataKey="count" fill="#263064" radius={[4, 4, 0, 0]} />
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+                <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
+                  <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                    {t("By category", "حسب التصنيف")}
+                  </div>
+                  <h2 className="mt-1 mb-4 text-lg font-bold text-[#263064]">
+                    {t("Books per category", "عدد الكتب لكل تصنيف")}
+                  </h2>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsBarChart data={gradeDistribution}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <RechartsTooltip />
+                        <Bar dataKey="count" fill="#DBB46C" radius={[4, 4, 0, 0]} />
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
               </div>
-              <span className="font-mono text-lg font-bold text-[#263064]">
-                {available}/{copies}
-              </span>
-            </div>
-            <div className="mt-5 h-3 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{
-                  width: `${copies ? Math.min((available / copies) * 100, 100) : 0}%`,
-                }}
+            </>
+          )}
+
+          {reportTab === "borrows" && (
+            <div className="mt-6 space-y-6">
+              <ReportSection
+                title={t("Active borrows", "الإعارات النشطة")}
+                titleAr="الإعارات النشطة"
+                columns={[
+                  { key: "borrowerName", header: t("Borrower", "المُعار") },
+                  { key: "bookTitle", header: t("Book", "الكتاب") },
+                  { key: "borrowedAt", header: t("Borrowed", "تاريخ الإعارة") },
+                  { key: "dueDate", header: t("Due", "الاسترجاع") },
+                ]}
+                data={activeBorrows.map((b) => ({
+                  borrowerName: b.borrowerName || "—",
+                  bookTitle: b.bookTitle || "—",
+                  borrowedAt: b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString("en-GB") : "—",
+                  dueDate: b.dueDate ? new Date(b.dueDate).toLocaleDateString("en-GB") : "—",
+                }))}
+                exportType="borrows"
+                t={t}
+              />
+              <ReportSection
+                title={t("Returned borrows", "الإعارات المُرجعة")}
+                titleAr="الإعارات المُرجعة"
+                columns={[
+                  { key: "borrowerName", header: t("Borrower", "المُعار") },
+                  { key: "bookTitle", header: t("Book", "الكتاب") },
+                  { key: "borrowedAt", header: t("Borrowed", "تاريخ الإعارة") },
+                  { key: "returnDate", header: t("Returned", "تاريخ الإرجاع") },
+                ]}
+                data={borrows.filter((b) => b.returnedAt).map((b) => ({
+                  borrowerName: b.borrowerName || "—",
+                  bookTitle: b.bookTitle || "—",
+                  borrowedAt: b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString("en-GB") : "—",
+                  returnDate: b.returnedAt ? new Date(b.returnedAt).toLocaleDateString("en-GB") : "—",
+                }))}
+                exportType="borrows"
+                t={t}
               />
             </div>
-          </section>
+          )}
+
+          {reportTab === "books" && (
+            <div className="mt-6 space-y-6">
+              <ReportSection
+                title={t("All books", "جميع الكتب")}
+                titleAr="جميع الكتب"
+                columns={[
+                  { key: "title", header: t("Title", "العنوان") },
+                  { key: "author", header: t("Author", "المؤلف") },
+                  { key: "category", header: t("Category", "التصنيف") },
+                  { key: "language", header: t("Language", "اللغة") },
+                  { key: "copies", header: t("Copies", "النسخ") },
+                  { key: "availableCopies", header: t("Available", "المتاحة") },
+                  { key: "status", header: t("Status", "الحالة") },
+                ]}
+                data={books.map((b) => ({
+                  title: b.title,
+                  author: b.author || "—",
+                  category: b.category || "—",
+                  language: b.language || "—",
+                  copies: String(b.copies),
+                  availableCopies: String(b.availableCopies ?? b.copies),
+                  status: b.status || "available",
+                }))}
+                exportType="books"
+                t={t}
+              />
+              <ReportSection
+                title={t("Lost books", "الكتب المفقودة")}
+                titleAr="الكتب المفقودة"
+                columns={[
+                  { key: "title", header: t("Title", "العنوان") },
+                  { key: "author", header: t("Author", "المؤلف") },
+                  { key: "isbn", header: "ISBN" },
+                  { key: "shelf", header: t("Shelf", "الرف") },
+                ]}
+                data={books.filter((b) => b.status === "lost").map((b) => ({
+                  title: b.title,
+                  author: b.author || "—",
+                  isbn: b.isbn || "—",
+                  shelf: b.shelf || "—",
+                }))}
+                exportType="books"
+                t={t}
+              />
+              <ReportSection
+                title={t("Damaged books", "الكتب التالفة")}
+                titleAr="الكتب التالفة"
+                columns={[
+                  { key: "title", header: t("Title", "العنوان") },
+                  { key: "author", header: t("Author", "المؤلف") },
+                  { key: "isbn", header: "ISBN" },
+                  { key: "shelf", header: t("Shelf", "الرف") },
+                ]}
+                data={books.filter((b) => b.status === "damaged").map((b) => ({
+                  title: b.title,
+                  author: b.author || "—",
+                  isbn: b.isbn || "—",
+                  shelf: b.shelf || "—",
+                }))}
+                exportType="books"
+                t={t}
+              />
+            </div>
+          )}
         </>
       )}
     </div>
@@ -4502,6 +5122,7 @@ function CategoriesPage() {
     }
     return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
   }, [books]);
+  const groupPages = usePagination(groups);
   return (
     <div className="rise-in">
       <PageHeading
@@ -4552,7 +5173,7 @@ function CategoriesPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          {groups.map(([category, group], index) => {
+          {groupPages.pageItems.map(([category, group], index) => {
             const copies = group.reduce((sum, book) => sum + book.copies, 0);
             const available = group.reduce(
               (sum, book) => sum + (book.availableCopies ?? book.copies),
@@ -4643,6 +5264,14 @@ function CategoriesPage() {
               </div>
             );
           })}
+            <Pagination
+              page={groupPages.page}
+              pageCount={groupPages.pageCount}
+              totalItems={groupPages.totalItems}
+              pageSize={groupPages.pageSize}
+              onPageChange={groupPages.setPage}
+              onPageSizeChange={groupPages.setPageSize}
+            />
         </div>
       )}
     </div>
@@ -4665,6 +5294,7 @@ function IndexPage() {
       ),
     [query.data],
   );
+  const bookPages = usePagination(books);
   return (
     <div className="rise-in">
       <PageHeading
@@ -4755,7 +5385,7 @@ function IndexPage() {
             <span className="text-center">{t("Barcode", "الباركود")}</span>
             <span className="text-center">{t("Copies", "النسخ")}</span>
           </div>
-          {books.map((book) => (
+          {bookPages.pageItems.map((book) => (
             <div
               key={book.id}
               className="grid min-w-[880px] grid-cols-[2fr_1.2fr_1fr_.7fr_.7fr_1.1fr_.7fr] items-center border-b border-border/70 px-5 py-2.5 transition-colors hover:bg-secondary/40"
@@ -4790,6 +5420,14 @@ function IndexPage() {
               </span>
             </div>
           ))}
+            <Pagination
+              page={bookPages.page}
+              pageCount={bookPages.pageCount}
+              totalItems={bookPages.totalItems}
+              pageSize={bookPages.pageSize}
+              onPageChange={bookPages.setPage}
+              onPageSizeChange={bookPages.setPageSize}
+            />
         </div>
       )}
     </div>
