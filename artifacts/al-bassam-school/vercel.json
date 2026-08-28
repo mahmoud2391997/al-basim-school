@@ -1,5 +1,5 @@
 {
-  "installCommand": "pnpm install --legacy-peer-deps",
+  "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist/public",
   "framework": null,
