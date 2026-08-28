@@ -14,7 +14,7 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 
-export type EntityType = "students" | "teachers" | "employees" | "books";
+export type EntityType = "students" | "teachers" | "employees" | "books" | "borrows";
 
 export interface EntitySchema {
   label: string;
@@ -77,6 +77,17 @@ const SCHEMAS: Record<EntityType, EntitySchema> = {
       { key: "jobTitle", header: "Job Title", headerAr: "المسمى الوظيفي", required: true },
       { key: "phone", header: "Phone", headerAr: "الهاتف", required: true },
       { key: "status", header: "Status", headerAr: "الحالة", required: false },
+    ],
+  },
+  borrows: {
+    label: "Borrows",
+    labelAr: "الإعارات",
+    columns: [
+      { key: "borrowerName", header: "Borrower", headerAr: "المُعار", required: false },
+      { key: "bookTitle", header: "Book", headerAr: "الكتاب", required: false },
+      { key: "borrowDate", header: "Borrow Date", headerAr: "تاريخ الإعارة", required: false, type: "date" },
+      { key: "dueDate", header: "Due Date", headerAr: "تاريخ الاستحقاق", required: false, type: "date" },
+      { key: "returnDate", header: "Return Date", headerAr: "تاريخ الإرجاع", required: false, type: "date" },
     ],
   },
   books: {
@@ -359,7 +370,7 @@ export async function exportToDOCX(data: Record<string, any>[], type: EntityType
   downloadBlob(blob, generateFilename(type, "docx"));
 }
 
-// ─── SAMPLE DATA ─────────────────────────────────────────────────────
+// ─── SAMPLE DATA ────────────────────────────────────────────────��────
 
 const SAMPLE_DATA: Record<EntityType, Record<string, string>[]> = {
   students: [
@@ -380,6 +391,10 @@ const SAMPLE_DATA: Record<EntityType, Record<string, string>[]> = {
     { name: "Hassan", nameArabic: "حسن", role: "Librarian", roleAr: "أمين المكتبة", department: "Library", departmentAr: "المكتبة", email: "hassan@albassam.edu", phone: "0561112233", hireDate: "2020-03-01", status: "active" },
     { name: "Layla", nameArabic: "ليلى", role: "Admin Assistant", roleAr: "مساعد إداري", department: "Admin", departmentAr: "الإدارة", email: "layla@albassam.edu", phone: "0562223344", hireDate: "2021-06-15", status: "active" },
     { name: "Tariq", nameArabic: "طارق", role: "Janitor", roleAr: "عميل صيانة", department: "Maintenance", departmentAr: "الصيانة", email: "tariq@albassam.edu", phone: "0563334455", hireDate: "2019-01-10", status: "active" },
+  ],
+  borrows: [
+    { borrowerName: "Sara Al-Harbi", bookTitle: "Our Planet", borrowDate: "2026-01-12", dueDate: "2026-01-26", returnDate: "" },
+    { borrowerName: "Omar Al-Qahtani", bookTitle: "Complete ICT IGCSE", borrowDate: "2026-02-04", dueDate: "2026-02-18", returnDate: "2026-02-16" },
   ],
   books: [
     { title: "مختارات من القرآن الكريم", titleAr: "مختارات من القرآن الكريم", author: "Anonymous", authorAr: "مجهول", isbn: "978-603-123456-1", category: "Religion", categoryAr: "الدين", language: "Arabic", copies: "5", shelf: "A1", status: "available" },
