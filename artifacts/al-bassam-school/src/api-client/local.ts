@@ -201,9 +201,9 @@ export function useGetDashboardSummary<TData = DashboardSummary, TError = Error>
         students: students.filter((s) => s.status === 'active').length,
         teachers: teachers.filter((t) => t.status === 'active').length,
         books: books.reduce((sum, b) => sum + (b.copies || 0), 0),
-        availableBooks: books.reduce((sum, b) => sum + (b.availableCopies ?? b.copies || 0), 0),
-        borrowedBooks: books.reduce((sum, b) => sum + ((b.copies || 0) - (b.availableCopies ?? b.copies || 0)), 0),
-        employees: read<import("@workspace/api-client").Employee>(LS.employees).filter((e) => e.status === 'active').length,
+        availableBooks: books.reduce((sum, b) => sum + (b.availableCopies ?? b.copies ?? 0), 0),
+        borrowedBooks: books.reduce((sum, b) => sum + ((b.copies || 0) - (b.availableCopies ?? b.copies ?? 0)), 0),
+        employees: read<Employee>(LS.employees).filter((e) => e.status === 'active').length,
         attendanceRate: 94,
         recentActivity: activity.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 10),
       };
@@ -337,7 +337,7 @@ function makeMutation<TInput, TResult>(
   const useMutate = (options?: { mutation?: UseMutationOptions<TResult, Error, TInput, unknown> }) =>
     useMutation<TResult, Error, TInput, unknown>({
       mutationKey: [mutationKey],
-      mutationFn: fn,
+      mutationFn: async (input) => fn(input),
       ...options?.mutation,
     });
   return { useMutate, fn };
@@ -363,7 +363,7 @@ export const useCreateStudent = studentMutations.useMutate;
 const updateStudentFn = (_opts?: any) =>
   useMutation<Student, Error, { id: number; data: StudentInput }, unknown>({
     mutationKey: ['updateStudent'],
-    mutationFn: ({ id, data }) => {
+    mutationFn: async ({ id, data }) => {
       const items = read<Student>(LS.students);
       const idx = items.findIndex((s) => s.id === id);
       if (idx === -1) throw new Error('Student not found');
@@ -378,7 +378,7 @@ export const useUpdateStudent = updateStudentFn;
 const deleteStudentFn = (_opts?: any) =>
   useMutation<void, Error, { id: number }, unknown>({
     mutationKey: ['deleteStudent'],
-    mutationFn: ({ id }) => {
+    mutationFn: async ({ id }) => {
       const items = read<Student>(LS.students);
       write(LS.students, items.filter((s) => s.id !== id));
     },
@@ -390,7 +390,7 @@ export const useDeleteStudent = deleteStudentFn;
 const createTeacherFn = (_opts?: any) =>
   useMutation<Teacher, Error, { data: TeacherInput }, unknown>({
     mutationKey: ['createTeacher'],
-    mutationFn: ({ data }) => {
+    mutationFn: async ({ data }) => {
       const items = read<Teacher>(LS.teachers);
       const id = nextId(LS.teachers);
       const fullName = [data.name, data.surname].filter(Boolean).join(' ') || data.employeeCode || '';
@@ -433,7 +433,7 @@ export const useCreateTeacher = createTeacherFn;
 const updateTeacherFn = (_opts?: any) =>
   useMutation<Teacher, Error, { id: number; data: TeacherInput }, unknown>({
     mutationKey: ['updateTeacher'],
-    mutationFn: ({ id, data }) => {
+    mutationFn: async ({ id, data }) => {
       const items = read<Teacher>(LS.teachers);
       const idx = items.findIndex((t) => t.id === id);
       if (idx === -1) throw new Error('Teacher not found');
@@ -450,7 +450,7 @@ export const useUpdateTeacher = updateTeacherFn;
 const deleteTeacherFn = (_opts?: any) =>
   useMutation<void, Error, { id: number }, unknown>({
     mutationKey: ['deleteTeacher'],
-    mutationFn: ({ id }) => {
+    mutationFn: async ({ id }) => {
       const items = read<Teacher>(LS.teachers);
       write(LS.teachers, items.filter((t) => t.id !== id));
     },
@@ -462,7 +462,7 @@ export const useDeleteTeacher = deleteTeacherFn;
 const createEmployeeFn = (_opts?: any) =>
   useMutation<Employee, Error, { data: EmployeeInput }, unknown>({
     mutationKey: ['createEmployee'],
-    mutationFn: ({ data }) => {
+    mutationFn: async ({ data }) => {
       const items = read<Employee>(LS.employees);
       const id = nextId(LS.employees);
       const employee: Employee = { ...data, id, status: data.status ?? 'active' };
@@ -477,7 +477,7 @@ export const useCreateEmployee = createEmployeeFn;
 const updateEmployeeFn = (_opts?: any) =>
   useMutation<Employee, Error, { id: number; data: EmployeeInput }, unknown>({
     mutationKey: ['updateEmployee'],
-    mutationFn: ({ id, data }) => {
+    mutationFn: async ({ id, data }) => {
       const items = read<Employee>(LS.employees);
       const idx = items.findIndex((e) => e.id === id);
       if (idx === -1) throw new Error('Employee not found');
@@ -492,7 +492,7 @@ export const useUpdateEmployee = updateEmployeeFn;
 const deleteEmployeeFn = (_opts?: any) =>
   useMutation<void, Error, { id: number }, unknown>({
     mutationKey: ['deleteEmployee'],
-    mutationFn: ({ id }) => {
+    mutationFn: async ({ id }) => {
       const items = read<Employee>(LS.employees);
       write(LS.employees, items.filter((e) => e.id !== id));
     },
@@ -504,7 +504,7 @@ export const useDeleteEmployee = deleteEmployeeFn;
 const createBookFn = (_opts?: any) =>
   useMutation<Book, Error, { data: BookInput }, unknown>({
     mutationKey: ['createBook'],
-    mutationFn: ({ data }) => {
+    mutationFn: async ({ data }) => {
       const items = read<Book>(LS.books);
       const id = nextId(LS.books);
       const book: Book = {
@@ -539,7 +539,7 @@ export const useCreateBook = createBookFn;
 const updateBookFn = (_opts?: any) =>
   useMutation<Book, Error, { id: number; data: BookInput }, unknown>({
     mutationKey: ['updateBook'],
-    mutationFn: ({ id, data }) => {
+    mutationFn: async ({ id, data }) => {
       const items = read<Book>(LS.books);
       const idx = items.findIndex((b) => b.id === id);
       if (idx === -1) throw new Error('Book not found');
@@ -554,7 +554,7 @@ export const useUpdateBook = updateBookFn;
 const deleteBookFn = (_opts?: any) =>
   useMutation<void, Error, { id: number }, unknown>({
     mutationKey: ['deleteBook'],
-    mutationFn: ({ id }) => {
+    mutationFn: async ({ id }) => {
       const items = read<Book>(LS.books);
       write(LS.books, items.filter((b) => b.id !== id));
     },
@@ -566,7 +566,7 @@ export const useDeleteBook = deleteBookFn;
 const createBorrowFn = (_opts?: any) =>
   useMutation<Borrow, Error, { data: BorrowInput }, unknown>({
     mutationKey: ['createBorrow'],
-    mutationFn: ({ data }) => {
+    mutationFn: async ({ data }) => {
       const items = read<Borrow>(LS.borrows);
       const id = nextId(LS.borrows);
       const books = read<Book>(LS.books);
@@ -608,7 +608,7 @@ export const useCreateBorrow = createBorrowFn;
 const returnBorrowFn = (_opts?: any) =>
   useMutation<Borrow, Error, { id: number }, unknown>({
     mutationKey: ['returnBorrow'],
-    mutationFn: ({ id }) => {
+    mutationFn: async ({ id }) => {
       const items = read<Borrow>(LS.borrows);
       const idx = items.findIndex((b) => b.id === id);
       if (idx === -1) throw new Error('Borrow not found');

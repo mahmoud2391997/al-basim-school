@@ -110,7 +110,7 @@ import { getBooks } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ImportDialog } from "@/components/import-dialog";
 import { ExportMenu } from "@/components/export-menu";
-import { downloadTemplate } from "@/utils/import-export";
+import { downloadTemplate, exportToExcel } from "@/utils/import-export";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -174,7 +174,7 @@ const useT = () => useContext(LanguageContext);
 
 function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>(() =>
-    localStorage.getItem("al-bassam-language") === "en" ? "en" : "ar",
+    typeof window !== "undefined" && localStorage.getItem("al-bassam-language") === "en" ? "en" : "ar",
   );
   useEffect(() => {
     document.documentElement.lang = language;
@@ -725,7 +725,7 @@ function Pagination({
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
 }) {
-  const { t, language } = useT();
+  const { t, lang: language } = useT();
   if (pageCount <= 1 && totalItems <= 8) return null;
   const from = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, totalItems);
@@ -2759,7 +2759,7 @@ function TeachersPage() {
   const filteredTeachers = useMemo(() => teachers.filter((te) => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return (te.fullName || "").toLowerCase().includes(q) || (te.fullNameArabic || "").toLowerCase().includes(q) || (te.subject || "").toLowerCase().includes(q) || (te.employeeNumber || "").toLowerCase().includes(q);
+    return (te.fullName || "").toLowerCase().includes(q) || (te.fullNameArabic || "").toLowerCase().includes(q) || (te.subject || "").toLowerCase().includes(q) || (te.employeeCode || "").toLowerCase().includes(q);
   }), [teachers, search]);
   const teacherPages = usePagination(filteredTeachers);
   const openNew = () => {
@@ -4736,14 +4736,12 @@ function ReportSection({ title, titleAr, columns, data, exportType, t }: {
 }) {
   const reportPages = usePagination(data, 16);
   const handleExcel = () => {
-    import("@/utils/import-export").then((mod) => {
-      const rows = data.map((row) => {
-        const obj: Record<string, string> = {};
-        columns.forEach((c) => { obj[c.header] = row[c.key] || "—"; });
-        return obj;
-      });
-      mod.exportToExcel(rows, "books");
+    const rows = data.map((row) => {
+      const obj: Record<string, string> = {};
+      columns.forEach((c) => { obj[c.header] = row[c.key] || "—"; });
+      return obj;
     });
+    exportToExcel(rows, exportType);
   };
   return (
     <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
