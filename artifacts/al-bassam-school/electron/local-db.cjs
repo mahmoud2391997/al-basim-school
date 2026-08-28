@@ -30,6 +30,22 @@ function openSchoolDatabase(userDataPath) {
   for (const [table, column] of migrations) {
     try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${column}`); } catch (error) { if (!String(error.message).includes('duplicate column name')) throw error; }
   }
+  function ensureColumnDefault(tableName, column, defaultValue) {
+    const info = db.prepare(`PRAGMA table_info(${tableName})`).all();
+    const col = info.find((c) => c.name === column);
+    if (!col || col.dflt_value !== null) return;
+    const sql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name = ?").get(tableName).sql;
+    db.transaction(() => {
+      db.exec(`ALTER TABLE ${tableName} RENAME TO ${tableName}__rebuild`);
+      db.exec(sql.replace(new RegExp(`${column}\\s+(INTEGER\\s+NOT\\s+NULL)`, 'i'), `${column} $1 DEFAULT ${defaultValue}`));
+      const cols = info.map((c) => c.name).join(',');
+      db.exec(`INSERT INTO ${tableName} (${cols}) SELECT ${cols} FROM ${tableName}__rebuild`);
+      db.exec(`DROP TABLE ${tableName}__rebuild`);
+    })();
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_${tableName}_year ON ${tableName}(academic_year_id)`);
+  }
+  ensureColumnDefault('students', 'academic_year_id', 1);
+  ensureColumnDefault('teachers', 'academic_year_id', 1);
   if (db.prepare('SELECT COUNT(*) AS count FROM students').get().count === 0) {
     const seed = db.transaction(() => {
       db.prepare('INSERT OR IGNORE INTO academic_years (name, label, start_date, end_date, is_current) VALUES (?, ?, ?, ?, ?)').run('2025-2026', '2025-2026', '2025-09-01', '2026-06-30', 1);

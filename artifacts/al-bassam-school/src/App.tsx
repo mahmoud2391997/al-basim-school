@@ -204,7 +204,9 @@ function LogoMark({ compact = false }: { compact?: boolean }) {
       >
         <img
           src={
-            compact ? "/al-bassam-logo-mark.png" : "/al-bassam-logo-trim.png"
+            compact
+              ? "./al-bassam-logo-mark.png"
+              : "./al-bassam-logo-trim.png"
           }
           alt="Al-Bassam School"
           className="h-full w-full object-contain"
@@ -753,23 +755,23 @@ function Pagination({
         {language === "ar" ? (
           <>
             <button
-              disabled={page === pageCount}
-              onClick={() => onPageChange(page + 1)}
-              className="rounded-md border border-border p-1 disabled:opacity-40"
-              aria-label={t("Next page", "الصفحة التالية")}
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span className="text-muted-foreground/70">
-              {page} / {pageCount}
-            </span>
-            <button
               disabled={page === 1}
               onClick={() => onPageChange(page - 1)}
               className="rounded-md border border-border p-1 disabled:opacity-40"
               aria-label={t("Previous page", "الصفحة السابقة")}
             >
               <ChevronRight size={14} />
+            </button>
+            <span className="text-muted-foreground/70">
+              {page} / {pageCount}
+            </span>
+            <button
+              disabled={page === pageCount}
+              onClick={() => onPageChange(page + 1)}
+              className="rounded-md border border-border p-1 disabled:opacity-40"
+              aria-label={t("Next page", "الصفحة التالية")}
+            >
+              <ChevronLeft size={14} />
             </button>
           </>
         ) : (
