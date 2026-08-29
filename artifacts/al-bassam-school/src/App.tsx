@@ -4896,6 +4896,22 @@ function BookRow({
           >
             {t("Broken", "تالف")}
           </button>
+          <button
+            onClick={() => onConditionChange(book, "fixed")}
+            disabled={damagedCopies <= 0}
+            className="rounded-md border border-primary/25 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+            data-testid={`button-repair-book-${book.id}`}
+          >
+            {t("Repair", "إصلاح")}
+          </button>
+          <button
+            onClick={() => onConditionChange(book, "found")}
+            disabled={lostCopies <= 0}
+            className="rounded-md border border-[#32B77E]/40 px-2 py-1 text-[10px] font-semibold text-[#23865C] hover:bg-[#32B77E]/10 disabled:cursor-not-allowed disabled:opacity-40"
+            data-testid={`button-found-book-${book.id}`}
+          >
+            {t("Found", "تم العثور عليه")}
+          </button>
         </div>
       </div>
     </div>
@@ -5155,7 +5171,7 @@ function ReturnBorrowControls({
     );
   };
   const btn = size === "sm" ? "h-8 px-3 text-xs" : "h-7 px-2.5 text-[11px]";
-  const extra = size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-1 py-0.5 text-[10px]";
+  const extra = size === "sm" ? "px-2 py-1 text-[10px]" : "px-1.5 py-0.5 text-[10px]";
   return (
     <div className="flex flex-col items-end gap-1">
       <Button
@@ -5171,7 +5187,7 @@ function ReturnBorrowControls({
         <button
           onClick={() => run("damaged")}
           disabled={pending}
-          className={`rounded-md ${extra} font-medium text-muted-foreground hover:text-accent-foreground disabled:opacity-40`}
+          className={`rounded-md border border-accent/40 ${extra} font-semibold text-accent-foreground hover:bg-accent/10 disabled:opacity-40`}
           data-testid={`button-return-borrow-damaged-${borrow.id}`}
           title={t("Return as damaged", "الإعادة ككتاب تالف")}
         >
@@ -5180,7 +5196,7 @@ function ReturnBorrowControls({
         <button
           onClick={() => run("lost")}
           disabled={pending}
-          className={`rounded-md ${extra} font-medium text-muted-foreground hover:text-destructive disabled:opacity-40`}
+          className={`rounded-md border border-destructive/25 ${extra} font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-40`}
           data-testid={`button-return-borrow-lost-${borrow.id}`}
           title={t("Report as lost", "الإبلاغ كمفقود")}
         >
