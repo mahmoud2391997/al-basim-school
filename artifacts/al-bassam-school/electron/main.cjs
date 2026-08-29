@@ -6,8 +6,22 @@ const { startLocalApi } = require("./local-api.cjs");
 let localApi;
 let mainWindow;
 let quitting = false;
+let databaseClosed = false;
 
 const isDev = Boolean(process.env.ELECTRON_START_URL);
+const localApiOrigin = () => `http://127.0.0.1:${localApi?.port}`;
+const isAllowedNavigation = (url) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'file:' || parsed.origin === localApiOrigin() || (isDev && parsed.origin === new URL(process.env.ELECTRON_START_URL).origin);
+  } catch {
+    return false;
+  }
+};
+
+const hasSingleInstance = app.requestSingleInstanceLock();
+if (!hasSingleInstance) app.quit();
+else app.on('second-instance', () => mainWindow?.show());
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -28,7 +42,11 @@ function createWindow() {
   });
 
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (!url.startsWith('file://') && !url.startsWith('http://localhost:')) event.preventDefault();
+    if (!isAllowedNavigation(url)) event.preventDefault();
+  });
+
+  mainWindow.webContents.on('will-redirect', (event, url) => {
+    if (!isAllowedNavigation(url)) event.preventDefault();
   });
 
   if (isDev) {
@@ -56,13 +74,30 @@ ipcMain.handle('restore-database', async () => {
   if (!localApi) return { canceled: true };
   const result = await dialog.showOpenDialog({ title: 'Restore school database', properties: ['openFile'], filters: [{ name: 'SQLite database', extensions: ['sqlite'] }] });
   if (result.canceled || !result.filePaths[0]) return { canceled: true };
+  const databasePath = path.join(app.getPath('userData'), 'al-bassam-school.sqlite');
+  const restorePath = `${databasePath}.restore-${process.pid}`;
+  fs.copyFileSync(result.filePaths[0], restorePath);
   localApi.db.close();
-  fs.copyFileSync(result.filePaths[0], path.join(app.getPath('userData'), 'al-bassam-school.sqlite'));
-  app.relaunch(); app.exit(0);
+  databaseClosed = true;
+  fs.rmSync(`${databasePath}-wal`, { force: true });
+  fs.rmSync(`${databasePath}-shm`, { force: true });
+  const previousPath = `${databasePath}.previous-${process.pid}`;
+  try {
+    if (fs.existsSync(databasePath)) fs.renameSync(databasePath, previousPath);
+    fs.renameSync(restorePath, databasePath);
+    if (fs.existsSync(previousPath)) fs.rmSync(previousPath, { force: true });
+  } catch (error) {
+    if (!fs.existsSync(databasePath) && fs.existsSync(previousPath)) fs.renameSync(previousPath, databasePath);
+    if (fs.existsSync(restorePath)) fs.rmSync(restorePath, { force: true });
+    throw error;
+  }
+  app.relaunch();
+  app.exit(0);
   return { canceled: false };
 });
 
 app.whenReady().then(async () => {
+  app.setAppUserModelId('com.albasam.school');
   localApi = await startLocalApi(app.getPath("userData"));
   createWindow();
   app.on("activate", () => {
@@ -77,7 +112,11 @@ app.whenReady().then(async () => {
 app.on("before-quit", () => {
   quitting = true;
   localApi?.server.close();
-  localApi?.db.close();
+  if (localApi?.db && !databaseClosed) {
+    localApi.db.pragma('wal_checkpoint(TRUNCATE)');
+    localApi.db.close();
+    databaseClosed = true;
+  }
 });
 
 app.on("window-all-closed", () => {
