@@ -2398,7 +2398,7 @@ function TeacherDialog({
                 <DialogTitle className="mt-1 text-2xl text-[#263064]">
                   {t(
                     isEditing ? "Update teacher" : "Add a teacher",
-                    isEditing ? "تحديث بيانات معلم" : "إضافة معلم",
+                    isEditing ? "تحديث بيانات مع��م" : "إضافة معلم",
                   )}
                 </DialogTitle>
                 <DialogDescription className="mt-1">
@@ -4589,7 +4589,7 @@ function LibraryPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_176px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_250px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="title"
               activeKey={sortKey}
@@ -4648,6 +4648,7 @@ function LibraryPage() {
               book={book}
               onEdit={edit}
               onDelete={remove}
+              onConditionChange={handleConditionChange}
             />
           ))}
         </div>
@@ -4803,7 +4804,7 @@ function BookRow({
   const percent = book.copies ? Math.round((available / book.copies) * 100) : 0;
   return (
     <div
-      className="group grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_176px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
+      className="group grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_250px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
       data-testid={`row-book-${book.id}`}
     >
       <div className="flex items-center gap-3">
@@ -4859,23 +4860,59 @@ function BookRow({
       >
         {book.isbn || "—"}
       </span>
-      <div className="flex justify-end gap-1">
-        <button
-          onClick={() => onEdit(book)}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-primary"
-          data-testid={`button-edit-book-${book.id}`}
-          aria-label={`Edit ${book.title}`}
-        >
-          <Pencil size={14} />
-        </button>
-        <button
-          onClick={() => onDelete(book)}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-[#B92327]/10 hover:text-destructive"
-          data-testid={`button-delete-book-${book.id}`}
-          aria-label={`Delete ${book.title}`}
-        >
-          <Trash2 size={14} />
-        </button>
+      <div className="flex flex-col items-end gap-1">
+        <div className="flex justify-end gap-1">
+          <button
+            onClick={() => onEdit(book)}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-primary"
+            data-testid={`button-edit-book-${book.id}`}
+            aria-label={`Edit ${book.title}`}
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            onClick={() => onDelete(book)}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-[#B92327]/10 hover:text-destructive"
+            data-testid={`button-delete-book-${book.id}`}
+            aria-label={`Delete ${book.title}`}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => onConditionChange(book, "lost")}
+            disabled={available <= 0}
+            className="rounded-md border border-destructive/25 px-2 py-1 text-[10px] font-semibold text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-40"
+            data-testid={`button-lost-book-${book.id}`}
+          >
+            {t("Lost", "مفقود")}
+          </button>
+          <button
+            onClick={() => onConditionChange(book, "damaged")}
+            disabled={available <= 0}
+            className="rounded-md border border-accent/40 px-2 py-1 text-[10px] font-semibold text-accent-foreground hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
+            data-testid={`button-damaged-book-${book.id}`}
+          >
+            {t("Broken", "تالف")}
+          </button>
+          <button
+            onClick={() => onConditionChange(book, "fixed")}
+            disabled={damagedCopies <= 0}
+            className="rounded-md border border-primary/25 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+            data-testid={`button-repair-book-${book.id}`}
+          >
+            {t("Repair", "إصلاح")}
+          </button>
+          <button
+            onClick={() => onConditionChange(book, "found")}
+            disabled={lostCopies <= 0}
+            className="rounded-md border border-[#32B77E]/40 px-2 py-1 text-[10px] font-semibold text-[#23865C] hover:bg-[#32B77E]/10 disabled:cursor-not-allowed disabled:opacity-40"
+            data-testid={`button-found-book-${book.id}`}
+          >
+            {t("Found", "تم العثور عليه")}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -5134,7 +5171,7 @@ function ReturnBorrowControls({
     );
   };
   const btn = size === "sm" ? "h-8 px-3 text-xs" : "h-7 px-2.5 text-[11px]";
-  const extra = size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-1 py-0.5 text-[10px]";
+  const extra = size === "sm" ? "px-2 py-1 text-[10px]" : "px-1.5 py-0.5 text-[10px]";
   return (
     <div className="flex flex-col items-end gap-1">
       <Button
@@ -5150,7 +5187,7 @@ function ReturnBorrowControls({
         <button
           onClick={() => run("damaged")}
           disabled={pending}
-          className={`rounded-md ${extra} font-medium text-muted-foreground hover:text-accent-foreground disabled:opacity-40`}
+          className={`rounded-md border border-accent/40 ${extra} font-semibold text-accent-foreground hover:bg-accent/10 disabled:opacity-40`}
           data-testid={`button-return-borrow-damaged-${borrow.id}`}
           title={t("Return as damaged", "الإعادة ككتاب تالف")}
         >
@@ -5159,7 +5196,7 @@ function ReturnBorrowControls({
         <button
           onClick={() => run("lost")}
           disabled={pending}
-          className={`rounded-md ${extra} font-medium text-muted-foreground hover:text-destructive disabled:opacity-40`}
+          className={`rounded-md border border-destructive/25 ${extra} font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-40`}
           data-testid={`button-return-borrow-lost-${borrow.id}`}
           title={t("Report as lost", "الإبلاغ كمفقود")}
         >
