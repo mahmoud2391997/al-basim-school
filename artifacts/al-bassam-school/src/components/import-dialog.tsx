@@ -166,17 +166,17 @@ export function ImportDialog({
               <table className="min-w-full text-xs">
                 <thead>
                   <tr className="border-b border-border bg-[#263064]/5">
-                    <th className="px-2 py-2 text-left font-bold uppercase tracking-wider text-muted-foreground w-8">#</th>
+                    <th className="px-2 py-2 text-start font-bold uppercase tracking-wider text-muted-foreground w-8">#</th>
                     {schema.columns.slice(0, 6).map((col) => (
                       <th
                         key={col.key}
-                        className="px-3 py-2 text-left font-bold uppercase tracking-wider text-muted-foreground"
+                        className="px-3 py-2 text-start font-bold uppercase tracking-wider text-muted-foreground"
                       >
                         {col.header}
                         {col.required && <span className="text-destructive">*</span>}
                       </th>
                     ))}
-                    <th className="px-3 py-2 text-left font-bold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2 text-start font-bold uppercase tracking-wider text-muted-foreground">
                       {t("Issues", "المشكلات")}
                     </th>
                   </tr>

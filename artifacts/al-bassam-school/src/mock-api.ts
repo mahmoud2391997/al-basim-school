@@ -284,21 +284,26 @@ function generateSeedData(): Store {
   }
 
   const activity: Row[] = [];
+  const now = new Date();
   for (let i = 0; i < 30; i++) {
     const type = pick(['borrow', 'return', 'new_book']);
-    const month = between(1, 12);
-    const day = between(1, 28);
-    const year = month >= 9 ? 2024 : 2025;
+    const daysAgo = between(0, 20);
+    const itemDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+    const dateStr = itemDate.toISOString().slice(0, 10);
+    const hour = String(between(8, 15)).padStart(2, '0');
+    const minute = String(between(0, 59)).padStart(2, '0');
+    const student = pick(students);
+    const book = pick(books);
     activity.push({
       id: i + 1,
       type,
-      timestamp: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(between(8, 15)).padStart(2, '0')}:${String(between(0, 59)).padStart(2, '0')}:00`,
-      description: type === 'borrow' ? `${pick(students).fullName} borrowed ${pick(books).title}`
-        : type === 'return' ? `${pick(students).fullName} returned ${pick(books).title}`
-        : `New book added: ${pick(books).title}`,
-      details: type === 'borrow' ? { studentName: pick(students).fullName, bookTitle: pick(books).title }
-        : type === 'return' ? { studentName: pick(students).fullName, bookTitle: pick(books).title }
-        : { bookTitle: pick(books).title },
+      timestamp: `${dateStr}T${hour}:${minute}:00`,
+      description: type === 'borrow' ? `${student.fullNameArabic || student.fullName} borrowed ${book.title}`
+        : type === 'return' ? `${student.fullNameArabic || student.fullName} returned ${book.title}`
+        : `New book added: ${book.title}`,
+      details: type === 'borrow' ? { studentName: student.fullNameArabic || student.fullName, bookTitle: book.title }
+        : type === 'return' ? { studentName: student.fullNameArabic || student.fullName, bookTitle: book.title }
+        : { bookTitle: book.title },
     });
   }
 

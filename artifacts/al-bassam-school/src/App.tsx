@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -123,6 +124,9 @@ import {
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ImportDialog } from "@/components/import-dialog";
 import { ExportMenu } from "@/components/export-menu";
+import { NotificationsMenu } from "@/components/notifications-menu";
+import { GlobalSearchDialog } from "@/components/global-search-dialog";
+import { UserNavDropdown } from "@/components/user-nav-dropdown";
 import {
   downloadTemplate,
   exportDatabase,
@@ -199,6 +203,7 @@ function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = language;
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
     document.body.dataset.language = language;
+    document.body.dir = language === "ar" ? "rtl" : "ltr";
     localStorage.setItem("al-bassam-language", language);
   }, [language]);
   const t = useCallback(
@@ -292,8 +297,9 @@ const navItems = [
 ];
 
 function Shell({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("al-bassam-sidebar-collapsed") === "1",
   );
@@ -308,6 +314,17 @@ function Shell({ children }: { children: ReactNode }) {
   const { lang: language, setLanguage, t } = useT();
   const sidebarWidth = collapsed ? 64 : 208;
   const text = t;
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
 
   return (
     <div
@@ -568,25 +585,25 @@ function Shell({ children }: { children: ReactNode }) {
             </button>
             <div className="hidden text-xs text-muted-foreground sm:block">
               <span className="font-medium text-foreground">
-                Al-Bassam School
+                {text("Al-Bassam School", "مدارس البسام الأهلية")}
               </span>
               <span className="mx-2 text-border">/</span>
               <span>
                 {(() => {
-                  if (location === "/settings") return "Settings";
+                  if (location === "/settings") return text("Settings", "الإعدادات");
                   const parent = navItems.find(
                     (item) =>
                       item.href !== "/" &&
                       (location === item.href ||
                         location.startsWith(`${item.href}/`)),
                   );
-                  if (!parent) return "Workspace";
+                  if (!parent) return text("Overview", "نظرة عامة");
                   const tab = parent.tabs.find(
                     (entry) => entry.href === location,
                   );
                   return tab
-                    ? `${parent.label} / ${text(tab.label, tab.arabic)}`
-                    : parent.label;
+                    ? `${text(parent.label, parent.arabic)} / ${text(tab.label, tab.arabic)}`
+                    : text(parent.label, parent.arabic);
                 })()}
               </span>
             </div>
@@ -614,46 +631,58 @@ function Shell({ children }: { children: ReactNode }) {
                 ع
               </button>
             </div>
-            <div className="hidden items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground md:flex">
+            {/* Global Search Button Trigger */}
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="hidden items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 md:flex"
+              data-testid="button-global-search"
+            >
               <Search size={14} />
               <span>
                 {text(
-                  "Search workspace",
-                  "\u0627\u0628\u062D\u062B\u0020\u0641\u064A\u0020\u0645\u0633\u0627\u062D\u0629\u0020\u0627\u0644\u0639\u0645\u0644",
+                  "Search workspace...",
+                  "ابحث في مساحة العمل...",
                 )}
               </span>
-              <kbd className="ml-4 rounded border border-border px-1.5 py-0.5 font-mono text-[9px]">
+              <kbd className="ml-4 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[9px]">
                 ⌘ K
               </kbd>
-            </div>
-            <button
-              className="relative rounded-lg p-2.5 text-muted-foreground transition-colors hover:bg-card hover:text-primary"
-              data-testid="button-notifications"
-              aria-label={text(
-                "View notifications",
-                "\u0639\u0631\u0636\u0020\u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062A",
-              )}
-            >
-              <Bell size={18} />
-              <span
-                className={`absolute top-2 h-1.5 w-1.5 rounded-full bg-[#DBB46C] ${language === "ar" ? "left-2" : "right-2"}`}
-              />
             </button>
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="rounded-lg p-2.5 text-muted-foreground transition-colors hover:bg-card hover:text-primary md:hidden focus:outline-none focus:ring-2 focus:ring-primary/20"
+              data-testid="button-global-search-mobile"
+              aria-label={text("Search workspace", "البحث في مساحة العمل")}
+              title={text("Search workspace", "البحث في مساحة العمل")}
+            >
+              <Search size={18} />
+            </button>
+
+            {/* Notifications Menu Popover */}
+            <NotificationsMenu
+              t={text}
+              language={language}
+              onNavigate={navigate}
+            />
+
             <div className="hidden h-7 w-px bg-border sm:block" />
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#14BAC6]/10 text-[10px] font-bold text-[#14BAC6]">
-                LA
-              </div>
-              <span className="hidden text-xs font-semibold sm:block">
-                Library Admin
-              </span>
-              <ChevronDown
-                size={14}
-                className="hidden text-muted-foreground sm:block"
-              />
-            </div>
+
+            {/* Reactive Library Admin Dropdown */}
+            <UserNavDropdown
+              t={text}
+              language={language}
+              onLanguageChange={setLanguage}
+              onNavigate={navigate}
+            />
           </div>
         </header>
+        <GlobalSearchDialog
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          t={text}
+          language={language}
+          onNavigate={navigate}
+        />
         <div className="px-5 py-7 sm:px-8 lg:px-10">{children}</div>
       </main>
     </div>
@@ -769,10 +798,10 @@ function Pagination({
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
           className="rounded-md border border-border bg-card px-2 py-1 text-xs"
         >
-          <option value={8}>8 / page</option>
-          <option value={16}>16 / page</option>
-          <option value={24}>24 / page</option>
-          <option value={50}>50 / page</option>
+          <option value={8}>{t("8 / page", "8 / صفحة")}</option>
+          <option value={16}>{t("16 / page", "16 / صفحة")}</option>
+          <option value={24}>{t("24 / page", "24 / صفحة")}</option>
+          <option value={50}>{t("50 / page", "50 / صفحة")}</option>
         </select>
       </div>
       <div className="flex items-center gap-1" dir={language === "ar" ? "rtl" : "ltr"}>
@@ -829,9 +858,20 @@ function Pagination({
 function usePagination<T>(items: T[], initialPageSize = 8) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  useEffect(() => setPage(1), [items, pageSize]);
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
-  const currentPage = Math.min(page, pageCount);
+  const currentPage = Math.min(Math.max(1, page), pageCount);
+
+  const prevTotalRef = useRef(items.length);
+  const prevPageSizeRef = useRef(pageSize);
+
+  useEffect(() => {
+    if (prevTotalRef.current !== items.length || prevPageSizeRef.current !== pageSize) {
+      prevTotalRef.current = items.length;
+      prevPageSizeRef.current = pageSize;
+      setPage(1);
+    }
+  }, [items.length, pageSize]);
+
   return {
     page: currentPage,
     pageItems: items.slice(
@@ -859,9 +899,12 @@ function useSort<T>(
 ) {
   const [sortKey, setSortKey] = useState<string | undefined>(initialKey);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const columnsRef = useRef(columns);
+  columnsRef.current = columns;
+
   const sorted = useMemo(() => {
     if (!sortKey) return items;
-    const col = columns.find((c) => c.key === sortKey);
+    const col = columnsRef.current.find((c) => c.key === sortKey);
     if (!col) return items;
     const mult = sortDir === "asc" ? 1 : -1;
     const arr = [...items];
@@ -881,7 +924,7 @@ function useSort<T>(
       return cmp * mult;
     });
     return arr;
-  }, [items, columns, sortKey, sortDir]);
+  }, [items, sortKey, sortDir]);
   const toggleSort = (key: string) => {
     if (sortKey === key) setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
     else {
@@ -897,6 +940,7 @@ function SortHeader({
   activeKey,
   activeDir,
   onSort,
+  align = "center",
   className,
   children,
 }: {
@@ -904,15 +948,22 @@ function SortHeader({
   activeKey?: string;
   activeDir: SortDir;
   onSort: (key: string) => void;
+  align?: "start" | "center" | "end";
   className?: string;
   children: ReactNode;
 }) {
   const active = activeKey === columnKey;
+  const alignClass =
+    align === "start"
+      ? "justify-start text-start"
+      : align === "end"
+        ? "justify-end text-end"
+        : "justify-center text-center";
   return (
     <button
       type="button"
       onClick={() => onSort(columnKey)}
-      className={`group inline-flex items-center justify-end gap-1 outline-none ${active ? "text-[#263064]" : "hover:text-[#263064]"} ${className ?? ""}`}
+      className={`group inline-flex w-full items-center gap-1.5 outline-none transition-colors ${active ? "text-[#263064] font-bold" : "hover:text-[#263064]"} ${alignClass} ${className ?? ""}`}
       data-testid={`button-sort-${columnKey}`}
     >
       <span className="inline-flex items-center gap-1">
@@ -1156,33 +1207,134 @@ function StatCard({
 
 function Dashboard() {
   const [, setLocation] = useLocation();
-  const { t } = useT();
+  const { t, lang: language } = useT();
+  const [activityTab, setActivityTab] = useState<"all" | "borrows" | "books" | "students">("all");
+
   const summaryQuery = useGetDashboardSummary({
     query: { queryKey: getGetDashboardSummaryQueryKey() },
   });
+  const borrowsQuery = useGetBorrows(undefined, {
+    query: { queryKey: getGetBorrowsQueryKey(undefined) },
+  });
+  const booksQuery = useGetBooks(undefined, {
+    query: { queryKey: getGetBooksQueryKey(undefined) },
+  });
+  const studentsQuery = useGetStudents(undefined, {
+    query: { queryKey: getGetStudentsQueryKey(undefined) },
+  });
+
+  const rawBorrows = Array.isArray(borrowsQuery.data) ? borrowsQuery.data : [];
+  const rawBooks = Array.isArray(booksQuery.data) ? booksQuery.data : [];
+  const rawStudents = Array.isArray(studentsQuery.data) ? studentsQuery.data : [];
+
   const summaryData = summaryQuery.data ?? fallbackSummary;
-  const summary = {
-    students: Number(summaryData.students ?? 0),
-    teachers: Number(summaryData.teachers ?? 0),
-    books: Number(summaryData.books ?? 0),
-    availableBooks: Number(summaryData.availableBooks ?? 0),
-    borrowedBooks: Number(summaryData.borrowedBooks ?? 0),
-    lostOrBrokenBooks: Math.max(0, Number(summaryData.books ?? 0) - Number(summaryData.availableBooks ?? 0) - Number(summaryData.borrowedBooks ?? 0)),
-    employees: Number(summaryData.employees ?? 0),
-    attendanceRate: Number(summaryData.attendanceRate ?? 0),
-    recentActivity: summaryData.recentActivity ?? [],
-  };
-  const activity = summary.recentActivity ?? [];
-  const activityIcon = (type: string) =>
-    type === "library" ? (
-      <Library size={15} />
-    ) : type === "teacher" ? (
-      <UsersRound size={15} />
-    ) : type === "student" ? (
-      <GraduationCap size={15} />
-    ) : (
-      <Activity size={15} />
-    );
+  const totalBooks = rawBooks.reduce((sum, b) => sum + Number(b.copies || 0), 0) || Number(summaryData.books ?? 0);
+  const availableBooks = rawBooks.reduce((sum, b) => sum + Number(b.availableCopies ?? b.copies ?? 0), 0) || Number(summaryData.availableBooks ?? 0);
+  const activeBorrows = rawBorrows.filter((b) => !b.returnedAt);
+  const borrowedCount = activeBorrows.length || Number(summaryData.borrowedBooks ?? 0);
+  const lostOrBroken = rawBooks.reduce((sum, b) => sum + Number(b.lostCopies || 0) + Number(b.damagedCopies || 0), 0);
+  const totalStudents = rawStudents.length || Number(summaryData.students ?? 0);
+  const totalTeachers = Number(summaryData.teachers ?? 0);
+  const totalEmployees = Number(summaryData.employees ?? 0);
+
+  // Critical alerts
+  const overdueBorrows = activeBorrows.filter((b) => {
+    if (!b.dueDate) return false;
+    const due = new Date(b.dueDate);
+    due.setHours(0, 0, 0, 0);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return due.getTime() < now.getTime();
+  });
+
+  const dueSoonBorrows = activeBorrows.filter((b) => {
+    if (!b.dueDate) return false;
+    const due = new Date(b.dueDate);
+    due.setHours(0, 0, 0, 0);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const diff = Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return diff >= 0 && diff <= 3;
+  });
+
+  const outOfStockBooks = rawBooks.filter((b) => (b.availableCopies ?? b.copies) === 0 && b.copies > 0);
+
+  const loanRate = totalBooks > 0 ? Math.round((borrowedCount / totalBooks) * 100) : 0;
+  const availRate = totalBooks > 0 ? Math.round((availableBooks / totalBooks) * 100) : 0;
+
+  // Live Operations Feed
+  const liveActivities = useMemo(() => {
+    const list: Array<{
+      id: string;
+      category: "borrows" | "books" | "students";
+      title: string;
+      subtitle: string;
+      badge: string;
+      badgeTone: "amber" | "green" | "navy" | "teal" | "red";
+      timestamp: string;
+      icon: typeof BookOpen;
+      path: string;
+    }> = [];
+
+    // Recent borrows
+    for (const b of rawBorrows.slice(0, 8)) {
+      const isReturned = Boolean(b.returnedAt);
+      const isOverdue = !isReturned && b.dueDate && new Date(b.dueDate).getTime() < Date.now();
+      list.push({
+        id: `borrow-${b.id}`,
+        category: "borrows",
+        title: isReturned
+          ? `${t("Book Returned", "إرجاع كتاب")}: "${b.bookTitle || t("Book", "الكتاب")}"`
+          : `${t("Book Loaned", "إعارة كتاب")}: "${b.bookTitle || t("Book", "الكتاب")}"`,
+        subtitle: `${t("Borrower", "المستعير")}: ${b.borrowerName || "—"} · ${isReturned ? t("Returned", "تم الإرجاع") : `${t("Due", "الاستحقاق")}: ${formatDate(b.dueDate ? String(b.dueDate) : undefined)}`}`,
+        badge: isReturned
+          ? (b.condition === "damaged" ? t("Damaged", "تالف") : b.condition === "lost" ? t("Lost", "مفقود") : t("Returned", "مُرجع"))
+          : (isOverdue ? t("Overdue", "متأخر") : t("Active", "نشطة")),
+        badgeTone: isReturned ? "green" : isOverdue ? "red" : "amber",
+        timestamp: String(b.returnedAt || b.borrowedAt || new Date().toISOString()),
+        icon: isReturned ? CircleCheck : BookOpen,
+        path: isReturned ? "/library/history" : "/library/borrows",
+      });
+    }
+
+    // Recent books
+    for (const bk of rawBooks.slice(0, 4)) {
+      list.push({
+        id: `book-${bk.id}`,
+        category: "books",
+        title: `${t("Catalogue Book", "كتاب في الفهرس")}: "${bk.title}"`,
+        subtitle: `${bk.author || "—"} · ${bk.category || t("General", "عام")} · ${t("Shelf", "الرف")} ${bk.shelf || "—"}`,
+        badge: `${bk.availableCopies ?? bk.copies}/${bk.copies} ${t("avail", "متاح")}`,
+        badgeTone: (bk.availableCopies ?? bk.copies) > 0 ? "teal" : "red",
+        timestamp: new Date().toISOString(),
+        icon: Library,
+        path: "/library",
+      });
+    }
+
+    // Recent students
+    for (const s of rawStudents.slice(0, 4)) {
+      list.push({
+        id: `student-${s.id}`,
+        category: "students",
+        title: `${t("Student Record", "سجل طالب")}: ${s.fullNameArabic || s.fullName}`,
+        subtitle: `${s.grade || ""} · ${s.className || ""} · ID: ${s.studentNumber || "—"}`,
+        badge: t("Enrolled", "مقيد"),
+        badgeTone: "navy",
+        timestamp: String((s as any).enrollmentDate || (s as any).enrolmentDate || new Date().toISOString()),
+        icon: GraduationCap,
+        path: "/students",
+      });
+    }
+
+    return list;
+  }, [rawBorrows, rawBooks, rawStudents, t]);
+
+  const filteredActivities = useMemo(() => {
+    if (activityTab === "all") return liveActivities;
+    return liveActivities.filter((a) => a.category === activityTab);
+  }, [liveActivities, activityTab]);
+
   return (
     <div className="rise-in">
       <PageHeading
@@ -1191,20 +1343,32 @@ function Dashboard() {
         title="Good morning, admin."
         arabic="صباح الخير، آمين المكتبة."
         description={t(
-          "A composed view of the people, places and pages moving through Al-Bassam today.",
-          "نظرة هادئة على الأشخاص والأماكن والصفحات المتحركة في البسام اليوم.",
+          "A composed live view of library circulation, student enrolments, and key school operations.",
+          "نظرة حية متكاملة على حركة الإعارة المكتبية، سجلات الطلاب، ومؤشرات العمليات المدرسية اليوم.",
         )}
         action={
-          <Button
-            onClick={() => setLocation("/students")}
-            className="h-11 rounded-lg bg-[#263064] px-5 text-sm text-[#FCFBF0] hover:bg-[#263064]/85"
-            data-testid="button-open-students"
-          >
-            <ArrowUpRight size={16} />{" "}
-            {t("Open student records", "فتح سجلات الطلاب")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setLocation("/library/borrows")}
+              className="h-11 rounded-lg bg-[#263064] px-4 text-sm text-[#FCFBF0] hover:bg-[#263064]/90 gap-1.5"
+              data-testid="button-open-borrows"
+            >
+              <BookOpen size={16} />
+              {t("Active Borrows", "الإعارات النشطة")}
+            </Button>
+            <Button
+              onClick={() => setLocation("/students")}
+              variant="outline"
+              className="h-11 rounded-lg border-border px-4 text-sm gap-1.5"
+              data-testid="button-open-students"
+            >
+              <GraduationCap size={16} />
+              {t("Student Records", "سجلات الطلاب")}
+            </Button>
+          </div>
         }
       />
+
       {summaryQuery.isLoading ? (
         <LoadingCards />
       ) : summaryQuery.isError ? (
@@ -1215,180 +1379,375 @@ function Dashboard() {
         />
       ) : (
         <>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <StatCard
-            label="Students"
-            arabic="الطلاب"
-            value={summary.students.toLocaleString()}
-            icon={GraduationCap}
-            tone="navy"
-            note={t("Active enrolment", "التحاق نشط")}
-          />
-          <StatCard
-            label="Teachers"
-            arabic="المعلمون"
-            value={summary.teachers.toLocaleString()}
-            icon={UsersRound}
-            tone="teal"
-            note={t("Faculty directory", "دليل أعضاء هيئة التدريس")}
-          />
-          <StatCard
-            label="Employees"
-            arabic="الموظفون"
-            value={summary.employees.toLocaleString()}
-            icon={Briefcase}
-            tone="sky"
-            note={t("Staff members", "أعضاء الهيئة الإدارية")}
-          />
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Total books"
-            arabic="إجمالي الكتب"
-            value={summary.books.toLocaleString()}
-            icon={BookOpen}
-            tone="gold"
-            note={t("All copies in catalogue", "جميع النسخ في الفهرس")}
-          />
-          <StatCard
-            label="Available books"
-            arabic="الكتب المتاحة"
-            value={summary.availableBooks.toLocaleString()}
-            icon={BookOpen}
-            tone="teal"
-            note={t("Currently on shelf", "موجودة على الرف حالياً")}
-          />
-          <StatCard
-            label="Borrowed books"
-            arabic="الكتب المُعارة"
-            value={summary.borrowedBooks.toLocaleString()}
-            icon={BookOpen}
-            tone="navy"
-            note={t("On loan", "مستعارة حالياً")}
-          />
-          <StatCard
-            label="Lost/Broken books"
-            arabic="الكتب المفقودة أو التالفة"
-            value={summary.lostOrBrokenBooks.toLocaleString()}
-            icon={Activity}
-            tone="sky"
-            note={t("Books requiring replacement", "كتب تحتاج إلى استبدال")}
-          />
-        </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              label="Students"
+              arabic="الطلاب"
+              value={totalStudents.toLocaleString()}
+              icon={GraduationCap}
+              tone="navy"
+              note={t("Active enrolment directory", "سجلات الطلاب المقيدين")}
+            />
+            <StatCard
+              label="Teachers"
+              arabic="المعلمون"
+              value={totalTeachers.toLocaleString()}
+              icon={UsersRound}
+              tone="teal"
+              note={t("Teaching faculty directory", "دليل أعضاء هيئة التدريس")}
+            />
+            <StatCard
+              label="Employees"
+              arabic="الموظفون"
+              value={totalEmployees.toLocaleString()}
+              icon={Briefcase}
+              tone="sky"
+              note={t("Administrative & staff members", "أعضاء الكادر الإداري")}
+            />
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Total books"
+              arabic="إجمالي الكتب"
+              value={totalBooks.toLocaleString()}
+              icon={BookOpen}
+              tone="gold"
+              note={t("All copies in catalogue", "جميع النسخ في الفهرس")}
+            />
+            <StatCard
+              label="Available books"
+              arabic="الكتب المتاحة"
+              value={availableBooks.toLocaleString()}
+              icon={BookOpen}
+              tone="teal"
+              note={t("Currently on shelf", "موجودة على الرف حالياً")}
+            />
+            <StatCard
+              label="Borrowed books"
+              arabic="الكتب المُعارة"
+              value={borrowedCount.toLocaleString()}
+              icon={BookOpen}
+              tone="navy"
+              note={t("Currently on loan", "مستعارة حالياً")}
+            />
+            <StatCard
+              label="Lost/Broken books"
+              arabic="الكتب المفقودة أو التالفة"
+              value={lostOrBroken.toLocaleString()}
+              icon={Activity}
+              tone="sky"
+              note={t("Requiring replacement", "كتب تحتاج إلى معالجة")}
+            />
+          </div>
         </>
       )}
+
+      {/* Main Operational Section: Live Stream & Quick Action Center */}
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
-        <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
-          <div className="mb-6 flex items-start justify-between">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-                {t("Recent activity", "النشاط الأخير")}
+        
+        {/* Left: Live Operations & Circulation Stream */}
+        <section className="rounded-xl border border-border bg-card p-6 soft-shadow flex flex-col justify-between">
+          <div>
+            <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                  {t("Live Feed", "العمليات الحية")}
+                </div>
+                <h2 className="mt-0.5 text-xl font-bold tracking-[-.03em] text-[#263064]">
+                  {t("Circulation & Operational Activity", "حركة الإعارة والنشاط التشغيلي")}
+                </h2>
               </div>
-              <h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-[#263064]">
-                {t("The school, in motion", "المدرسة في حِركة مستمرة")}
-              </h2>
+
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1 text-xs">
+                <button
+                  onClick={() => setActivityTab("all")}
+                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "all" ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {t("All", "الكل")}
+                </button>
+                <button
+                  onClick={() => setActivityTab("borrows")}
+                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "borrows" ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {t("Borrows", "الإعارات")}
+                </button>
+                <button
+                  onClick={() => setActivityTab("books")}
+                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "books" ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {t("Books", "الكتب")}
+                </button>
+                <button
+                  onClick={() => setActivityTab("students")}
+                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "students" ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {t("Students", "الطلاب")}
+                </button>
+              </div>
             </div>
+
+            {/* List */}
+            {summaryQuery.isLoading ? (
+              <div className="space-y-4 py-2">
+                {[1, 2, 3, 4, 5].map((item) => (
+                  <div className="flex gap-4 items-center" key={item}>
+                    <div className="skeleton h-10 w-10 rounded-lg shrink-0" />
+                    <div className="flex-1">
+                      <div className="skeleton h-3.5 w-3/5 rounded" />
+                      <div className="skeleton mt-2 h-2.5 w-2/5 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredActivities.length > 0 ? (
+              <div className="space-y-1.5 divide-y divide-border/40">
+                {filteredActivities.slice(0, 6).map((item) => {
+                  const Icon = item.icon;
+                  const toneClasses = {
+                    amber: "bg-[#DBB46C]/20 text-[#EC9F42]",
+                    green: "bg-[#32B77E]/15 text-[#32B77E]",
+                    navy: "bg-[#263064]/10 text-[#263064]",
+                    teal: "bg-[#14BAC6]/15 text-[#14BAC6]",
+                    red: "bg-[#B92327]/10 text-[#B92327]",
+                  }[item.badgeTone];
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => setLocation(item.path)}
+                      className="group flex cursor-pointer items-center justify-between gap-3.5 rounded-lg p-2.5 transition-all hover:bg-secondary/50"
+                      data-testid={`activity-item-${item.id}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${toneClasses}`}>
+                          <Icon size={16} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-bold text-[#263064] group-hover:text-primary">
+                            {item.title}
+                          </p>
+                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                            {item.subtitle}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${toneClasses}`}>
+                          {item.badge}
+                        </span>
+                        <ArrowUpRight
+                          size={14}
+                          className="text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                {t(
+                  "No operational activity recorded in this category yet.",
+                  "لا توجد عمليات مسجلة في هذا التصنيف حالياً.",
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              {t("Total active operations monitored", "إجمالي العمليات المدارة نشطة ومحدثة")}
+            </span>
             <button
-              className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-primary"
-              data-testid="button-activity-options"
-              aria-label={t("Activity options", "خيارات النشاط")}
+              onClick={() => setLocation("/library/history")}
+              className="font-semibold text-primary hover:underline flex items-center gap-1"
             >
-              <MoreHorizontal size={18} />
+              <span>{t("View Full History", "عرض السجل الكامل")}</span>
+              <ArrowUpRight size={13} />
             </button>
           </div>
-          {summaryQuery.isLoading ? (
-            <div className="space-y-5">
-              {[1, 2, 3, 4].map((item) => (
-                <div className="flex gap-4" key={item}>
-                  <div className="skeleton h-9 w-9 rounded-lg" />
-                  <div className="flex-1">
-                    <div className="skeleton h-3 w-3/5 rounded" />
-                    <div className="skeleton mt-2 h-2 w-2/5 rounded" />
-                  </div>
+        </section>
+
+        {/* Right: Quick Action Hub & Priority Controls */}
+        <section className="flex flex-col justify-between rounded-xl border border-border bg-card p-6 soft-shadow">
+          <div>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#DBB46C]/20 text-[#EC9F42]">
+                  <Sparkles size={16} />
                 </div>
-              ))}
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                    {t("Operations Hub", "مركز العمليات")}
+                  </div>
+                  <h3 className="text-base font-bold text-[#263064]">
+                    {t("Priority & Quick Access", "المهام والوصول السريع")}
+                  </h3>
+                </div>
+              </div>
             </div>
-          ) : activity.length ? (
-            <div className="space-y-1">
-              {activity.slice(0, 6).map((item) => (
+
+            {/* Critical Attention Alerts */}
+            <div className="mt-4 space-y-2">
+              {overdueBorrows.length > 0 ? (
                 <div
-                  className="group flex items-center gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-secondary/60"
-                  key={item.id}
-                  data-testid={`activity-item-${item.id}`}
+                  onClick={() => setLocation("/library/borrows")}
+                  className="cursor-pointer rounded-lg border border-[#B92327]/30 bg-[#B92327]/5 p-3 text-xs transition-colors hover:bg-[#B92327]/10 flex items-center justify-between"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
-                    {activityIcon(item.type)}
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={15} className="text-[#B92327] shrink-0" />
+                    <span className="font-semibold text-[#B92327]">
+                      {overdueBorrows.length} {t("Overdue loan(s) require return", "إعارة متأخرة تتطلب المتابعة")}
+                    </span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-[#263064]">
-                      {item.title}
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <Clock3 size={11} />
-                      {formatDate(item.timestamp)}
-                    </p>
+                  <span className="text-[10px] font-bold text-[#B92327] underline">
+                    {t("Resolve", "معالجة")}
+                  </span>
+                </div>
+              ) : dueSoonBorrows.length > 0 ? (
+                <div
+                  onClick={() => setLocation("/library/borrows")}
+                  className="cursor-pointer rounded-lg border border-[#DBB46C]/40 bg-[#DBB46C]/10 p-3 text-xs transition-colors hover:bg-[#DBB46C]/20 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock3 size={15} className="text-[#EC9F42] shrink-0" />
+                    <span className="font-semibold text-[#263064]">
+                      {dueSoonBorrows.length} {t("Loan(s) due within 3 days", "إعارة تستحق خلال 3 أيام")}
+                    </span>
                   </div>
-                  <ArrowUpRight
-                    size={14}
-                    className="text-border transition-colors group-hover:text-primary"
+                  <span className="text-[10px] font-bold text-primary underline">
+                    {t("View", "عرض")}
+                  </span>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-[#32B77E]/30 bg-[#32B77E]/5 p-3 text-xs flex items-center gap-2 text-[#32B77E]">
+                  <CircleCheck size={15} className="shrink-0" />
+                  <span className="font-semibold">
+                    {t("All borrows up to date & in order", "كافة الإعارات منتظمة ولا توجد متأخرات")}
+                  </span>
+                </div>
+              )}
+
+              {outOfStockBooks.length > 0 && (
+                <div
+                  onClick={() => setLocation("/library")}
+                  className="cursor-pointer rounded-lg border border-border bg-muted/40 p-2.5 text-xs transition-colors hover:bg-muted/70 flex items-center justify-between text-muted-foreground"
+                >
+                  <span>
+                    📦 {outOfStockBooks.length} {t("book(s) with 0 available stock", "كتب نفدت جميع نسخها المتاحة")}
+                  </span>
+                  <ArrowUpRight size={13} />
+                </div>
+              )}
+            </div>
+
+            {/* Quick Action Shortcuts Grid */}
+            <div className="mt-5">
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {t("Quick Actions", "إجراءات مباشرة")}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setLocation("/library/borrows")}
+                  className="flex flex-col items-start gap-1 rounded-lg border border-border bg-[#263064]/5 p-3 text-start transition-colors hover:border-primary/50 hover:bg-[#263064]/10"
+                  data-testid="quick-action-borrow"
+                >
+                  <BookOpen size={16} className="text-[#263064]" />
+                  <span className="text-xs font-bold text-[#263064]">
+                    {t("Issue Loan", "إعارة كتاب")}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {t("Lend to student", "إعارة لطالب/معلم")}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setLocation("/library")}
+                  className="flex flex-col items-start gap-1 rounded-lg border border-border bg-[#14BAC6]/5 p-3 text-start transition-colors hover:border-[#14BAC6]/50 hover:bg-[#14BAC6]/10"
+                  data-testid="quick-action-add-book"
+                >
+                  <Plus size={16} className="text-[#14BAC6]" />
+                  <span className="text-xs font-bold text-[#263064]">
+                    {t("Add Book", "إضافة كتاب")}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {t("To master catalogue", "إلى الفهرس العام")}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setLocation("/students")}
+                  className="flex flex-col items-start gap-1 rounded-lg border border-border bg-card p-3 text-start transition-colors hover:border-primary/50 hover:bg-muted"
+                  data-testid="quick-action-add-student"
+                >
+                  <GraduationCap size={16} className="text-primary" />
+                  <span className="text-xs font-bold text-[#263064]">
+                    {t("Enrol Student", "تسجيل طالب")}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {t("New academic record", "سجل دراسي جديد")}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setLocation("/library/analytics")}
+                  className="flex flex-col items-start gap-1 rounded-lg border border-border bg-card p-3 text-start transition-colors hover:border-primary/50 hover:bg-muted"
+                  data-testid="quick-action-reports"
+                >
+                  <FileSpreadsheet size={16} className="text-[#32B77E]" />
+                  <span className="text-xs font-bold text-[#263064]">
+                    {t("Export Reports", "التقارير و Excel")}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {t("Download reports", "تصدير الإحصائيات")}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Circulation Capacity Meters */}
+            <div className="mt-5 space-y-2.5 rounded-lg border border-border bg-muted/20 p-3.5 text-xs">
+              <div>
+                <div className="flex items-center justify-between text-[11px] font-semibold text-[#263064]">
+                  <span>{t("Library Circulation Rate", "معدل إشغال المكتبة")}</span>
+                  <span className="font-mono">{loanRate}%</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-[#14BAC6]"
+                    style={{ width: `${loanRate}%` }}
                   />
                 </div>
-              ))}
+                <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                  <span>{borrowedCount} {t("copies on loan", "نسخة معارة")}</span>
+                  <span>{totalBooks} {t("total copies", "إجمالي النسخ")}</span>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              {t(
-                "Your activity stream will appear here.",
-                "سيظهر سجل نشاطاتك هنا.",
-              )}
-            </div>
-          )}
-        </section>
-        <section className="relative overflow-hidden rounded-xl bg-[#14BAC6] p-7 text-[#FCFBF0]">
-          <div className="relative z-10">
-            <div className="mb-10 flex h-9 w-9 items-center justify-center rounded-lg bg-[#FCFBF0]/15 text-[#DBB46C]">
-              <Sparkles size={18} />
-            </div>
-            <div className="text-[10px] font-bold uppercase tracking-[.2em] text-[#14BAC6]/80">
-              {t("A note from the library", "ملاحظة من المكتبة")}
-            </div>
-            <h2 className="mt-3 max-w-xs text-2xl font-bold leading-tight tracking-[-.04em]">
-              {t(
-                "Small records build a remarkable school.",
-                "السجلات الصغيرة تبني مدرسة متميزة.",
-              )}
-            </h2>
-            <p className="mt-3 max-w-xs text-sm leading-6 text-[#FCFBF0]/85">
-              {t(
-                "Keep today’s details close. The right information, at the right moment, makes room for better teaching.",
-                "حافظ على تفاصيل اليوم قريبة؛ فالمعلومة الصحيحة في اللحظة المناسبة تصنع مساحة أفضل للتعليم.",
-              )}
-            </p>
           </div>
-          <div className="absolute -bottom-14 -right-12 h-48 w-48 rounded-full border-[22px] border-[#FCFBF0]/10" />
-          <div className="absolute -right-5 top-10 h-24 w-24 rounded-full border border-[#DBB46C]/50" />
         </section>
       </div>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#DBB46C]/40 bg-[#32B77E]/5 px-5 py-4 text-sm">
+
+      {/* Bottom Status Bar */}
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-5 py-3.5 text-xs soft-shadow">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#32B77E]/15 text-[#14BAC6]">
-            <Languages size={15} />
-          </div>
-          <span className="font-medium text-[#263064]/80">
-            {t(
-              "Workspace is ready in English and Arabic",
-              "مساحة العمل جاهزة بالعربية والإنجليزية",
-            )}
+          <span className="flex h-2.5 w-2.5 rounded-full bg-[#32B77E] animate-pulse" />
+          <span className="font-bold text-[#263064]">
+            {t("System Status: Online & Locally Persistent", "حالة النظام: متصل وجاهز للعمل مع المزامنة المحلية")}
           </span>
         </div>
-        <span
-          className={`text-xs text-[#263064]/65 ${t("ar", "en") === "ar" ? "" : "ar"}`}
-        >
-          {t(
-            "مساحة العمل جاهزة بالعربية والإنجليزية",
-            "Workspace is ready in English and Arabic",
-          )}
-        </span>
+        <div className="flex items-center gap-5 text-muted-foreground text-[11px]">
+          <span>
+            {t("Standalone Desktop Ready", "جاهز للعمل المكتبي المستقل")}
+          </span>
+          <span className="text-border">|</span>
+          <span>
+            {t("Arabic (RTL) & English (LTR) Enabled", "اللغة العربية والإنجليزية مفعلة")}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -1544,8 +1903,8 @@ function StudentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl border-border bg-[#FCFBF0] p-0">
         <form onSubmit={submit}>
-          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-left">
-            <div className="flex items-start justify-between pr-8">
+          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-start">
+            <div className="flex items-start justify-between pe-8">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                   {t(
@@ -1741,10 +2100,10 @@ function StudentRow({
     }[student.status] ?? student.status;
   return (
     <div
-      className="group grid min-w-[1000px] grid-cols-[2fr_.6fr_1fr_1.15fr_.8fr_1.25fr_1fr_.75fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
+      className="group grid min-w-[1000px] grid-cols-[2fr_.7fr_1.1fr_1.15fr_.9fr_1.25fr_1fr_.8fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
       data-testid={`row-student-${student.id}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 text-start">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#14BAC6]/10 text-xs font-bold text-[#14BAC6]">
           {student.fullName
             .split(" ")
@@ -1752,11 +2111,11 @@ function StudentRow({
             .slice(0, 2)
             .join("")}
         </div>
-        <div>
-          <div className="text-sm font-semibold text-[#263064]">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-[#263064]">
             {student.fullName}
           </div>
-          <div className="ar text-[10px] text-muted-foreground">
+          <div className="ar truncate text-[10px] text-muted-foreground">
             {student.fullNameArabic}
           </div>
         </div>
@@ -1783,7 +2142,7 @@ function StudentRow({
       >
         {student.nationalId}
       </span>
-      <div>
+      <div className="justify-self-center text-center">
         <div className="text-xs font-medium text-[#263064]">
           {student.grade}
         </div>
@@ -1791,9 +2150,9 @@ function StudentRow({
           {student.className}
         </div>
       </div>
-      <div className="text-xs text-muted-foreground">
-        {student.guardianName || t("Not provided", "غير مُدخل")}
-        <div className="mt-0.5 text-[10px] rtl:text-right" dir="ltr">
+      <div className="text-start text-xs text-muted-foreground">
+        <div className="truncate">{student.guardianName || t("Not provided", "غير مُدخل")}</div>
+        <div className="mt-0.5 font-mono text-[10px] rtl:text-right" dir="ltr">
           {student.guardianPhone}
         </div>
       </div>
@@ -1808,7 +2167,7 @@ function StudentRow({
       >
         {statusLabel}
       </span>
-      <div className="flex justify-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
+      <div className="flex justify-center items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
         <button
           onClick={() => onEdit(student)}
           className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
@@ -2053,13 +2412,13 @@ function StudentsPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[1000px] grid-cols-[2fr_.6fr_1fr_1.15fr_.8fr_1.25fr_1fr_.75fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[1000px] grid-cols-[2fr_.7fr_1.1fr_1.15fr_.9fr_1.25fr_1fr_.8fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="fullName"
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
               <span className="truncate">{t("Student", "الطالب")}</span>
             </SortHeader>
@@ -2068,6 +2427,7 @@ function StudentsPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Gender", "الجنس")}
             </SortHeader>
@@ -2076,6 +2436,7 @@ function StudentsPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Number", "الرقم")}
             </SortHeader>
@@ -2084,6 +2445,7 @@ function StudentsPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("National ID", "الهوية الوطنية")}
             </SortHeader>
@@ -2092,7 +2454,7 @@ function StudentsPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="center"
             >
               {t("Class", "الفصل")}
             </SortHeader>
@@ -2101,7 +2463,7 @@ function StudentsPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
               {t("Guardian", "ولي الأمر")}
             </SortHeader>
@@ -2110,6 +2472,7 @@ function StudentsPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Enrolled", "تاريخ التسجيل")}
             </SortHeader>
@@ -2118,10 +2481,11 @@ function StudentsPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Status", "الحالة")}
             </SortHeader>
-            <span />
+            <span className="text-center">{t("Actions", "إجراءات")}</span>
           </div>
           {studentPages.pageItems.map((student) => (
             <StudentRow
@@ -2386,8 +2750,8 @@ function TeacherDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92dvh] max-w-3xl overflow-y-auto border-border bg-[#FCFBF0] p-0">
         <form onSubmit={submit}>
-          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-left">
-            <div className="flex items-start justify-between pr-8">
+          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-start">
+            <div className="flex items-start justify-between pe-8">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                   {t(
@@ -2537,10 +2901,10 @@ function TeacherRow({
     teacher.status === "active" ? t("active", "نشط") : t("inactive", "غير نشط");
   return (
     <div
-      className="group grid min-w-[900px] grid-cols-[2fr_.9fr_1fr_1.15fr_1fr_.7fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
+      className="group grid min-w-[900px] grid-cols-[2fr_1fr_1.1fr_1.2fr_1.1fr_.85fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
       data-testid={`row-teacher-${teacher.id}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 text-start">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#14BAC6]/10 text-xs font-bold text-[#14BAC6]">
           {teacher.fullName
             .split(" ")
@@ -2548,11 +2912,11 @@ function TeacherRow({
             .slice(0, 2)
             .join("")}
         </div>
-        <div>
-          <div className="text-sm font-semibold text-[#263064]">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-[#263064]">
             {teacher.fullName}
           </div>
-          <div className="ar text-[10px] text-muted-foreground">
+          <div className="ar truncate text-[10px] text-muted-foreground">
             {teacher.fullNameArabic}
           </div>
         </div>
@@ -2563,7 +2927,7 @@ function TeacherRow({
       >
         {teacher.employeeCode}
       </span>
-      <div className="text-xs font-medium text-[#263064]">
+      <div className="justify-self-center text-center text-xs font-medium text-[#263064]">
         {teacher.subject}
       </div>
       <span
@@ -2573,7 +2937,7 @@ function TeacherRow({
         {teacher.nationalId}
       </span>
       <span
-        className="justify-self-center text-center text-xs text-muted-foreground"
+        className="justify-self-center text-center font-mono text-xs text-muted-foreground"
         dir="ltr"
       >
         {teacher.phone}
@@ -2583,7 +2947,7 @@ function TeacherRow({
       >
         {statusLabel}
       </span>
-      <div className="flex justify-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
+      <div className="flex justify-center items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
         <button
           onClick={() => onEdit(teacher)}
           className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
@@ -2693,8 +3057,8 @@ function EmployeeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl border-border bg-[#FCFBF0] p-0">
         <form onSubmit={submit}>
-          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-left">
-            <div className="flex items-start justify-between pr-8">
+          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-start">
+            <div className="flex items-start justify-between pe-8">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                   {t(
@@ -2815,10 +3179,10 @@ function EmployeeRow({
       : t("inactive", "غير نشط");
   return (
     <div
-      className="group grid min-w-[900px] grid-cols-[2fr_.9fr_1fr_1.15fr_1fr_.7fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
+      className="group grid min-w-[900px] grid-cols-[2fr_1fr_1.1fr_1.2fr_1.1fr_.85fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
       data-testid={`row-employee-${employee.id}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 text-start">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#DBB46C]/20 text-xs font-bold text-[#EC9F42]">
           {employee.fullName
             .split(" ")
@@ -2826,11 +3190,11 @@ function EmployeeRow({
             .slice(0, 2)
             .join("")}
         </div>
-        <div>
-          <div className="text-sm font-semibold text-[#263064]">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-[#263064]">
             {employee.fullName}
           </div>
-          <div className="ar text-[10px] text-muted-foreground">
+          <div className="ar truncate text-[10px] text-muted-foreground">
             {employee.fullNameArabic}
           </div>
         </div>
@@ -2841,7 +3205,7 @@ function EmployeeRow({
       >
         {employee.employeeNumber}
       </span>
-      <div className="text-xs font-medium text-[#263064]">
+      <div className="justify-self-center text-center text-xs font-medium text-[#263064]">
         {employee.jobTitle}
       </div>
       <span
@@ -2851,7 +3215,7 @@ function EmployeeRow({
         {employee.nationalId}
       </span>
       <span
-        className="justify-self-center text-center text-xs text-muted-foreground"
+        className="justify-self-center text-center font-mono text-xs text-muted-foreground"
         dir="ltr"
       >
         {employee.phone}
@@ -2861,7 +3225,7 @@ function EmployeeRow({
       >
         {statusLabel}
       </span>
-      <div className="flex justify-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
+      <div className="flex justify-center items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
         <button
           onClick={() => onEdit(employee)}
           className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
@@ -3110,13 +3474,13 @@ function EmployeesPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[900px] grid-cols-[2fr_.9fr_1fr_1.15fr_1fr_.7fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[900px] grid-cols-[2fr_1fr_1.1fr_1.2fr_1.1fr_.85fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="fullName"
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
               <span className="truncate">{t("Employee", "الموظف")}</span>
             </SortHeader>
@@ -3125,6 +3489,7 @@ function EmployeesPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Employee No", "الرقم الوظيفي")}
             </SortHeader>
@@ -3133,7 +3498,7 @@ function EmployeesPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="center"
             >
               {t("Job title", "المسمى الوظيفي")}
             </SortHeader>
@@ -3142,6 +3507,7 @@ function EmployeesPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("National ID", "الهوية الوطنية")}
             </SortHeader>
@@ -3150,6 +3516,7 @@ function EmployeesPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Phone", "الهاتف")}
             </SortHeader>
@@ -3158,10 +3525,11 @@ function EmployeesPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Status", "الحالة")}
             </SortHeader>
-            <span />
+            <span className="text-center">{t("Actions", "إجراءات")}</span>
           </div>
           {employeePages.pageItems.map((employee) => (
             <EmployeeRow
@@ -3434,13 +3802,13 @@ function TeachersPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[900px] grid-cols-[2fr_.9fr_1fr_1.15fr_1fr_.7fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[900px] grid-cols-[2fr_1fr_1.1fr_1.2fr_1.1fr_.85fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="fullName"
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
               <span className="truncate">{t("Teacher", "المعلم")}</span>
             </SortHeader>
@@ -3449,6 +3817,7 @@ function TeachersPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Employee No", "الرقم الوظيفي")}
             </SortHeader>
@@ -3457,7 +3826,7 @@ function TeachersPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="center"
             >
               {t("Subject", "المادة")}
             </SortHeader>
@@ -3466,6 +3835,7 @@ function TeachersPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("National ID", "الهوية الوطنية")}
             </SortHeader>
@@ -3474,6 +3844,7 @@ function TeachersPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Phone", "الهاتف")}
             </SortHeader>
@@ -3482,10 +3853,11 @@ function TeachersPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Status", "الحالة")}
             </SortHeader>
-            <span />
+            <span className="text-center">{t("Actions", "إجراءات")}</span>
           </div>
           {teacherPages.pageItems.map((teacher) => (
             <TeacherRow
@@ -3745,7 +4117,7 @@ function BookDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92dvh] max-w-3xl overflow-y-auto border-border bg-[#FCFBF0] p-0">
         <form onSubmit={submit}>
-          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-left">
+          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-start">
             <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
               {t(
                 "Library catalogue",
@@ -3978,7 +4350,7 @@ function BorrowDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md border-border bg-[#FCFBF0] p-0">
         <form onSubmit={submit}>
-          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-left">
+          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-start">
             <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
               {t("Library lending", "إعارات المكتبة")}
             </div>
@@ -3992,7 +4364,7 @@ function BorrowDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 px-6 py-6">
-            <label className="grid gap-1.5 text-left">
+            <label className="grid gap-1.5 text-start">
               <span className="text-xs font-semibold text-[#263064]">{t("Borrower type", "نوع المستعير")} *</span>
               <select value={borrowerType} onChange={(event) => { setBorrowerType(event.target.value as typeof borrowerType); setBorrowerId(""); }} className="h-10 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" data-testid="select-borrower-type">
                 <option value="student">{t("Student", "الطالب")}</option>
@@ -4000,7 +4372,7 @@ function BorrowDialog({
                 <option value="employee">{t("Employee", "الموظف")}</option>
               </select>
             </label>
-            <label className="grid gap-1.5 text-left">
+            <label className="grid gap-1.5 text-start">
               <span className="text-xs font-semibold text-[#263064]">
                 {borrowerLabel} *
               </span>
@@ -4021,7 +4393,7 @@ function BorrowDialog({
                 ))}
               </select>
             </label>
-            <label className="grid gap-1.5 text-left">
+            <label className="grid gap-1.5 text-start">
               <span className="text-xs font-semibold text-[#263064]">
                 {t("Return by", "موعد الإرجاع")} *
               </span>
@@ -4589,46 +4961,49 @@ function LibraryPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_250px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[920px] grid-cols-[2fr_1.1fr_.8fr_1.25fr_.75fr_1.1fr_250px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="title"
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
-              <span className="truncate">{t("Book", "\u0627\u0644\u0643\u062A\u0627\u0628")}</span>
+              <span className="truncate">{t("Book", "الكتاب")}</span>
             </SortHeader>
             <SortHeader
               columnKey="author"
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
-              {t("Author", "\u0627\u0644\u0645\u0624\u0644\u0641")}
+              {t("Author", "المؤلف")}
             </SortHeader>
             <SortHeader
               columnKey="language"
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
-              {t("Language", "\u0627\u0644\u0644\u063A\u0629")}
+              {t("Language", "اللغة")}
             </SortHeader>
             <SortHeader
               columnKey="copies"
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
-              {t("Copies", "\u0627\u0644\u0646\u0633\u062E")}
+              {t("Copies", "النسخ")}
             </SortHeader>
             <SortHeader
               columnKey="shelf"
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Shelf", "الرف")}
             </SortHeader>
@@ -4637,10 +5012,11 @@ function LibraryPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Barcode", "الباركود")}
             </SortHeader>
-            <span />
+            <span className="text-end pr-3">{t("Actions", "إجراءات")}</span>
           </div>
           {bookPages.pageItems.map((book) => (
             <BookRow
@@ -4804,14 +5180,14 @@ function BookRow({
   const percent = book.copies ? Math.round((available / book.copies) * 100) : 0;
   return (
     <div
-      className="group grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_250px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
+      className="group grid min-w-[920px] grid-cols-[2fr_1.1fr_.8fr_1.25fr_.75fr_1.1fr_250px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
       data-testid={`row-book-${book.id}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 text-start">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#DBB46C]/20 text-[#EC9F42]">
           <BookOpen size={17} strokeWidth={1.7} />
         </div>
-        <div>
+        <div className="min-w-0">
           <div className="line-clamp-1 text-sm font-semibold text-[#263064]">
             {book.title}
           </div>
@@ -4836,12 +5212,12 @@ function BookRow({
           </div>
         </div>
       </div>
-      <span className="text-xs text-muted-foreground">{book.author}</span>
+      <span className="text-start text-xs text-muted-foreground truncate">{book.author || "—"}</span>
       <span className="w-fit justify-self-center rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-primary">
-        {book.language}
+        {book.language || "—"}
       </span>
-      <div className="flex items-center justify-center gap-3">
-        <div className="h-1.5 w-full max-w-[120px] overflow-hidden rounded-full bg-muted">
+      <div className="flex items-center justify-center gap-2.5">
+        <div className="h-1.5 w-full max-w-[100px] overflow-hidden rounded-full bg-muted">
           <div
             className={`h-full rounded-full ${percent > 50 ? "bg-primary" : percent ? "bg-accent" : "bg-destructive"}`}
             style={{ width: `${percent}%` }}
@@ -4851,7 +5227,7 @@ function BookRow({
           {available}/{book.copies}
         </span>
       </div>
-      <span className="text-center text-xs text-muted-foreground">
+      <span className="justify-self-center text-center text-xs text-muted-foreground">
         {book.shelf ? `${t("Shelf", "الرف")} ${book.shelf}` : "—"}
       </span>
       <span
@@ -5029,37 +5405,36 @@ function DistributionPage() {
                 activeKey={sortKey}
                 activeDir={sortDir}
                 onSort={toggleSort}
-                className="justify-start"
+                align="start"
               >
-                {t("Grade", "\u0627\u0644\u0645\u0631\u062D\u0644\u0629")}
+                {t("Grade", "المرحلة")}
               </SortHeader>
               <SortHeader
                 columnKey="klass"
                 activeKey={sortKey}
                 activeDir={sortDir}
                 onSort={toggleSort}
-                className="justify-start"
+                align="center"
               >
-                {t("Class", "\u0627\u0644\u0641\u0635\u0644")}
+                {t("Class", "الفصل")}
               </SortHeader>
               <SortHeader
                 columnKey="count"
                 activeKey={sortKey}
                 activeDir={sortDir}
                 onSort={toggleSort}
+                align="center"
               >
-                {t("Students", "\u0627\u0644\u0637\u0644\u0627\u0628")}
+                {t("Students", "الطلاب")}
               </SortHeader>
               <SortHeader
                 columnKey="count"
                 activeKey={sortKey}
                 activeDir={sortDir}
                 onSort={toggleSort}
+                align="center"
               >
-                {t(
-                  "Share of school",
-                  "\u0646\u0633\u0628\u0629\u0020\u0645\u0646\u0020\u0627\u0644\u0645\u062F\u0631\u0633\u0629",
-                )}
+                {t("Share of school", "نسبة من المدرسة")}
               </SortHeader>
             </div>
             {distPages.pageItems.map(({ grade, klass, count, key }) => {
@@ -5070,17 +5445,17 @@ function DistributionPage() {
                   className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center border-b border-border/70 px-5 py-3 transition-colors last:border-b-0 hover:bg-secondary/40"
                   data-testid={`row-distribution-${grade.toLowerCase().replaceAll(" ", "-")}-${klass.toLowerCase()}`}
                 >
-                  <span className="text-sm font-semibold text-[#263064]">
+                  <span className="text-start text-sm font-semibold text-[#263064]">
                     {grade}
                   </span>
-                  <span className="font-mono text-xs text-muted-foreground">
+                  <span className="justify-self-center text-center font-mono text-xs text-muted-foreground">
                     {klass}
                   </span>
-                  <strong className="font-mono text-sm text-[#263064]">
+                  <strong className="justify-self-center text-center font-mono text-sm text-[#263064]">
                     {count}
                   </strong>
-                  <div className="flex items-center gap-3">
-                    <div className="h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-muted">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="h-1.5 w-full max-w-[140px] overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full rounded-full bg-primary"
                         style={{ width: `${percent}%` }}
@@ -5094,8 +5469,8 @@ function DistributionPage() {
               );
             })}
             <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center bg-[#263064]/5 px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">
-              <span>
-                {t("Total", "\u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A")}
+              <span className="text-start">
+                {t("Total", "الإجمالي")}
               </span>
               <span />
             </div>
@@ -5489,16 +5864,16 @@ function BorrowsPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
-              <span className="truncate">{t("Student", "الطالب")}</span>
+              <span className="truncate">{t("Borrower", "المستعير")}</span>
             </SortHeader>
             <SortHeader
               columnKey="bookTitle"
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
               {t("Book", "الكتاب")}
             </SortHeader>
@@ -5507,6 +5882,7 @@ function BorrowsPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Borrowed", "تاريخ الإعارة")}
             </SortHeader>
@@ -5515,6 +5891,7 @@ function BorrowsPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Due date", "تاريخ الاستحقاق")}
             </SortHeader>
@@ -5523,33 +5900,32 @@ function BorrowsPage() {
           {borrowPages.pageItems.map((borrow) => (
             <div
               key={borrow.id}
-              className="grid min-w-[760px] grid-cols-[1.45fr_1.45fr_1fr_1fr_220px] items-center border-b border-border/70 px-5 py-4 text-sm last:border-b-0"
+              className="grid min-w-[760px] grid-cols-[1.45fr_1.45fr_1fr_1fr_220px] items-center border-b border-border/70 px-5 py-3 text-sm last:border-b-0"
             >
-              <div className="font-semibold text-[#263064]">
+              <div className="text-start font-semibold text-[#263064] truncate">
                 {borrow.borrowerName}
               </div>
-              <div className="text-muted-foreground">{borrow.bookTitle}</div>
-              <div className="text-xs text-muted-foreground" dir="ltr">
+              <div className="text-start text-muted-foreground truncate">{borrow.bookTitle}</div>
+              <div className="justify-self-center text-center font-mono text-xs text-muted-foreground" dir="ltr">
                 {borrow.borrowedAt ? formatDate(String(borrow.borrowedAt)) : "—"}
               </div>
-              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground" dir="ltr">
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70" dir={t("ltr", "rtl")}>
-                  {t("Due date", "تاريخ الاستحقاق")}
-                </span>
-                <span>{borrow.dueDate ? formatDate(String(borrow.dueDate)) : "—"}</span>
+              <div className="justify-self-center text-center font-mono text-xs text-muted-foreground" dir="ltr">
+                {borrow.dueDate ? formatDate(String(borrow.dueDate)) : "—"}
               </div>
-              <ReturnBorrowControls
-                borrow={borrow}
-                mutation={returnBorrow}
-                onSuccess={() => {
-                  queryClient.invalidateQueries({
-                    queryKey: getGetBorrowsQueryKey({ active: true }),
-                  });
-                  queryClient.invalidateQueries({
-                    queryKey: getGetBooksQueryKey(),
-                  });
-                }}
-              />
+              <div className="flex items-center justify-center">
+                <ReturnBorrowControls
+                  borrow={borrow}
+                  mutation={returnBorrow}
+                  onSuccess={() => {
+                    queryClient.invalidateQueries({
+                      queryKey: getGetBorrowsQueryKey({ active: true }),
+                    });
+                    queryClient.invalidateQueries({
+                      queryKey: getGetBooksQueryKey(),
+                    });
+                  }}
+                />
+              </div>
             </div>
           ))}
           <Pagination
@@ -5564,7 +5940,7 @@ function BorrowsPage() {
       )}
       <Dialog open={bookPickerOpen} onOpenChange={setBookPickerOpen}>
         <DialogContent className="max-w-md border-border bg-[#FCFBF0] p-0">
-          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-left">
+          <DialogHeader className="border-b border-border bg-card px-6 py-5 text-start">
             <DialogTitle className="text-2xl text-[#263064]">{t("Choose a book", "اختر كتابًا")}</DialogTitle>
             <DialogDescription>{t("Select the book to lend.", "اختر الكتاب المراد إعارته.")}</DialogDescription>
           </DialogHeader>
@@ -5753,13 +6129,13 @@ function BorrowHistoryPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[860px] grid-cols-[1.4fr_1.5fr_1fr_1fr_1fr_104px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[860px] grid-cols-[1.4fr_1.5fr_1fr_1fr_1.2fr_104px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="borrowerName"
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
               <span className="truncate">{t("Borrower", "المستعير")}</span>
             </SortHeader>
@@ -5768,7 +6144,7 @@ function BorrowHistoryPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
               {t("Book", "الكتاب")}
             </SortHeader>
@@ -5777,6 +6153,7 @@ function BorrowHistoryPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Borrowed", "تاريخ الإعارة")}
             </SortHeader>
@@ -5785,6 +6162,7 @@ function BorrowHistoryPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Due date", "تاريخ الاستحقاق")}
             </SortHeader>
@@ -5793,20 +6171,20 @@ function BorrowHistoryPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="center"
             >
               <span className="truncate">
                 {t("Returned / Condition", "الإعادة / الحالة")}
               </span>
             </SortHeader>
-            <span />
+            <span className="text-center">{t("Status", "الحالة")}</span>
           </div>
           {pages.pageItems.map((borrow) => (
             <div
               key={borrow.id}
-              className="grid min-w-[860px] grid-cols-[1.4fr_1.5fr_1fr_1fr_1fr_104px] items-center border-b border-border/70 px-5 py-4 text-sm last:border-b-0"
+              className="grid min-w-[860px] grid-cols-[1.4fr_1.5fr_1fr_1fr_1.2fr_104px] items-center border-b border-border/70 px-5 py-3 text-sm last:border-b-0"
             >
-              <div>
+              <div className="text-start">
                 <div className="font-semibold text-[#263064]">
                   {borrow.borrowerName || "—"}
                 </div>
@@ -5818,23 +6196,23 @@ function BorrowHistoryPage() {
                       : t("Student", "الطالب")}
                 </div>
               </div>
-              <div className="text-muted-foreground">
-                {borrow.bookTitle || "—"}
+              <div className="text-start text-muted-foreground">
+                <div className="truncate font-medium">{borrow.bookTitle || "—"}</div>
                 {borrow.bookBarcode && (
                   <div className="mt-0.5 font-mono text-[10px] text-muted-foreground/70">
                     {borrow.bookBarcode}
                   </div>
                 )}
               </div>
-              <div className="text-xs text-muted-foreground" dir="ltr">
+              <div className="justify-self-center text-center font-mono text-xs text-muted-foreground" dir="ltr">
                 {borrow.borrowedAt ? formatDate(String(borrow.borrowedAt)) : "—"}
               </div>
-              <div className="text-xs text-muted-foreground" dir="ltr">
+              <div className="justify-self-center text-center font-mono text-xs text-muted-foreground" dir="ltr">
                 {borrow.dueDate ? formatDate(String(borrow.dueDate)) : "—"}
               </div>
-              <div className="flex flex-col items-start gap-1">
+              <div className="flex flex-col items-center justify-center gap-1 text-center">
                 {borrow.returnedAt ? (
-                  <span className="text-xs text-muted-foreground" dir="ltr">
+                  <span className="font-mono text-xs text-muted-foreground" dir="ltr">
                     {formatDate(String(borrow.returnedAt))}
                   </span>
                 ) : (
@@ -5842,7 +6220,7 @@ function BorrowHistoryPage() {
                 )}
                 {conditionBadge(borrow.condition)}
               </div>
-              <div className="text-right">{statusBadge(borrow.returnedAt)}</div>
+              <div className="flex justify-center items-center">{statusBadge(borrow.returnedAt)}</div>
             </div>
           ))}
         </div>
@@ -5895,20 +6273,34 @@ function ReportSection({ title, titleAr, columns, data, exportType, t }: {
       {data.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">{t("No records found.", "لا توجد سجلات.")}</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border">
-                {columns.map((col) => (
-                  <th key={col.key} className="px-3 py-2 text-xs font-semibold text-muted-foreground">{col.header}</th>
+              <tr className="border-b border-border bg-[#263064]/5">
+                {columns.map((col, idx) => (
+                  <th
+                    key={col.key}
+                    className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground ${
+                      idx === 0 ? "text-start" : "text-center"
+                    }`}
+                  >
+                    {col.header}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {reportPages.pageItems.map((row, i) => (
-                <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
-                  {columns.map((col) => (
-                    <td key={col.key} className="px-3 py-2">{row[col.key] || "—"}</td>
+                <tr key={i} className="border-b border-border/50 transition-colors hover:bg-muted/30 last:border-b-0">
+                  {columns.map((col, idx) => (
+                    <td
+                      key={col.key}
+                      className={`px-4 py-2.5 ${
+                        idx === 0 ? "text-start font-medium text-[#263064]" : "text-center text-muted-foreground"
+                      }`}
+                    >
+                      {row[col.key] || "—"}
+                    </td>
                   ))}
                 </tr>
               ))}
@@ -5976,6 +6368,10 @@ function AnalyticsPage() {
     return months.map((m, i) => ({ name: m, count: counts[i] }));
   }, [borrows]);
 
+  const uniqueTitles = useMemo(() => {
+    return new Set(books.map((b) => b.title?.trim().toLowerCase()).filter(Boolean)).size;
+  }, [books]);
+
   return (
     <div className="rise-in">
       <PageHeading
@@ -5993,12 +6389,12 @@ function AnalyticsPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              label="Titles"
-              arabic="العناوين"
-              value={books.length.toLocaleString()}
+              label="Unique books"
+              arabic="الكتب الفريدة"
+              value={uniqueTitles.toLocaleString()}
               icon={BookOpen}
               tone="navy"
-              note={t("In the catalogue", "في الفهرس")}
+              note={t("Distinct titles in catalogue", "عناوين فريدة في الفهرس")}
             />
             <StatCard
               label="Total copies"
@@ -6135,7 +6531,7 @@ function AnalyticsPage() {
                 titleAr="الإعارات النشطة"
                 columns={[
                   { key: "borrowerName", header: t("Borrower", "المُعار") },
-                  { key: "bookTitle", header: t("Book", "��لكتاب") },
+                  { key: "bookTitle", header: t("Book", "الكتاب") },
                   { key: "borrowedAt", header: t("Borrowed", "تاريخ الإعارة") },
                   { key: "dueDate", header: t("Due", "الاسترجاع") },
                 ]}
@@ -6183,15 +6579,30 @@ function AnalyticsPage() {
                   { key: "availableCopies", header: t("Available", "المتاحة") },
                   { key: "status", header: t("Status", "الحالة") },
                 ]}
-                data={books.map((b) => ({
-                  title: b.title,
-                  author: b.author || "—",
-                  category: b.category || "—",
-                  language: b.language || "—",
-                  copies: String(b.copies),
-                  availableCopies: String(b.availableCopies ?? b.copies),
-                  status: b.status || "available",
-                }))}
+                data={books.map((b) => {
+                  const getStatusLabel = (s?: string) => {
+                    if (s === "available") return t("Available", "متاح");
+                    if (s === "borrowed") return t("Borrowed", "معار");
+                    if (s === "lost") return t("Lost", "مفقود");
+                    if (s === "damaged") return t("Damaged", "تالف");
+                    return s ? t(s, s) : t("Available", "متاح");
+                  };
+                  const getLanguageLabel = (l?: string) => {
+                    if (l === "Arabic") return t("Arabic", "العربية");
+                    if (l === "English") return t("English", "الإنجليزية");
+                    if (l === "French") return t("French", "الفرنسية");
+                    return l || "—";
+                  };
+                  return {
+                    title: b.title,
+                    author: b.author || "—",
+                    category: b.category || "—",
+                    language: getLanguageLabel(b.language),
+                    copies: String(b.copies),
+                    availableCopies: String(b.availableCopies ?? b.copies),
+                    status: getStatusLabel(b.status),
+                  };
+                })}
                 exportType="books"
                 t={t}
               />
@@ -6254,6 +6665,10 @@ function CategoriesPage() {
     for (const book of books) {
       if (
         term &&
+        !book.category?.toLowerCase().includes(term) &&
+        !book.title.toLowerCase().includes(term) &&
+        !book.author?.toLowerCase().includes(term) &&
+        !book.isbn?.toLowerCase().includes(term) &&
         !`${book.title} ${book.author || ""} ${book.isbn || ""}`
           .toLowerCase()
           .includes(term)
@@ -6283,7 +6698,7 @@ function CategoriesPage() {
         arabic="تصنيفات الكتب"
         description={t(
           "Every shelf in the library, grouped by how the collection is organised.",
-          "\u0643\u0644\u0020\u0631\u0641\u0020\u0641\u064A\u0020\u0627\u0644\u0645\u0643\u062A\u0628\u0629\u060C\u0020\u0645\u062C\u0645\u0651\u0639\u0629\u0020\u062D\u0633\u0628\u0020\u062A\u0646\u0638\u064A\u0645\u0020\u0627\u0644\u0645\u062C\u0645\u0648\u0639\u0629\u002E",
+          "كل رف في المكتبة، مجمّعة حسب تنظيم المجموعة.",
         )}
       />
       <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row">
@@ -6331,7 +6746,7 @@ function CategoriesPage() {
       ) : query.isError ? (
         <ErrorState
           label="book categories"
-          labelAr="\u062A\u0635\u0646\u064A\u0641\u0627\u062A\u0020\u0627\u0644\u0643\u062A\u0628"
+          labelAr="تصنيفات الكتب"
           onRetry={() => query.refetch()}
         />
       ) : !groups.length ? (
@@ -6339,11 +6754,11 @@ function CategoriesPage() {
           icon={Library}
           title={t(
             "No categories yet",
-            "\u0644\u0627\u0020\u062A\u0648\u062C\u062F\u0020\u062A\u0635\u0646\u064A\u0641\u0627\u062A\u0020\u0628\u0639\u062F",
+            "لا توجد تصنيفات بعد",
           )}
           detail={t(
             "Once books are added to the library, their categories will be summarised here.",
-            "\u0628\u0645\u062C\u0631\u062F\u0020\u0625\u0636\u0627\u0641\u0629\u0020\u0627\u0644\u0643\u062A\u0628\u0020\u0625\u0644\u0649\u0020\u0627\u0644\u0645\u0643\u062A\u0628\u0629\u060C\u0020\u0633\u064A\u062A\u0645\u0020\u062A\u0644\u062E\u064A\u0635\u0020\u062A\u0635\u0646\u064A\u0641\u0627\u062A\u0647\u0627\u0020\u0647\u0646\u0627\u002E",
+            "بمجرد إضافة الكتب إلى المكتبة، سيتم تلخيص تصنيفاتها هنا.",
           )}
           action={
             <Link href="/library">
@@ -6351,7 +6766,7 @@ function CategoriesPage() {
                 <Plus size={15} />{" "}
                 {t(
                   "Add your first book",
-                  "\u0623\u0636\u0641\u0020\u0643\u062A\u0627\u0628\u0643\u0020\u0627\u0644\u0623\u0648\u0644",
+                  "أضف كتابك الأول",
                 )}
               </Button>
             </Link>
@@ -6392,36 +6807,44 @@ function CategoriesPage() {
                       <strong className="font-mono text-[#263064]">
                         {group.length}
                       </strong>{" "}
-                      {t("titles", "\u0639\u0646\u0648\u0627\u0646")}
+                      {t("titles", "عنوان")}
                     </span>
                     <span>
                       <strong className="font-mono text-[#263064]">
                         {copies}
                       </strong>{" "}
-                      {t("copies", "\u0646\u0633\u062E\u0629")}
+                      {t("copies", "نسخة")}
                     </span>
                     <span>
                       <strong className="font-mono text-[#32B77E]">
                         {available}
                       </strong>{" "}
-                      {t("available", "\u0645\u062A\u0627\u062D")}
+                      {t("available", "متاح")}
                     </span>
                   </div>
+                </div>
+                <div className="grid min-w-[720px] grid-cols-[2fr_1.1fr_.8fr_.8fr_1.1fr_88px] items-center border-t border-border bg-[#263064]/5 px-5 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                  <span className="text-start">{t("Book", "الكتاب")}</span>
+                  <span className="text-start">{t("Author", "المؤلف")}</span>
+                  <span className="text-center">{t("Language", "اللغة")}</span>
+                  <span className="text-center">{t("Shelf", "الرف")}</span>
+                  <span className="text-center">{t("Barcode", "الباركود")}</span>
+                  <span className="text-center">{t("Status", "الحالة")}</span>
                 </div>
                 {group.map((book) => (
                   <div
                     key={book.id}
-                    className="grid min-w-[720px] grid-cols-[2fr_1fr_.8fr_.8fr_1.1fr_88px] items-center border-t border-border/70 px-5 py-2.5 transition-colors hover:bg-secondary/40"
+                    className="grid min-w-[720px] grid-cols-[2fr_1.1fr_.8fr_.8fr_1.1fr_88px] items-center border-t border-border/70 px-5 py-2.5 transition-colors hover:bg-secondary/40"
                     data-testid={`row-category-book-${book.id}`}
                   >
-                    <div className="line-clamp-1 text-sm font-medium text-[#263064]">
+                    <div className="line-clamp-1 text-start text-sm font-medium text-[#263064]">
                       {book.title}
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {book.author}
+                    <span className="text-start text-xs text-muted-foreground truncate">
+                      {book.author || "—"}
                     </span>
                     <span className="justify-self-center text-center text-xs text-muted-foreground">
-                      {book.language}
+                      {book.language || "—"}
                     </span>
                     <span className="justify-self-center text-center text-xs text-muted-foreground">
                       {book.shelf ? `${t("Shelf", "الرف")} ${book.shelf}` : "—"}
@@ -6436,28 +6859,22 @@ function CategoriesPage() {
                       className={`w-fit justify-self-center rounded-full px-2.5 py-1 text-[10px] font-semibold ${(book.availableCopies ?? book.copies) > 0 ? "bg-[#32B77E]/15 text-[#32B77E]" : "bg-[#B92327]/10 text-[#B92327]"}`}
                     >
                       {(book.availableCopies ?? book.copies) > 0
-                        ? t(
-                            "on shelf",
-                            "\u0639\u0644\u0649\u0020\u0627\u0644\u0631\u0641",
-                          )
-                        : t(
-                            "all out",
-                            "\u0643\u0644\u0020\u0627\u0644\u0646\u0633\u062E\u0020\u0645\u0633\u062A\u0639\u0627\u0631\u0629",
-                          )}
+                        ? t("Available", "متاح")
+                        : t("Out", "معار")}
                     </span>
                   </div>
                 ))}
               </div>
             );
           })}
-            <Pagination
-              page={groupPages.page}
-              pageCount={groupPages.pageCount}
-              totalItems={groupPages.totalItems}
-              pageSize={groupPages.pageSize}
-              onPageChange={groupPages.setPage}
-              onPageSizeChange={groupPages.setPageSize}
-            />
+          <Pagination
+            page={groupPages.page}
+            pageCount={groupPages.pageCount}
+            totalItems={groupPages.totalItems}
+            pageSize={groupPages.pageSize}
+            onPageChange={groupPages.setPage}
+            onPageSizeChange={groupPages.setPageSize}
+          />
         </div>
       )}
     </div>
@@ -6603,7 +7020,7 @@ function IndexPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
               <span className="truncate">{t("Title", "العنوان")}</span>
             </SortHeader>
@@ -6612,7 +7029,7 @@ function IndexPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
               {t("Author", "المؤلف")}
             </SortHeader>
@@ -6621,7 +7038,7 @@ function IndexPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
-              className="justify-start"
+              align="start"
             >
               {t("Category", "التصنيف")}
             </SortHeader>
@@ -6630,6 +7047,7 @@ function IndexPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Language", "اللغة")}
             </SortHeader>
@@ -6638,6 +7056,7 @@ function IndexPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Shelf", "الرف")}
             </SortHeader>
@@ -6646,6 +7065,7 @@ function IndexPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Barcode", "الباركود")}
             </SortHeader>
@@ -6654,6 +7074,7 @@ function IndexPage() {
               activeKey={sortKey}
               activeDir={sortDir}
               onSort={toggleSort}
+              align="center"
             >
               {t("Copies", "النسخ")}
             </SortHeader>
@@ -6664,17 +7085,17 @@ function IndexPage() {
               className="grid min-w-[880px] grid-cols-[2fr_1.2fr_1fr_.7fr_.7fr_1.1fr_.7fr] items-center border-b border-border/70 px-5 py-2.5 transition-colors hover:bg-secondary/40"
               data-testid={`row-index-book-${book.id}`}
             >
-              <span className="line-clamp-1 text-sm font-medium text-[#263064]">
+              <span className="line-clamp-1 text-start text-sm font-medium text-[#263064]">
                 {book.title}
               </span>
-              <span className="line-clamp-1 text-xs text-muted-foreground">
-                {book.author}
+              <span className="line-clamp-1 text-start text-xs text-muted-foreground">
+                {book.author || "—"}
               </span>
-              <span className="text-xs text-muted-foreground">
-                {book.category}
+              <span className="text-start text-xs text-muted-foreground truncate">
+                {book.category || "—"}
               </span>
               <span className="justify-self-center text-center text-xs text-muted-foreground">
-                {book.language}
+                {book.language || "—"}
               </span>
               <span
                 className="justify-self-center text-center font-mono text-xs text-muted-foreground"
@@ -6818,7 +7239,7 @@ function SettingsPage() {
                   <button
                     key={year.id}
                     onClick={() => setSelected(year.id)}
-                    className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${active ? "border-primary bg-secondary/70" : "border-border hover:border-primary/40 hover:bg-muted/50"}`}
+                    className={`flex w-full items-center gap-4 rounded-xl border p-4 text-start transition-all ${active ? "border-primary bg-secondary/70" : "border-border hover:border-primary/40 hover:bg-muted/50"}`}
                     data-testid={`button-academic-year-${year.id}`}
                   >
                     <div
@@ -6994,18 +7415,36 @@ function Router() {
 }
 
 function PasswordSettings() {
+  const { t, lang: language } = useT();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [message, setMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setMessage("");
-    if (newPassword.length < 10)
-      return setMessage("New password must be at least 10 characters.");
-    if (newPassword !== confirmation)
-      return setMessage("New passwords do not match.");
+    setIsSuccess(false);
+
+    if (newPassword.length < 10) {
+      return setMessage(
+        t(
+          "New password must be at least 10 characters.",
+          "يجب أن تتكون كلمة المرور الجديدة من 10 خانات على الأقل.",
+        ),
+      );
+    }
+    if (newPassword !== confirmation) {
+      return setMessage(
+        t(
+          "New passwords do not match.",
+          "كلمتا المرور غير متطابقتين.",
+        ),
+      );
+    }
+
     const response = await fetch("/api/auth/change-password", {
       method: "POST",
       headers: {
@@ -7014,73 +7453,121 @@ function PasswordSettings() {
       },
       body: JSON.stringify({ currentPassword, newUsername, newPassword }),
     });
+
     const result = await response.json().catch(() => ({}));
-    setMessage(
-      response.ok
-        ? "Password changed successfully."
-        : result.error || "Could not change password.",
-    );
     if (response.ok) {
+      setIsSuccess(true);
+      setMessage(
+        t(
+          "Credentials updated successfully.",
+          "تم تحديث بيانات الدخول بنجاح.",
+        ),
+      );
       setCurrentPassword("");
       setNewUsername("");
       setNewPassword("");
       setConfirmation("");
+    } else {
+      setIsSuccess(false);
+      setMessage(
+        result.error ||
+          t(
+            "Could not change password. Please check current password.",
+            "تعذر تغيير كلمة المرور. يرجى التحقق من كلمة المرور الحالية.",
+          ),
+      );
     }
   };
+
   return (
-    <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
+    <section
+      className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow"
+      dir={language === "ar" ? "rtl" : "ltr"}
+    >
       <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-        Security
+        {t("Security & Credentials", "الأمان وبيانات الدخول")}
       </div>
       <h2 className="mt-1 text-xl font-bold text-[#263064]">
-        Change username and password
+        {t("Change username and password", "تغيير اسم المستخدم وكلمة المرور")}
       </h2>
-      <form onSubmit={submit} className="mt-5 grid max-w-md gap-3">
-          <label className="grid gap-1.5 text-sm">
-            <span>Current password *</span>
-            <input
-          required
-          type="password"
-          value={currentPassword}
-          onChange={(event) => setCurrentPassword(event.target.value)}
-          placeholder="Current password"
-          className="h-10 rounded-lg border border-input bg-card px-3 text-sm"
-            />
-          </label>
-        <label className="grid gap-1.5 text-sm">
-          <span>New username *</span>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {t(
+          "Update the administrator account credentials used to sign in to this system.",
+          "تحديث بيانات حساب المدير المسجل للدخول إلى هذا النظام.",
+        )}
+      </p>
+
+      <form onSubmit={submit} className="mt-5 grid max-w-md gap-3.5">
+        <label className="grid gap-1.5 text-xs font-semibold text-[#263064] text-start">
+          <span>{t("Current password", "كلمة المرور الحالية")} *</span>
           <input
-          required
-          type="text"
-          value={newUsername}
-          onChange={(event) => setNewUsername(event.target.value)}
-          placeholder="New username"
-          className="h-10 rounded-lg border border-input bg-card px-3 text-sm"
+            required
+            type="password"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+            placeholder={t("Enter current password", "أدخل كلمة المرور الحالية")}
+            className="h-10 rounded-lg border border-input bg-card px-3 text-sm font-sans"
+            data-testid="input-current-password"
           />
         </label>
-        <label className="grid gap-1.5 text-sm">
-          <span>New password *</span>
+
+        <label className="grid gap-1.5 text-xs font-semibold text-[#263064] text-start">
+          <span>{t("New username", "اسم المستخدم الجديد")} *</span>
           <input
-          required
-          type="password"
-          value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
-          placeholder="New password (10+ characters)"
-          className="h-10 rounded-lg border border-input bg-card px-3 text-sm"
+            required
+            type="text"
+            value={newUsername}
+            onChange={(event) => setNewUsername(event.target.value)}
+            placeholder={t("Enter new username", "أدخل اسم المستخدم الجديد")}
+            className="h-10 rounded-lg border border-input bg-card px-3 text-sm font-sans"
+            data-testid="input-new-username"
           />
         </label>
-        <input
-          required
-          type="password"
-          value={confirmation}
-          onChange={(event) => setConfirmation(event.target.value)}
-          placeholder="Confirm new password"
-          className="h-10 rounded-lg border border-input bg-card px-3 text-sm"
-        />
-        <Button type="submit" className="w-fit bg-[#263064] text-[#FCFBF0]">
-          Save credentials
+
+        <label className="grid gap-1.5 text-xs font-semibold text-[#263064] text-start">
+          <span>{t("New password", "كلمة المرور الجديدة")} *</span>
+          <input
+            required
+            minLength={10}
+            type="password"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            placeholder={t("New password (10+ characters)", "كلمة المرور الجديدة (10 خانات فأكثر)")}
+            className="h-10 rounded-lg border border-input bg-card px-3 text-sm font-sans"
+            data-testid="input-new-password"
+          />
+        </label>
+
+        <label className="grid gap-1.5 text-xs font-semibold text-[#263064] text-start">
+          <span>{t("Confirm new password", "تأكيد كلمة المرور الجديدة")} *</span>
+          <input
+            required
+            minLength={10}
+            type="password"
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+            placeholder={t("Confirm new password", "أعد كتابة كلمة المرور الجديدة")}
+            className="h-10 rounded-lg border border-input bg-card px-3 text-sm font-sans"
+            data-testid="input-confirm-password"
+          />
+        </label>
+
+        <Button
+          type="submit"
+          className="mt-2 w-fit bg-[#263064] text-[#FCFBF0] hover:bg-[#263064]/90"
+          data-testid="button-save-credentials"
+        >
+          {t("Save credentials", "حفظ البيانات الجديدة")}
         </Button>
-        {message && <p className="text-sm text-muted-foreground">{message}</p>}
+
+        {message && (
+          <p
+            className={`text-xs font-medium ${isSuccess ? "text-[#32B77E]" : "text-destructive"}`}
+            data-testid="text-password-message"
+          >
+            {message}
+          </p>
+        )}
       </form>
     </section>
   );
@@ -7096,11 +7583,13 @@ function SettingsWithPassword() {
 }
 
 function AuthGate() {
+  const { t, lang: language, setLanguage } = useT();
   const [ready, setReady] = useState(false);
   const [setupRequired, setSetupRequired] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
   useEffect(() => {
     setAuthTokenGetter(() => localStorage.getItem("school-auth-token"));
     fetch("/api/auth/status")
@@ -7117,9 +7606,15 @@ function AuthGate() {
         else localStorage.removeItem("school-auth-token");
       })
       .catch(() =>
-        setError("Could not connect to the authentication service."),
+        setError(
+          t(
+            "Could not connect to the authentication service.",
+            "تعذر الاتصال بخدمة التحقق من الهوية.",
+          ),
+        ),
       );
-  }, []);
+  }, [t]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
@@ -7130,7 +7625,15 @@ function AuthGate() {
       body: JSON.stringify({ username, password }),
     });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) return setError(result.error || "Authentication failed.");
+    if (!response.ok) {
+      return setError(
+        result.error ||
+          t(
+            "Authentication failed. Please check your credentials.",
+            "فشل تسجيل الدخول. يرجى التحقق من اسم المستخدم وكلمة المرور.",
+          ),
+      );
+    }
     if (setupRequired) {
       setSetupRequired(false);
       setPassword("");
@@ -7140,52 +7643,95 @@ function AuthGate() {
     setAuthTokenGetter(() => localStorage.getItem("school-auth-token"));
     setReady(true);
   };
-  if (!ready)
+
+  if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FCFBF0] p-6">
+      <div
+        className="flex min-h-screen items-center justify-center bg-[#FCFBF0] p-6"
+        dir={language === "ar" ? "rtl" : "ltr"}
+      >
         <form
           onSubmit={submit}
           className="w-full max-w-md rounded-xl border border-border bg-card p-7 soft-shadow"
         >
-          <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-            Al-Bassam School
+          {/* Header & Language Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+              {t("Al-Bassam School", "مدارس البسام الأهلية")}
+            </div>
+            <button
+              type="button"
+              onClick={() => setLanguage(language === "ar" ? "en" : "ar")}
+              className="rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+              data-testid="button-login-lang"
+            >
+              {language === "ar" ? "English (EN)" : "العربية (AR)"}
+            </button>
           </div>
-          <h1 className="mt-2 text-2xl font-bold text-[#263064]">
-            {setupRequired ? "Create account" : "Sign in"}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+
+          <h1 className="mt-3 text-2xl font-bold text-[#263064]">
             {setupRequired
-              ? "Create the username and password required to access this system."
-              : "Enter your username and password to continue."}
+              ? t("Create admin account", "إنشاء حساب المدير")
+              : t("Sign in", "تسجيل الدخول")}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+            {setupRequired
+              ? t(
+                  "Create the username and password required to access this system.",
+                  "قم بإنشاء اسم المستخدم وكلمة المرور للوصول إلى النظام.",
+                )
+              : t(
+                  "Enter your administrator credentials to access the school workspace.",
+                  "أدخل اسم المستخدم وكلمة المرور للمتابعة إلى مساحة العمل.",
+                )}
           </p>
-          <input
-            autoFocus
-            required
-            type="text"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            placeholder="Username"
-            className="mt-6 h-11 w-full rounded-lg border border-input px-3 text-sm"
-          />
-          <input
-            required
-            minLength={10}
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="Password (10+ characters)"
-            className="mt-3 h-11 w-full rounded-lg border border-input px-3 text-sm"
-          />
+
+          <div className="mt-6 space-y-3.5">
+            <label className="grid gap-1 text-xs font-semibold text-[#263064] text-start">
+              <span>{t("Username", "اسم المستخدم")}</span>
+              <input
+                autoFocus
+                required
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder={t("Username", "اسم المستخدم")}
+                className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-sans outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                data-testid="input-login-username"
+              />
+            </label>
+
+            <label className="grid gap-1 text-xs font-semibold text-[#263064] text-start">
+              <span>{t("Password", "كلمة المرور")}</span>
+              <input
+                required
+                minLength={10}
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={t("Password (10+ characters)", "كلمة المرور (10 خانات فأكثر)")}
+                className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-sans outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                data-testid="input-login-password"
+              />
+            </label>
+          </div>
+
           <Button
             type="submit"
-            className="mt-4 w-full bg-[#263064] text-[#FCFBF0]"
+            className="mt-5 w-full bg-[#263064] text-[#FCFBF0] hover:bg-[#263064]/90 h-11 text-sm font-bold"
+            data-testid="button-login-submit"
           >
-            {setupRequired ? "Create account" : "Sign in"}
+            {setupRequired
+              ? t("Create account", "إنشاء الحساب")
+              : t("Sign in", "تسجيل الدخول")}
           </Button>
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+
+          {error && <p className="mt-3 text-xs font-medium text-destructive">{error}</p>}
         </form>
       </div>
     );
+  }
+
   return <Router />;
 }
 
