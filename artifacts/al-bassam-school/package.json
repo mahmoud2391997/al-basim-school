@@ -1,6 +1,6 @@
 {
   "name": "@workspace/al-bassam-school",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
     "desktop:build": "node electron/build.cjs",
     "desktop:dist": "npm run desktop:build",
     "desktop:rebuild": "electron-builder install-app-deps",
+    "release:check": "pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run web:build",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "main": "electron/main.cjs",
