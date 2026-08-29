@@ -1691,7 +1691,7 @@ function StudentDialog({
             >
               {t(
                 "Could not save — the student number or national ID may already be in use.",
-                "تعذر الحفظ — قد يكون رقم الطالب أو الهوية الوطنية مستخدماً بالفعل.",
+                "تعذر الحفظ — قد يكون رقم الطالب أو الهوية الوط��ية مستخدماً بالفعل.",
               )}
             </div>
           )}
@@ -1919,7 +1919,7 @@ function StudentsPage() {
           {
             onSuccess: () => {
               queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
-              setToast(t("Student record deleted", "تم حذف سجل الطالب"));
+              setToast(t("Student record deleted", "تم حذف سجل الطال��"));
             },
           },
         ),
@@ -4879,7 +4879,7 @@ function BookRow({
             <Trash2 size={14} />
           </button>
         </div>
-        <div className="flex items-center justify-end gap-1">
+        <div className="grid w-full max-w-[190px] grid-cols-2 gap-1">
           <button
             onClick={() => onConditionChange(book, "lost")}
             disabled={available <= 0}
@@ -5483,7 +5483,7 @@ function BorrowsPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[760px] grid-cols-[1.5fr_1.5fr_1fr_1fr_176px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[760px] grid-cols-[1.45fr_1.45fr_1fr_1fr_220px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="borrowerName"
               activeKey={sortKey}
@@ -5518,12 +5518,12 @@ function BorrowsPage() {
             >
               {t("Due date", "تاريخ الاستحقاق")}
             </SortHeader>
-            <span />
+            <span className="text-center">{t("Return / status", "الإعادة / الحالة")}</span>
           </div>
           {borrowPages.pageItems.map((borrow) => (
             <div
               key={borrow.id}
-              className="grid min-w-[760px] grid-cols-[1.5fr_1.5fr_1fr_1fr_176px] items-center border-b border-border/70 px-5 py-4 text-sm last:border-b-0"
+              className="grid min-w-[760px] grid-cols-[1.45fr_1.45fr_1fr_1fr_220px] items-center border-b border-border/70 px-5 py-4 text-sm last:border-b-0"
             >
               <div className="font-semibold text-[#263064]">
                 {borrow.borrowerName}
@@ -5532,8 +5532,11 @@ function BorrowsPage() {
               <div className="text-xs text-muted-foreground" dir="ltr">
                 {borrow.borrowedAt ? formatDate(String(borrow.borrowedAt)) : "—"}
               </div>
-              <div className="text-xs text-muted-foreground" dir="ltr">
-                {borrow.dueDate ? formatDate(String(borrow.dueDate)) : "—"}
+              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground" dir="ltr">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70" dir={t("ltr", "rtl")}>
+                  {t("Due date", "تاريخ الاستحقاق")}
+                </span>
+                <span>{borrow.dueDate ? formatDate(String(borrow.dueDate)) : "—"}</span>
               </div>
               <ReturnBorrowControls
                 borrow={borrow}
@@ -6132,7 +6135,7 @@ function AnalyticsPage() {
                 titleAr="الإعارات النشطة"
                 columns={[
                   { key: "borrowerName", header: t("Borrower", "المُعار") },
-                  { key: "bookTitle", header: t("Book", "الكتاب") },
+                  { key: "bookTitle", header: t("Book", "��لكتاب") },
                   { key: "borrowedAt", header: t("Borrowed", "تاريخ الإعارة") },
                   { key: "dueDate", header: t("Due", "الاسترجاع") },
                 ]}
