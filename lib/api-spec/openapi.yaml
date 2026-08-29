@@ -348,6 +348,29 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Borrow" }
+  /library/books/{id}/condition:
+    patch:
+      operationId: markBookCondition
+      tags: [library]
+      summary: Mark one copy of a book as lost or damaged, or restore a copy
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: number }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookConditionInput" }
+      responses:
+        "200":
+          description: Updated book
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Book" }
+        "404": { description: Book not found }
+        "409": { description: No copy available for the requested action }
   /library/borrows/{id}/return:
     patch:
       operationId: returnBorrow
@@ -358,6 +381,11 @@ paths:
           name: id
           required: true
           schema: { type: number }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookReturnInput" }
       responses:
         "200":
           description: Returned borrow
@@ -390,11 +418,14 @@ components:
         - status
     DashboardSummary:
       type: object
-      required: [students, teachers, books, attendanceRate, recentActivity]
+      required: [students, teachers, books, availableBooks, borrowedBooks, employees, attendanceRate, recentActivity]
       properties:
         students: { type: number }
         teachers: { type: number }
         books: { type: number }
+        availableBooks: { type: number }
+        borrowedBooks: { type: number }
+        employees: { type: number }
         attendanceRate: { type: number }
         recentActivity:
           type: array
@@ -409,11 +440,12 @@ components:
         timestamp: { type: string, format: date-time }
     Student:
       type: object
-      required: [id, fullName, fullNameArabic, studentNumber, nationalId, grade, className, status, enrollmentDate]
+      required: [id, fullName, fullNameArabic, gender, studentNumber, nationalId, grade, className, status, enrollmentDate]
       properties:
         id: { type: number }
         fullName: { type: string }
         fullNameArabic: { type: string }
+        gender: { type: string, enum: [male, female] }
         studentNumber: { type: string }
         nationalId: { type: string }
         grade: { type: string }
@@ -424,10 +456,11 @@ components:
         enrollmentDate: { type: string, format: date }
     StudentInput:
       type: object
-      required: [fullName, fullNameArabic, studentNumber, nationalId, grade, className, enrollmentDate]
+      required: [fullName, fullNameArabic, gender, studentNumber, nationalId, grade, className, enrollmentDate]
       properties:
         fullName: { type: string, minLength: 1 }
         fullNameArabic: { type: string, minLength: 1 }
+        gender: { type: string, enum: [male, female] }
         studentNumber: { type: string, minLength: 1 }
         nationalId: { type: string, minLength: 1 }
         grade: { type: string, minLength: 1 }
@@ -576,6 +609,8 @@ components:
         description: { type: string }
         coverImage: { type: string }
         shelf: { type: string }
+        lostCopies: { type: number, minimum: 0 }
+        damagedCopies: { type: number, minimum: 0 }
     BookInput:
       type: object
       required: [title]
@@ -597,6 +632,8 @@ components:
         description: { type: string }
         coverImage: { type: string }
         shelf: { type: string }
+        lostCopies: { type: number, minimum: 0 }
+        damagedCopies: { type: number, minimum: 0 }
     BookUpdate:
       type: object
       properties:
@@ -617,6 +654,15 @@ components:
         description: { type: string }
         coverImage: { type: string }
         shelf: { type: string }
+        lostCopies: { type: number, minimum: 0 }
+        damagedCopies: { type: number, minimum: 0 }
+    BookConditionInput:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [lost, damaged, fixed, found]
     Borrow:
       type: object
       required: [id, bookId, borrowerType, borrowerId, borrowedAt]
@@ -632,6 +678,7 @@ components:
         bookTitle: { type: string }
         bookBarcode: { type: string }
         borrowerName: { type: string }
+        condition: { type: string, enum: [good, damaged, lost], nullable: true }
     BorrowInput:
       type: object
       required: [bookId, borrowerType, borrowerId]
@@ -640,6 +687,10 @@ components:
         borrowerType: { type: string, enum: [student, teacher, employee] }
         borrowerId: { type: number }
         dueDate: { type: string, format: date }
+    BookReturnInput:
+      type: object
+      properties:
+        condition: { type: string, enum: [good, damaged, lost], nullable: true }
     AcademicYear:
       type: object
       required: [id, label, startDate, endDate, isCurrent]

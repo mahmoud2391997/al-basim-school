@@ -83,6 +83,7 @@ export async function seedDatabase() {
     {
       fullName: "Abdulaziz Saud Saeed Alqahtani",
       fullNameArabic: "عبدالعزيز سعود سعيد القحطاني",
+      gender: "male",
       studentNumber: "AB-2025-001",
       nationalId: "1123456789",
       grade: "Grade 7",
@@ -95,6 +96,7 @@ export async function seedDatabase() {
     {
       fullName: "Sara Al-Harbi",
       fullNameArabic: "سارة الحربي",
+      gender: "female",
       studentNumber: "AB-2025-014",
       nationalId: "1234567890",
       grade: "Grade 8",
@@ -107,6 +109,7 @@ export async function seedDatabase() {
     {
       fullName: "Omar Al-Faisal",
       fullNameArabic: "عمر الفيصل",
+      gender: "male",
       studentNumber: "AB-2025-022",
       nationalId: "1345678901",
       grade: "Grade 9",
@@ -125,7 +128,9 @@ export async function seedDatabase() {
       isbn: "9780521536608",
       category: "Science",
       copies: 5,
-      availableCopies: 4,
+      availableCopies: 3,
+      lostCopies: 1,
+      damagedCopies: 1,
       language: "English",
       shelf: "A-12",
     },

@@ -17,7 +17,7 @@ function toClientRow(table, row) {
   if (table === 'students') return { ...row, fullName: row.full_name, fullNameArabic: row.full_name_arabic || '', studentNumber: row.student_number || '', nationalId: row.national_id || '', grade: row.grade || '', className: row.class_name || '', guardianName: row.guardian_name || '', guardianPhone: row.guardian_phone || '', enrollmentDate: row.enrollment_date || '' };
   if (table === 'teachers') { const { password: _password, ...safe } = row; return { ...safe, fullName: row.full_name, fullNameArabic: row.full_name_arabic || '', name: row.name || row.full_name, surname: row.surname || '', username: row.username || '', englishName: row.english_name || '', employeeCode: row.employee_code || '', nationalId: row.national_id || '', nationality: row.nationality || '', gender: row.gender || '', maritalStatus: row.marital_status || '', religion: row.religion || '', phone: row.phone || '', email: row.email || '', address: row.address || '', area: row.area || '', country: row.country || '', height: row.height || 0, weight: row.weight || 0, branch: row.branch || '', academicLevel: row.academic_level || '', subject: row.subject || '', weeklyClasses: row.weekly_classes || 0, isEmployee: Boolean(row.is_employee) }; }
   if (table === 'employees') return { ...row, fullName: row.full_name, fullNameArabic: row.full_name_arabic || '', employeeNumber: row.employee_number || '', nationalId: row.national_id || '', jobTitle: row.job_title || '', phone: row.phone || '' };
-  if (table === 'books') return { ...row, isbn: row.isbn || '', category: row.category || '', language: row.language || 'Arabic', volume: row.volume || '', copies: row.copies ?? row.total_copies, availableCopies: row.available_copies, dateAdded: row.date_added || '', depositNumber: row.deposit_number || '', status: row.status || 'available', publicationPlace: row.publication_place || '', publicationDate: row.publication_date || '', generalNumber: row.general_number || '', specialNumber: row.special_number || '', description: row.description || '', coverImage: row.cover_image || '', shelf: row.shelf || '' };
+  if (table === 'books') return { ...row, isbn: row.isbn || '', category: row.category || '', language: row.language || 'Arabic', volume: row.volume || '', copies: row.copies ?? row.total_copies, availableCopies: row.available_copies, lostCopies: row.lost_copies ?? 0, damagedCopies: row.damaged_copies ?? 0, dateAdded: row.date_added || '', depositNumber: row.deposit_number || '', status: row.status || 'available', publicationPlace: row.publication_place || '', publicationDate: row.publication_date || '', generalNumber: row.general_number || '', specialNumber: row.special_number || '', description: row.description || '', coverImage: row.cover_image || '', shelf: row.shelf || '' };
   return row;
 }
 
@@ -57,7 +57,8 @@ function startLocalApi(userDataPath, requestedPort) {
       if (!sessionToken || req.headers.authorization !== `Bearer ${sessionToken}`) return json(res, 401, { error: 'Authentication required' });
       if (url.pathname === '/api/dashboard/summary') {
         const books = db.prepare('SELECT COUNT(*) AS count FROM books').get().count;
-        const borrowedBooks = db.prepare('SELECT COUNT(*) AS count FROM books WHERE available_copies < COALESCE(copies, total_copies)').get().count;
+        const agg = db.prepare('SELECT COALESCE(SUM(COALESCE(copies, total_copies)), 0) AS total, COALESCE(SUM(available_copies), 0) AS available, COALESCE(SUM(lost_copies), 0) AS lost, COALESCE(SUM(damaged_copies), 0) AS damaged FROM books').get();
+        const borrowedBooks = Math.max(0, Number(agg.total) - Number(agg.available) - Number(agg.lost) - Number(agg.damaged));
         return json(res, 200, {
           students: db.prepare("SELECT COUNT(*) AS count FROM students WHERE status = 'active'").get().count,
           teachers: db.prepare("SELECT COUNT(*) AS count FROM teachers WHERE status = 'active'").get().count,
@@ -68,8 +69,8 @@ function startLocalApi(userDataPath, requestedPort) {
       }
       if (url.pathname === '/api/library/borrows' && req.method === 'GET') {
         const activeOnly = url.searchParams.get('active') === 'true';
-        const rows = db.prepare(`SELECT borrows.id, borrows.book_id, borrows.student_id, borrows.borrowed_at, borrows.due_date, borrows.returned_at, books.title AS book_title, books.isbn AS book_barcode, students.full_name AS student_name FROM borrows INNER JOIN books ON books.id = borrows.book_id INNER JOIN students ON students.id = borrows.student_id ${activeOnly ? 'WHERE borrows.returned_at IS NULL' : ''} ORDER BY borrows.borrowed_at DESC`).all();
-        return json(res, 200, rows.map((row) => ({ id: row.id, bookId: row.book_id, studentId: row.student_id, borrowerType: 'student', borrowerId: row.student_id, borrowedAt: row.borrowed_at, dueDate: row.due_date, returnedAt: row.returned_at, bookTitle: row.book_title, bookBarcode: row.book_barcode, studentName: row.student_name, borrowerName: row.student_name })));
+        const rows = db.prepare(`SELECT borrows.id, borrows.book_id, borrows.student_id, borrows.borrowed_at, borrows.due_date, borrows.returned_at, borrows.condition, books.title AS book_title, books.isbn AS book_barcode, students.full_name AS student_name FROM borrows INNER JOIN books ON books.id = borrows.book_id INNER JOIN students ON students.id = borrows.student_id ${activeOnly ? 'WHERE borrows.returned_at IS NULL' : ''} ORDER BY borrows.borrowed_at DESC`).all();
+        return json(res, 200, rows.map((row) => ({ id: row.id, bookId: row.book_id, studentId: row.student_id, borrowerType: 'student', borrowerId: row.student_id, borrowedAt: row.borrowed_at, dueDate: row.due_date, returnedAt: row.returned_at, condition: row.condition ?? 'good', bookTitle: row.book_title, bookBarcode: row.book_barcode, studentName: row.student_name, borrowerName: row.student_name })));
       }
       if (url.pathname === '/api/library/borrows' && req.method === 'POST') {
         const input = await body(req);
@@ -91,13 +92,44 @@ function startLocalApi(userDataPath, requestedPort) {
         const borrow = db.prepare('SELECT * FROM borrows WHERE id = ?').get(Number(returnMatch[1]));
         if (!borrow) return json(res, 404, { error: 'Borrow not found' });
         if (borrow.returned_at) return json(res, 409, { error: 'This borrow was already returned' });
+        const input = await body(req);
+        const condition = input.condition === 'damaged' || input.condition === 'lost' ? input.condition : 'good';
         const returnedAt = new Date().toISOString();
         const result = db.transaction(() => {
-          const updated = db.prepare('UPDATE borrows SET returned_at = ? WHERE id = ? RETURNING *').get(returnedAt, borrow.id);
-          db.prepare('UPDATE books SET available_copies = MIN(copies, available_copies + 1) WHERE id = ?').run(borrow.book_id);
+          const updated = db.prepare('UPDATE borrows SET returned_at = ?, condition = ? WHERE id = ? RETURNING *').get(returnedAt, condition, borrow.id);
+          if (condition === 'good') db.prepare('UPDATE books SET available_copies = MIN(copies, available_copies + 1) WHERE id = ?').run(borrow.book_id);
+          else if (condition === 'damaged') db.prepare('UPDATE books SET damaged_copies = damaged_copies + 1 WHERE id = ?').run(borrow.book_id);
+          else db.prepare('UPDATE books SET lost_copies = lost_copies + 1 WHERE id = ?').run(borrow.book_id);
           return updated;
         })();
-        return json(res, 200, { id: result.id, bookId: result.book_id, studentId: result.student_id, borrowedAt: result.borrowed_at, dueDate: result.due_date, returnedAt: result.returned_at });
+        return json(res, 200, { id: result.id, bookId: result.book_id, studentId: result.student_id, borrowedAt: result.borrowed_at, dueDate: result.due_date, returnedAt: result.returned_at, condition: result.condition });
+      }
+      const conditionMatch = url.pathname.match(/^\/api\/library\/books\/(\d+)\/condition$/);
+      if (conditionMatch && req.method === 'PATCH') {
+        const book = db.prepare('SELECT * FROM books WHERE id = ?').get(Number(conditionMatch[1]));
+        if (!book) return json(res, 404, { error: 'Book not found' });
+        const action = (await body(req)).action;
+        if (action === 'lost') {
+          if (book.available_copies < 1) return json(res, 409, { error: 'No copy is on the shelf to mark as lost' });
+          const result = db.prepare('UPDATE books SET available_copies = available_copies - 1, lost_copies = lost_copies + 1 WHERE id = ? RETURNING *').get(book.id);
+          return json(res, 200, toClientRow('books', result));
+        }
+        if (action === 'damaged') {
+          if (book.available_copies < 1) return json(res, 409, { error: 'No copy is on the shelf to mark as damaged' });
+          const result = db.prepare('UPDATE books SET available_copies = available_copies - 1, damaged_copies = damaged_copies + 1 WHERE id = ? RETURNING *').get(book.id);
+          return json(res, 200, toClientRow('books', result));
+        }
+        if (action === 'found') {
+          if (book.lost_copies < 1) return json(res, 409, { error: 'There are no lost copies to restore' });
+          const result = db.prepare('UPDATE books SET available_copies = available_copies + 1, lost_copies = lost_copies - 1 WHERE id = ? RETURNING *').get(book.id);
+          return json(res, 200, toClientRow('books', result));
+        }
+        if (action === 'fixed') {
+          if (book.damaged_copies < 1) return json(res, 409, { error: 'There are no damaged copies to restore' });
+          const result = db.prepare('UPDATE books SET available_copies = available_copies + 1, damaged_copies = damaged_copies - 1 WHERE id = ? RETURNING *').get(book.id);
+          return json(res, 200, toClientRow('books', result));
+        }
+        return json(res, 400, { error: 'Invalid condition action' });
       }
       const match = Object.entries(collections).find(([base]) => url.pathname === base || url.pathname.startsWith(`${base}/`));
       if (!match) return json(res, 404, { error: 'Not found' });

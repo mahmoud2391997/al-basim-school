@@ -28,4 +28,8 @@ export interface BookInput {
   description?: string;
   coverImage?: string;
   shelf?: string;
+  /** @minimum 0 */
+  lostCopies?: number;
+  /** @minimum 0 */
+  damagedCopies?: number;
 }

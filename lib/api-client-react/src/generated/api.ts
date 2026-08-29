@@ -22,7 +22,9 @@ import type {
 import type {
   AcademicYear,
   Book,
+  BookConditionInput,
   BookInput,
+  BookReturnInput,
   BookUpdate,
   Borrow,
   BorrowInput,
@@ -1573,6 +1575,78 @@ export const useCreateBorrow = <TError = ErrorType<unknown>,
       return useMutation(getCreateBorrowMutationOptions(options));
     }
 
+export const getMarkBookConditionUrl = (id: number,) => {
+
+
+
+
+  return `/api/library/books/${id}/condition`
+}
+
+/**
+ * @summary Mark one copy of a book as lost or damaged, or restore a copy
+ */
+export const markBookCondition = async (id: number,
+    bookConditionInput: BookConditionInput, options?: Parameters<typeof customFetch>[1]): Promise<Book> => {
+
+  return customFetch<Book>(getMarkBookConditionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bookConditionInput)
+  }
+);}
+
+
+
+
+
+export const getMarkBookConditionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markBookCondition>>, TError,{id: number;data: BodyType<BookConditionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markBookCondition>>, TError,{id: number;data: BodyType<BookConditionInput>}, TContext> => {
+
+const mutationKey = ['markBookCondition'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markBookCondition>>, {id: number;data: BodyType<BookConditionInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  markBookCondition(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkBookConditionMutationResult = NonNullable<Awaited<ReturnType<typeof markBookCondition>>>
+    export type MarkBookConditionMutationBody = BodyType<BookConditionInput>
+    export type MarkBookConditionMutationError = ErrorType<void>
+
+    /**
+ * @summary Mark one copy of a book as lost or damaged, or restore a copy
+ */
+export const useMarkBookCondition = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markBookCondition>>, TError,{id: number;data: BodyType<BookConditionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markBookCondition>>,
+        TError,
+        {id: number;data: BodyType<BookConditionInput>},
+        TContext
+      > => {
+      return useMutation(getMarkBookConditionMutationOptions(options));
+    }
+
 export const getReturnBorrowUrl = (id: number,) => {
 
 
@@ -1584,14 +1658,15 @@ export const getReturnBorrowUrl = (id: number,) => {
 /**
  * @summary Mark a borrow as returned
  */
-export const returnBorrow = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Borrow> => {
+export const returnBorrow = async (id: number,
+    bookReturnInput?: BookReturnInput, options?: Parameters<typeof customFetch>[1]): Promise<Borrow> => {
 
   return customFetch<Borrow>(getReturnBorrowUrl(id),
   {
     ...options,
-    method: 'PATCH'
-
-
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bookReturnInput)
   }
 );}
 
@@ -1600,8 +1675,8 @@ export const returnBorrow = async (id: number, options?: Parameters<typeof custo
 
 
 export const getReturnBorrowMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof returnBorrow>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof returnBorrow>>, TError,{id: number}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof returnBorrow>>, TError,{id: number;data?: BodyType<BookReturnInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof returnBorrow>>, TError,{id: number;data?: BodyType<BookReturnInput>}, TContext> => {
 
 const mutationKey = ['returnBorrow'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1613,10 +1688,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof returnBorrow>>, {id: number}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof returnBorrow>>, {id: number;data?: BodyType<BookReturnInput>}> = (props) => {
+          const {id,data} = props ?? {};
 
-          return  returnBorrow(id,requestOptions)
+          return  returnBorrow(id,data,requestOptions)
         }
 
 
@@ -1627,18 +1702,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ReturnBorrowMutationResult = NonNullable<Awaited<ReturnType<typeof returnBorrow>>>
-
+    export type ReturnBorrowMutationBody = BodyType<BookReturnInput> | undefined
     export type ReturnBorrowMutationError = ErrorType<void>
 
     /**
  * @summary Mark a borrow as returned
  */
 export const useReturnBorrow = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof returnBorrow>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof returnBorrow>>, TError,{id: number;data?: BodyType<BookReturnInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof returnBorrow>>,
         TError,
-        {id: number},
+        {id: number;data?: BodyType<BookReturnInput>},
         TContext
       > => {
       return useMutation(getReturnBorrowMutationOptions(options));

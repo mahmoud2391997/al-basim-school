@@ -16,6 +16,7 @@ export const studentsTable = pgTable("students", {
   academicYearId: integer("academic_year_id").notNull().default(0),
   fullName: text("full_name").notNull(),
   fullNameArabic: text("full_name_arabic").notNull(),
+  gender: text("gender").notNull().default(""),
   studentNumber: text("student_number").notNull().unique(),
   nationalId: text("national_id").notNull(),
   grade: text("grade").notNull(),
@@ -89,6 +90,8 @@ export const booksTable = pgTable("books", {
   description: text("description").notNull().default(""),
   coverImage: text("cover_image").notNull().default(""),
   shelf: text("shelf").notNull().default(""),
+  lostCopies: integer("lost_copies").notNull().default(0),
+  damagedCopies: integer("damaged_copies").notNull().default(0),
 });
 
 export const attendanceTable = pgTable("attendance", {
@@ -110,6 +113,7 @@ export const borrowsTable = pgTable("borrows", {
   borrowedAt: timestamp("borrowed_at", { withTimezone: true }).notNull().defaultNow(),
   dueDate: date("due_date", { mode: "string" }),
   returnedAt: timestamp("returned_at", { withTimezone: true }),
+  condition: text("condition").notNull().default("good"),
 });
 
 export const insertAcademicYearSchema = createInsertSchema(academicYearsTable);

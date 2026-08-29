@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BorrowBorrowerType } from './borrowBorrowerType';
+import type { BorrowCondition } from './borrowCondition';
 
 export interface Borrow {
   id: number;
@@ -19,4 +20,5 @@ export interface Borrow {
   bookTitle?: string;
   bookBarcode?: string;
   borrowerName?: string;
+  condition?: BorrowCondition;
 }

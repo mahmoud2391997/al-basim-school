@@ -24,6 +24,9 @@ export const GetDashboardSummaryResponse = zod.object({
   "students": zod.number(),
   "teachers": zod.number(),
   "books": zod.number(),
+  "availableBooks": zod.number(),
+  "borrowedBooks": zod.number(),
+  "employees": zod.number(),
   "attendanceRate": zod.number(),
   "recentActivity": zod.array(zod.object({
   "id": zod.number(),
@@ -46,6 +49,7 @@ export const GetStudentsResponseItem = zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
   "fullNameArabic": zod.string(),
+  "gender": zod.enum(['male', 'female']),
   "studentNumber": zod.string(),
   "nationalId": zod.string(),
   "grade": zod.string(),
@@ -72,6 +76,7 @@ export const GetStudentsResponse = zod.array(GetStudentsResponseItem)
 export const CreateStudentBody = zod.object({
   "fullName": zod.string().min(1),
   "fullNameArabic": zod.string().min(1),
+  "gender": zod.enum(['male', 'female']),
   "studentNumber": zod.string().min(1),
   "nationalId": zod.string().min(1),
   "grade": zod.string().min(1),
@@ -85,6 +90,7 @@ export const CreateStudentResponse = zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
   "fullNameArabic": zod.string(),
+  "gender": zod.enum(['male', 'female']),
   "studentNumber": zod.string(),
   "nationalId": zod.string(),
   "grade": zod.string(),
@@ -114,6 +120,7 @@ export const UpdateStudentParams = zod.object({
 export const UpdateStudentBody = zod.object({
   "fullName": zod.string().min(1),
   "fullNameArabic": zod.string().min(1),
+  "gender": zod.enum(['male', 'female']),
   "studentNumber": zod.string().min(1),
   "nationalId": zod.string().min(1),
   "grade": zod.string().min(1),
@@ -127,6 +134,7 @@ export const UpdateStudentResponse = zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
   "fullNameArabic": zod.string(),
+  "gender": zod.enum(['male', 'female']),
   "studentNumber": zod.string(),
   "nationalId": zod.string(),
   "grade": zod.string(),
@@ -456,6 +464,12 @@ export const GetBooksQueryParams = zod.object({
   "category": zod.coerce.string().optional()
 })
 
+export const getBooksResponseLostCopiesMin = 0;
+
+export const getBooksResponseDamagedCopiesMin = 0;
+
+
+
 export const GetBooksResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -475,7 +489,9 @@ export const GetBooksResponseItem = zod.object({
   "specialNumber": zod.string(),
   "description": zod.string(),
   "coverImage": zod.string(),
-  "shelf": zod.string().optional()
+  "shelf": zod.string().optional(),
+  "lostCopies": zod.number().min(getBooksResponseLostCopiesMin).optional(),
+  "damagedCopies": zod.number().min(getBooksResponseDamagedCopiesMin).optional()
 })
 export const GetBooksResponse = zod.array(GetBooksResponseItem)
 
@@ -485,6 +501,10 @@ export const GetBooksResponse = zod.array(GetBooksResponseItem)
  */
 
 export const createBookBodyCopiesMin = 0;
+
+export const createBookBodyLostCopiesMin = 0;
+
+export const createBookBodyDamagedCopiesMin = 0;
 
 
 
@@ -505,8 +525,16 @@ export const CreateBookBody = zod.object({
   "specialNumber": zod.string().optional(),
   "description": zod.string().optional(),
   "coverImage": zod.string().optional(),
-  "shelf": zod.string().optional()
+  "shelf": zod.string().optional(),
+  "lostCopies": zod.number().min(createBookBodyLostCopiesMin).optional(),
+  "damagedCopies": zod.number().min(createBookBodyDamagedCopiesMin).optional()
 })
+
+export const createBookResponseLostCopiesMin = 0;
+
+export const createBookResponseDamagedCopiesMin = 0;
+
+
 
 export const CreateBookResponse = zod.object({
   "id": zod.number(),
@@ -527,7 +555,9 @@ export const CreateBookResponse = zod.object({
   "specialNumber": zod.string(),
   "description": zod.string(),
   "coverImage": zod.string(),
-  "shelf": zod.string().optional()
+  "shelf": zod.string().optional(),
+  "lostCopies": zod.number().min(createBookResponseLostCopiesMin).optional(),
+  "damagedCopies": zod.number().min(createBookResponseDamagedCopiesMin).optional()
 })
 
 
@@ -540,6 +570,10 @@ export const UpdateBookParams = zod.object({
 
 
 export const updateBookBodyCopiesMin = 0;
+
+export const updateBookBodyLostCopiesMin = 0;
+
+export const updateBookBodyDamagedCopiesMin = 0;
 
 
 
@@ -560,8 +594,16 @@ export const UpdateBookBody = zod.object({
   "specialNumber": zod.string().optional(),
   "description": zod.string().optional(),
   "coverImage": zod.string().optional(),
-  "shelf": zod.string().optional()
+  "shelf": zod.string().optional(),
+  "lostCopies": zod.number().min(updateBookBodyLostCopiesMin).optional(),
+  "damagedCopies": zod.number().min(updateBookBodyDamagedCopiesMin).optional()
 })
+
+export const updateBookResponseLostCopiesMin = 0;
+
+export const updateBookResponseDamagedCopiesMin = 0;
+
+
 
 export const UpdateBookResponse = zod.object({
   "id": zod.number(),
@@ -582,7 +624,9 @@ export const UpdateBookResponse = zod.object({
   "specialNumber": zod.string(),
   "description": zod.string(),
   "coverImage": zod.string(),
-  "shelf": zod.string().optional()
+  "shelf": zod.string().optional(),
+  "lostCopies": zod.number().min(updateBookResponseLostCopiesMin).optional(),
+  "damagedCopies": zod.number().min(updateBookResponseDamagedCopiesMin).optional()
 })
 
 
@@ -614,7 +658,8 @@ export const GetBorrowsResponseItem = zod.object({
   "returnedAt": zod.coerce.date().nullish(),
   "bookTitle": zod.string().optional(),
   "bookBarcode": zod.string().optional(),
-  "borrowerName": zod.string().optional()
+  "borrowerName": zod.string().optional(),
+  "condition": zod.enum(['good', 'damaged', 'lost']).nullish()
 })
 export const GetBorrowsResponse = zod.array(GetBorrowsResponseItem)
 
@@ -640,7 +685,50 @@ export const CreateBorrowResponse = zod.object({
   "returnedAt": zod.coerce.date().nullish(),
   "bookTitle": zod.string().optional(),
   "bookBarcode": zod.string().optional(),
-  "borrowerName": zod.string().optional()
+  "borrowerName": zod.string().optional(),
+  "condition": zod.enum(['good', 'damaged', 'lost']).nullish()
+})
+
+
+/**
+ * @summary Mark one copy of a book as lost or damaged, or restore a copy
+ */
+export const MarkBookConditionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkBookConditionBody = zod.object({
+  "action": zod.enum(['lost', 'damaged', 'fixed', 'found'])
+})
+
+export const markBookConditionResponseLostCopiesMin = 0;
+
+export const markBookConditionResponseDamagedCopiesMin = 0;
+
+
+
+export const MarkBookConditionResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "author": zod.string(),
+  "isbn": zod.string(),
+  "category": zod.string(),
+  "language": zod.enum(['Arabic', 'English', 'French']),
+  "volume": zod.string(),
+  "copies": zod.number(),
+  "availableCopies": zod.number(),
+  "dateAdded": zod.coerce.date(),
+  "depositNumber": zod.string(),
+  "status": zod.enum(['available', 'borrowed', 'lost', 'damaged']),
+  "publicationPlace": zod.string(),
+  "publicationDate": zod.string(),
+  "generalNumber": zod.string(),
+  "specialNumber": zod.string(),
+  "description": zod.string(),
+  "coverImage": zod.string(),
+  "shelf": zod.string().optional(),
+  "lostCopies": zod.number().min(markBookConditionResponseLostCopiesMin).optional(),
+  "damagedCopies": zod.number().min(markBookConditionResponseDamagedCopiesMin).optional()
 })
 
 
@@ -649,6 +737,10 @@ export const CreateBorrowResponse = zod.object({
  */
 export const ReturnBorrowParams = zod.object({
   "id": zod.coerce.number()
+})
+
+export const ReturnBorrowBody = zod.object({
+  "condition": zod.enum(['good', 'damaged', 'lost']).nullish()
 })
 
 export const ReturnBorrowResponse = zod.object({
@@ -662,7 +754,8 @@ export const ReturnBorrowResponse = zod.object({
   "returnedAt": zod.coerce.date().nullish(),
   "bookTitle": zod.string().optional(),
   "bookBarcode": zod.string().optional(),
-  "borrowerName": zod.string().optional()
+  "borrowerName": zod.string().optional(),
+  "condition": zod.enum(['good', 'damaged', 'lost']).nullish()
 })
 
 

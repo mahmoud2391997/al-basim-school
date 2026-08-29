@@ -37,6 +37,14 @@ export interface DashboardSummary {
   recentActivity: Activity[];
 }
 
+export type StudentGender = typeof StudentGender[keyof typeof StudentGender];
+
+
+export const StudentGender = {
+  male: 'male',
+  female: 'female',
+} as const;
+
 export type StudentStatus = typeof StudentStatus[keyof typeof StudentStatus];
 
 
@@ -50,6 +58,7 @@ export interface Student {
   id: number;
   fullName: string;
   fullNameArabic: string;
+  gender: StudentGender;
   studentNumber: string;
   nationalId: string;
   grade: string;
@@ -60,11 +69,20 @@ export interface Student {
   enrollmentDate: string;
 }
 
+export type StudentInputGender = typeof StudentInputGender[keyof typeof StudentInputGender];
+
+
+export const StudentInputGender = {
+  male: 'male',
+  female: 'female',
+} as const;
+
 export interface StudentInput {
   /** @minLength 1 */
   fullName: string;
   /** @minLength 1 */
   fullNameArabic: string;
+  gender: StudentInputGender;
   /** @minLength 1 */
   studentNumber: string;
   /** @minLength 1 */
@@ -323,6 +341,10 @@ export interface Book {
   description: string;
   coverImage: string;
   shelf?: string;
+  /** @minimum 0 */
+  lostCopies?: number;
+  /** @minimum 0 */
+  damagedCopies?: number;
 }
 
 export type BookInputLanguage = typeof BookInputLanguage[keyof typeof BookInputLanguage];
@@ -364,6 +386,10 @@ export interface BookInput {
   description?: string;
   coverImage?: string;
   shelf?: string;
+  /** @minimum 0 */
+  lostCopies?: number;
+  /** @minimum 0 */
+  damagedCopies?: number;
 }
 
 export type BookUpdateLanguage = typeof BookUpdateLanguage[keyof typeof BookUpdateLanguage];
@@ -405,6 +431,24 @@ export interface BookUpdate {
   description?: string;
   coverImage?: string;
   shelf?: string;
+  /** @minimum 0 */
+  lostCopies?: number;
+  /** @minimum 0 */
+  damagedCopies?: number;
+}
+
+export type BookConditionInputAction = typeof BookConditionInputAction[keyof typeof BookConditionInputAction];
+
+
+export const BookConditionInputAction = {
+  lost: 'lost',
+  damaged: 'damaged',
+  fixed: 'fixed',
+  found: 'found',
+} as const;
+
+export interface BookConditionInput {
+  action: BookConditionInputAction;
 }
 
 export type BorrowBorrowerType = typeof BorrowBorrowerType[keyof typeof BorrowBorrowerType];
@@ -414,6 +458,15 @@ export const BorrowBorrowerType = {
   student: 'student',
   teacher: 'teacher',
   employee: 'employee',
+} as const;
+
+export type BorrowCondition = typeof BorrowCondition[keyof typeof BorrowCondition] | null;
+
+
+export const BorrowCondition = {
+  good: 'good',
+  damaged: 'damaged',
+  lost: 'lost',
 } as const;
 
 export interface Borrow {
@@ -428,6 +481,7 @@ export interface Borrow {
   bookTitle?: string;
   bookBarcode?: string;
   borrowerName?: string;
+  condition?: BorrowCondition;
 }
 
 export type BorrowInputBorrowerType = typeof BorrowInputBorrowerType[keyof typeof BorrowInputBorrowerType];
@@ -444,6 +498,19 @@ export interface BorrowInput {
   borrowerType: BorrowInputBorrowerType;
   borrowerId: number;
   dueDate?: string;
+}
+
+export type BookReturnInputCondition = typeof BookReturnInputCondition[keyof typeof BookReturnInputCondition] | null;
+
+
+export const BookReturnInputCondition = {
+  good: 'good',
+  damaged: 'damaged',
+  lost: 'lost',
+} as const;
+
+export interface BookReturnInput {
+  condition?: BookReturnInputCondition;
 }
 
 export interface AcademicYear {

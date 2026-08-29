@@ -5,12 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { StudentGender } from './studentGender';
 import type { StudentStatus } from './studentStatus';
 
 export interface Student {
   id: number;
   fullName: string;
   fullNameArabic: string;
+  gender: StudentGender;
   studentNumber: string;
   nationalId: string;
   grade: string;

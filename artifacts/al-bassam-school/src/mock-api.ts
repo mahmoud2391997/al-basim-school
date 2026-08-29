@@ -102,6 +102,7 @@ function generateSeedData(): Store {
         id,
         fullName: `${firstName} ${lastName}`,
         fullNameArabic: `${firstName} ${lastName}`,
+        gender: isFemale ? 'female' : 'male',
         studentNumber: `AB-2025-${String(id).padStart(4, '0')}`,
         nationalId: String(1000000000 + id),
         grade: gradeEn[g],
@@ -228,6 +229,8 @@ function generateSeedData(): Store {
       volume: rand() > 0.7 ? '1' : '',
       copies,
       availableCopies: available,
+      lostCopies: lost,
+      damagedCopies: damaged,
       dateAdded: `${between(2020, 2025)}-${String(between(1, 12)).padStart(2, '0')}-${String(between(1, 28)).padStart(2, '0')}`,
       depositNumber: `DEP-${String(bookId).padStart(3, '0')}`,
       status: bookStatus,
@@ -276,6 +279,7 @@ function generateSeedData(): Store {
       dueDate,
       returnedAt: isReturned ? `${year}-${String(Math.min(month + (day > 20 ? 2 : 1), 12)).padStart(2, '0')}-${String(between(1, 28)).padStart(2, '0')}` : null,
       status: isReturned ? 'returned' : isLost ? 'lost' : 'active',
+      condition: isLost ? 'lost' : isReturned ? 'good' : 'good',
     });
   }
 
@@ -345,7 +349,7 @@ export function createMockFetch(): typeof fetch {
       const total = store.attendance.length;
       const totalBooks = store.books.reduce((sum, row) => sum + Number(row.copies || 0), 0);
       const availableBooks = store.books.reduce((sum, row) => sum + Number(row.availableCopies || 0), 0);
-      const borrowedBooks = totalBooks - availableBooks;
+      const borrowedBooks = store.books.reduce((sum, row) => sum + Math.max(0, Number(row.copies || 0) - Number(row.availableCopies || 0) - Number(row.lostCopies || 0) - Number(row.damagedCopies || 0)), 0);
       return respond({ students: students.length, teachers: store.teachers.length, books: totalBooks, availableBooks, borrowedBooks, employees: store.employees.length, attendanceRate: total ? Math.round((present / total) * 1000) / 10 : 0, recentActivity: (store.activity || []).sort((a: any, b: any) => b.timestamp.localeCompare(a.timestamp)).slice(0, 10) });
     }
     const name = collection(url.pathname); const rows = store[name] || [];
@@ -355,14 +359,78 @@ export function createMockFetch(): typeof fetch {
       const bRows = store.borrows || [];
       const bIdx = bRows.findIndex((r) => r.id === returnId);
       if (bIdx < 0) return respond({ error: 'Record not found' }, 404);
-      bRows[bIdx] = { ...bRows[bIdx], returnedAt: new Date().toISOString().slice(0, 10), status: 'returned' };
+      const bRow = bRows[bIdx];
+      if (bRow.returnedAt) return respond({ error: 'This borrow was already returned' }, 409);
+      const condition = body?.condition === 'damaged' || body?.condition === 'lost' ? body.condition : 'good';
+      bRows[bIdx] = { ...bRow, returnedAt: new Date().toISOString().slice(0, 10), status: 'returned', condition };
       store.borrows = bRows;
       const bkRows = store.books || [];
-      const bkIdx = bkRows.findIndex((b) => b.id === bRows[bIdx].bookId);
-      if (bkIdx >= 0) bkRows[bkIdx] = { ...bkRows[bkIdx], availableCopies: (bkRows[bkIdx].availableCopies || 0) + 1 };
-      store.books = bkRows;
+      const bkIdx = bkRows.findIndex((b) => b.id === bRow.bookId);
+      if (bkIdx >= 0) {
+        const bk = bkRows[bkIdx];
+        if (condition === 'good') {
+          bkRows[bkIdx] = { ...bk, availableCopies: Math.min(bk.copies, (bk.availableCopies || 0) + 1) };
+        } else if (condition === 'damaged') {
+          bkRows[bkIdx] = { ...bk, damagedCopies: (bk.damagedCopies || 0) + 1 };
+        } else {
+          bkRows[bkIdx] = { ...bk, lostCopies: (bk.lostCopies || 0) + 1 };
+        }
+        store.books = bkRows;
+      }
       save(store);
       return respond(bRows[bIdx]);
+    }
+    const conditionMatch = url.pathname.match(/\/api\/library\/books\/(\d+)\/condition/);
+    if (conditionMatch && method === 'PATCH') {
+      const bookId = Number(conditionMatch[1]);
+      const bkRows = store.books || [];
+      const bkIdx = bkRows.findIndex((b) => b.id === bookId);
+      if (bkIdx < 0) return respond({ error: 'Book not found' }, 404);
+      const bk = bkRows[bkIdx];
+      const avail = bk.availableCopies || 0;
+      const lost = bk.lostCopies || 0;
+      const damaged = bk.damagedCopies || 0;
+      const action = body?.action;
+      if (action === 'lost') {
+        if (avail < 1) return respond({ error: 'No copy is on the shelf to mark as lost' }, 409);
+        bkRows[bkIdx] = { ...bk, availableCopies: avail - 1, lostCopies: lost + 1 };
+      } else if (action === 'damaged') {
+        if (avail < 1) return respond({ error: 'No copy is on the shelf to mark as damaged' }, 409);
+        bkRows[bkIdx] = { ...bk, availableCopies: avail - 1, damagedCopies: damaged + 1 };
+      } else if (action === 'found') {
+        if (lost < 1) return respond({ error: 'There are no lost copies to restore' }, 409);
+        bkRows[bkIdx] = { ...bk, availableCopies: avail + 1, lostCopies: lost - 1 };
+      } else if (action === 'fixed') {
+        if (damaged < 1) return respond({ error: 'There are no damaged copies to restore' }, 409);
+        bkRows[bkIdx] = { ...bk, availableCopies: avail + 1, damagedCopies: damaged - 1 };
+      } else {
+        return respond({ error: 'Invalid condition action' }, 400);
+      }
+      store.books = bkRows;
+      save(store);
+      return respond(bkRows[bkIdx]);
+    }
+    if (name === 'borrows' && method === 'POST') {
+      const bRows = store.borrows || [];
+      const bkRows = store.books || [];
+      const bkIdx = bkRows.findIndex((b) => b.id === body?.bookId);
+      if (bkIdx < 0) return respond({ error: 'Book not found' }, 404);
+      if ((bkRows[bkIdx].availableCopies || 0) <= 0) return respond({ error: 'No copies of this book are currently available' }, 409);
+      const row = {
+        ...body,
+        id: Math.max(0, ...bRows.map((item) => item.id)) + 1,
+        borrowedAt: body?.borrowedAt || new Date().toISOString(),
+        returnedAt: body?.returnedAt ?? null,
+        condition: body?.condition ?? 'good',
+        bookTitle: bkRows[bkIdx].title,
+        bookBarcode: bkRows[bkIdx].isbn,
+      };
+      bRows.push(row);
+      store.borrows = bRows;
+      bkRows[bkIdx] = { ...bkRows[bkIdx], availableCopies: (bkRows[bkIdx].availableCopies || 0) - 1 };
+      store.books = bkRows;
+      save(store);
+      return respond(row, 201);
     }
     if (method === 'GET') {
       const search = url.searchParams.get('search')?.toLowerCase(); const status = url.searchParams.get('status');

@@ -26,8 +26,12 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronsUpDown,
   CircleCheck,
   Clock3,
+  Database,
+  Download,
   Filter,
   FileSpreadsheet,
   GraduationCap,
@@ -69,6 +73,7 @@ import {
   type Book,
   type BookInput,
   type Borrow,
+  type BorrowCondition,
   type DashboardSummary,
   type Employee,
   type EmployeeInput,
@@ -99,6 +104,7 @@ import {
   useGetEmployees,
   useGetStudents,
   useGetTeachers,
+  useMarkBookCondition,
   useReturnBorrow,
   useUpdateBook,
   useUpdateEmployee,
@@ -107,10 +113,21 @@ import {
   setAuthTokenGetter,
 } from "@workspace/api-client-react";
 import { getBooks } from "@workspace/api-client-react";
+import {
+  getAcademicYears,
+  getBorrows,
+  getEmployees,
+  getStudents,
+  getTeachers,
+} from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ImportDialog } from "@/components/import-dialog";
 import { ExportMenu } from "@/components/export-menu";
-import { downloadTemplate, exportToExcel } from "@/utils/import-export";
+import {
+  downloadTemplate,
+  exportDatabase,
+  exportToExcel,
+} from "@/utils/import-export";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -122,6 +139,7 @@ import {
 } from "@/components/ui/dialog";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ConfirmProvider, useConfirm } from "@/hooks/use-confirm";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -154,6 +172,7 @@ const fallbackSummary = {
   books: 0,
   availableBooks: 0,
   borrowedBooks: 0,
+  lostOrBrokenBooks: 0,
   employees: 0,
   attendanceRate: 0,
   recentActivity: [],
@@ -261,6 +280,11 @@ const navItems = [
         href: "/library/categories",
       },
       { label: "Borrows", arabic: "الاستعارات", href: "/library/borrows" },
+      {
+        label: "History",
+        arabic: "سجل الاستعارات",
+        href: "/library/history",
+      },
       { label: "Index", arabic: "الفهرس", href: "/library/index" },
       { label: "Analytics", arabic: "التحليلات", href: "/library/analytics" },
     ],
@@ -822,6 +846,198 @@ function usePagination<T>(items: T[], initialPageSize = 8) {
   };
 }
 
+type SortDir = "asc" | "desc";
+type SortColumn<T> = {
+  key: string;
+  accessor: (row: T) => string | number | null | undefined;
+};
+
+function useSort<T>(
+  items: T[],
+  columns: SortColumn<T>[],
+  initialKey?: string,
+) {
+  const [sortKey, setSortKey] = useState<string | undefined>(initialKey);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const sorted = useMemo(() => {
+    if (!sortKey) return items;
+    const col = columns.find((c) => c.key === sortKey);
+    if (!col) return items;
+    const mult = sortDir === "asc" ? 1 : -1;
+    const arr = [...items];
+    arr.sort((a, b) => {
+      const av = col.accessor(a);
+      const bv = col.accessor(b);
+      if (av == null && bv == null) return 0;
+      if (av == null) return mult;
+      if (bv == null) return -mult;
+      let cmp: number;
+      if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
+      else
+        cmp = String(av).localeCompare(String(bv), undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      return cmp * mult;
+    });
+    return arr;
+  }, [items, columns, sortKey, sortDir]);
+  const toggleSort = (key: string) => {
+    if (sortKey === key) setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+  return { sorted, sortKey, sortDir, toggleSort };
+}
+
+function SortHeader({
+  columnKey,
+  activeKey,
+  activeDir,
+  onSort,
+  className,
+  children,
+}: {
+  columnKey: string;
+  activeKey?: string;
+  activeDir: SortDir;
+  onSort: (key: string) => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  const active = activeKey === columnKey;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(columnKey)}
+      className={`group inline-flex items-center justify-end gap-1 outline-none ${active ? "text-[#263064]" : "hover:text-[#263064]"} ${className ?? ""}`}
+      data-testid={`button-sort-${columnKey}`}
+    >
+      <span className="inline-flex items-center gap-1">
+        {children}
+        <span className="inline-flex flex-col leading-none">
+          <ChevronUp
+            size={9}
+            className={active && activeDir === "asc" ? "text-primary" : "text-muted-foreground/40 group-hover:text-muted-foreground/70"}
+          />
+          <ChevronDown
+            size={9}
+            className={active && activeDir === "desc" ? "text-primary" : "text-muted-foreground/40 group-hover:text-muted-foreground/70"}
+          />
+        </span>
+      </span>
+    </button>
+  );
+}
+
+type FilterField = {
+  key: string;
+  label: string;
+  arabic: string;
+  options: string[];
+  accessor: (row: any) => string;
+};
+
+function useTableFilters(fields: FilterField[]) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const activeCount = Object.values(values).filter(Boolean).length;
+  const setFilter = (key: string, value: string) =>
+    setValues((prev) => ({ ...prev, [key]: value }));
+  const resetFilter = (key?: string) =>
+    setValues((prev) => {
+      if (!key) return {};
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  const matches = (filters: Record<string, string>, row: any) =>
+    fields.every((field) => {
+      const value = filters[field.key];
+      if (!value) return true;
+      return String(field.accessor(row) ?? "") === value;
+    });
+  return { values, activeCount, setFilter, resetFilter, matches };
+}
+
+function TableFilterBar({
+  fields,
+  values,
+  setFilter,
+  resetFilter,
+  activeCount,
+  t,
+}: {
+  fields: FilterField[];
+  values: Record<string, string>;
+  setFilter: (key: string, value: string) => void;
+  resetFilter: (key?: string) => void;
+  activeCount: number;
+  t: (en: string, ar: string) => string;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span
+        className={`hidden items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider sm:inline-flex ${activeCount ? "text-primary" : "text-muted-foreground"}`}
+      >
+        <Filter size={13} />
+        {t("Filter", "التصفية")}
+        {activeCount > 0 && (
+          <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-[#FCFBF0]">
+            {activeCount}
+          </span>
+        )}
+      </span>
+      {fields.map((field) => (
+        <div
+          key={field.key}
+          className="flex items-center gap-1 rounded-lg border border-border bg-card px-2"
+        >
+          {values[field.key] && (
+            <button
+              onClick={() => resetFilter(field.key)}
+              className="rounded p-0.5 text-muted-foreground hover:text-primary"
+              aria-label={t("Clear", "مسح")}
+              data-testid={`filter-clear-${field.key}`}
+            >
+              <X size={13} />
+            </button>
+          )}
+          <select
+            value={values[field.key] ?? ""}
+            onChange={(event) =>
+              event.target.value
+                ? setFilter(field.key, event.target.value)
+                : resetFilter(field.key)
+            }
+            className={`h-9 bg-transparent text-xs font-medium outline-none ${values[field.key] ? "text-primary" : "text-muted-foreground"}`}
+            data-testid={`filter-${field.key}`}
+          >
+            <option value="">
+              {t(field.label, field.arabic)}
+            </option>
+            {field.options.map((option) => (
+              <option key={option} value={option}>
+                {t(option, option)}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
+      {activeCount > 0 && (
+        <button
+          onClick={() => resetFilter(undefined)}
+          className="rounded-md px-2 py-1 text-[11px] font-semibold text-primary hover:underline"
+          data-testid="button-clear-all-filters"
+        >
+          {t("Clear all", "مسح الكل")}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ErrorState({
   label,
   labelAr,
@@ -951,6 +1167,7 @@ function Dashboard() {
     books: Number(summaryData.books ?? 0),
     availableBooks: Number(summaryData.availableBooks ?? 0),
     borrowedBooks: Number(summaryData.borrowedBooks ?? 0),
+    lostOrBrokenBooks: Math.max(0, Number(summaryData.books ?? 0) - Number(summaryData.availableBooks ?? 0) - Number(summaryData.borrowedBooks ?? 0)),
     employees: Number(summaryData.employees ?? 0),
     attendanceRate: Number(summaryData.attendanceRate ?? 0),
     recentActivity: summaryData.recentActivity ?? [],
@@ -971,8 +1188,8 @@ function Dashboard() {
       <PageHeading
         eyebrow="School pulse · 01"
         eyebrowAr="نبض المدرسة · 01"
-        title={t("Good morning, admin.", "صباح الخير، آمين المكتبة.")}
-        arabic={t("صباح الخير", "Good morning")}
+        title="Good morning, admin."
+        arabic="صباح الخير، آمين المكتبة."
         description={t(
           "A composed view of the people, places and pages moving through Al-Bassam today.",
           "نظرة هادئة على الأشخاص والأماكن والصفحات المتحركة في البسام اليوم.",
@@ -1050,12 +1267,12 @@ function Dashboard() {
             note={t("On loan", "مستعارة حالياً")}
           />
           <StatCard
-            label="Attendance"
-            arabic="نسبة الحضور"
-            value={`${summary.attendanceRate}%`}
+            label="Lost/Broken books"
+            arabic="الكتب المفقودة أو التالفة"
+            value={summary.lostOrBrokenBooks.toLocaleString()}
             icon={Activity}
             tone="sky"
-            note={t("Average attendance rate", "متوسط نسبة الحضور")}
+            note={t("Books requiring replacement", "كتب تحتاج إلى استبدال")}
           />
         </div>
         </>
@@ -1177,10 +1394,11 @@ function Dashboard() {
   );
 }
 
-type StudentFormValue = StudentInput & { id?: number };
+type StudentFormValue = Omit<StudentInput, "gender"> & { gender: string; id?: number };
 const blankStudent: StudentFormValue = {
   fullName: "",
   fullNameArabic: "",
+  gender: "",
   studentNumber: "",
   nationalId: "",
   grade: "",
@@ -1216,6 +1434,10 @@ function StudentDialog({
   const create = useCreateStudent();
   const update = useUpdateStudent();
   const queryClient = useQueryClient();
+  const studentsQuery = useGetStudents({}, { query: { queryKey: getGetStudentsQueryKey() } });
+  const existingStudents = Array.isArray(studentsQuery.data) ? studentsQuery.data : [];
+  const uniqueGrades = Array.from(new Set(existingStudents.map((s) => s.grade).filter(Boolean)));
+  const uniqueClasses = Array.from(new Set(existingStudents.map((s) => s.className).filter(Boolean)));
   const isEditing = Boolean(editing);
   const set = (key: keyof StudentFormValue, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -1224,6 +1446,7 @@ function StudentDialog({
     if (
       !form.fullName ||
       !form.fullNameArabic ||
+      !form.gender ||
       !form.studentNumber ||
       !form.nationalId ||
       !form.grade ||
@@ -1233,6 +1456,7 @@ function StudentDialog({
     const data: StudentInput = {
       fullName: form.fullName,
       fullNameArabic: form.fullNameArabic,
+      gender: form.gender as StudentInput["gender"],
       studentNumber: form.studentNumber,
       nationalId: form.nationalId,
       grade: form.grade,
@@ -1260,6 +1484,7 @@ function StudentDialog({
     label: string;
     arabic: string;
     placeholder: string;
+    options?: [string, string, string][];
   }[] = [
     {
       key: "fullName",
@@ -1272,6 +1497,16 @@ function StudentDialog({
       label: "Arabic name",
       arabic: "الاسم بالعربية",
       placeholder: "مثال: سارة الحربي",
+    },
+    {
+      key: "gender",
+      label: "Gender",
+      arabic: "الجنس",
+      placeholder: "",
+      options: [
+        ["male", "Male", "ذكر"],
+        ["female", "Female", "أنثى"],
+      ],
     },
     {
       key: "studentNumber",
@@ -1339,28 +1574,102 @@ function StudentDialog({
             </div>
           </DialogHeader>
           <div className="grid gap-4 px-6 py-6 sm:grid-cols-2">
-            {fields.map((field) => (
-              <label className="block" key={field.key}>
-                <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
-                  <span>{!['guardianName', 'guardianPhone'].includes(field.key) ? `${t(field.label, field.arabic)} *` : t(field.label, field.arabic)}</span>
-                  <span
-                    className={`text-[9px] font-normal text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}
-                  >
-                    {t(field.arabic, field.label)}
+            {fields.map((field) => {
+              if (field.options) {
+                return (
+                  <label className="block" key={field.key}>
+                    <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                      <span>{t(field.label, field.arabic)} *</span>
+                      <span className={`text-[9px] font-normal text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}>
+                        {t(field.arabic, field.label)}
+                      </span>
+                    </span>
+                    <select
+                      required
+                      value={String(form[field.key] ?? "")}
+                      onChange={(event) => set(field.key, event.target.value)}
+                      className="h-10 w-full cursor-pointer rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+                      data-testid={`input-student-${field.key}`}
+                    >
+                      <option value="">{t("Select gender", "اختر الجنس")}</option>
+                      {field.options.map(([value, label, ar]) => (
+                        <option key={value} value={value}>{t(label, ar)}</option>
+                      ))}
+                    </select>
+                  </label>
+                );
+              }
+              if (field.key === "grade") {
+                return (
+                  <label className="block" key={field.key}>
+                    <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                      <span>{t(field.label, field.arabic)} *</span>
+                      <span className={`text-[9px] font-normal text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}>
+                        {t(field.arabic, field.label)}
+                      </span>
+                    </span>
+                    <select
+                      required
+                      value={String(form[field.key] ?? "")}
+                      onChange={(event) => set(field.key, event.target.value)}
+                      className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+                      data-testid={`input-student-${field.key}`}
+                    >
+                      <option value="">{t("Select grade", "اختر الصف")}</option>
+                      {uniqueGrades.map((grade) => (
+                        <option key={grade} value={grade}>{grade}</option>
+                      ))}
+                    </select>
+                  </label>
+                );
+              }
+              if (field.key === "className") {
+                return (
+                  <label className="block" key={field.key}>
+                    <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                      <span>{t(field.label, field.arabic)} *</span>
+                      <span className={`text-[9px] font-normal text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}>
+                        {t(field.arabic, field.label)}
+                      </span>
+                    </span>
+                    <select
+                      required
+                      value={String(form[field.key] ?? "")}
+                      onChange={(event) => set(field.key, event.target.value)}
+                      className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+                      data-testid={`input-student-${field.key}`}
+                    >
+                      <option value="">{t("Select class", "اختر الفصل")}</option>
+                      {uniqueClasses.map((className) => (
+                        <option key={className} value={className}>{className}</option>
+                      ))}
+                    </select>
+                  </label>
+                );
+              }
+              return (
+                <label className="block" key={field.key}>
+                  <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                    <span>{!['guardianName', 'guardianPhone'].includes(field.key) ? `${t(field.label, field.arabic)} *` : t(field.label, field.arabic)}</span>
+                    <span
+                      className={`text-[9px] font-normal text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}
+                    >
+                      {t(field.arabic, field.label)}
+                    </span>
                   </span>
-                </span>
-                <input
-                  required={
-                    !["guardianName", "guardianPhone"].includes(field.key)
-                  }
-                  value={String(form[field.key] ?? "")}
-                  onChange={(event) => set(field.key, event.target.value)}
-                  placeholder={field.placeholder}
-                  className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/10"
-                  data-testid={`input-student-${field.key}`}
-                />
-              </label>
-            ))}
+                  <input
+                    required={
+                      !["guardianName", "guardianPhone"].includes(field.key)
+                    }
+                    value={String(form[field.key] ?? "")}
+                    onChange={(event) => set(field.key, event.target.value)}
+                    placeholder={field.placeholder}
+                    className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    data-testid={`input-student-${field.key}`}
+                  />
+                </label>
+              );
+            })}
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-[#263064]">
                 {t("Enrollment date", "تاريخ التسجيل")} *
@@ -1432,7 +1741,7 @@ function StudentRow({
     }[student.status] ?? student.status;
   return (
     <div
-      className="group grid min-w-[940px] grid-cols-[2fr_1fr_1.15fr_.8fr_1.25fr_1fr_.75fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
+      className="group grid min-w-[1000px] grid-cols-[2fr_.6fr_1fr_1.15fr_.8fr_1.25fr_1fr_.75fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
       data-testid={`row-student-${student.id}`}
     >
       <div className="flex items-center gap-3">
@@ -1452,6 +1761,16 @@ function StudentRow({
           </div>
         </div>
       </div>
+      <span
+        className={`justify-self-center text-center text-xs font-medium ${student.gender === "female" ? "text-[#14BAC6]" : "text-[#263064]"}`}
+      >
+        {student.gender
+          ? t(
+              student.gender === "male" ? "Male" : "Female",
+              student.gender === "male" ? "ذكر" : "أنثى",
+            )
+          : t("—", "—")}
+      </span>
       <span
         className="justify-self-center text-center font-mono text-xs text-muted-foreground"
         dir="ltr"
@@ -1513,24 +1832,20 @@ function StudentRow({
 
 function StudentsPage() {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Student | undefined>();
   const [toast, setToast] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const { t } = useT();
+  const confirm = useConfirm();
   const query = useGetStudents(
     {
       search: search || undefined,
-      status: (status || undefined) as
-        "active" | "inactive" | "graduated" | undefined,
     },
     {
       query: {
         queryKey: getGetStudentsQueryKey({
           search: search || undefined,
-          status: (status || undefined) as
-            "active" | "inactive" | "graduated" | undefined,
         }),
       },
     },
@@ -1539,7 +1854,42 @@ function StudentsPage() {
   const createStudent = useCreateStudent();
   const queryClient = useQueryClient();
   const students = Array.isArray(query.data) ? query.data : [];
-  const filtered = useMemo(() => students, [students]);
+  const sortColumns: SortColumn<Student>[] = [
+    { key: "fullName", accessor: (s) => s.fullName },
+    { key: "gender", accessor: (s) => s.gender },
+    { key: "studentNumber", accessor: (s) => s.studentNumber },
+    { key: "nationalId", accessor: (s) => s.nationalId },
+    { key: "class", accessor: (s) => `${s.grade ?? ""} ${s.className ?? ""}` },
+    { key: "guardian", accessor: (s) => s.guardianName },
+    { key: "enrollmentDate", accessor: (s) => s.enrollmentDate },
+    { key: "status", accessor: (s) => s.status },
+  ];
+  const { sorted, sortKey, sortDir, toggleSort } = useSort<Student>(
+    students,
+    sortColumns,
+    "fullName",
+  );
+  const filterFields: FilterField[] = [
+    {
+      key: "gender",
+      label: "Gender",
+      arabic: "الجنس",
+      options: ["male", "female"],
+      accessor: (s) => s.gender,
+    },
+    {
+      key: "status",
+      label: "Status",
+      arabic: "الحالة",
+      options: ["active", "inactive", "graduated"],
+      accessor: (s) => s.status,
+    },
+  ];
+  const filters = useTableFilters(filterFields);
+  const filtered = useMemo(
+    () => sorted.filter((s) => filters.matches(filters.values, s)),
+    [sorted, filters.values, filterFields],
+  );
   const studentPages = usePagination(filtered);
   const openNew = () => {
     setEditing(undefined);
@@ -1550,23 +1900,29 @@ function StudentsPage() {
     setDialogOpen(true);
   };
   const remove = (student: Student) => {
-    if (
-      !window.confirm(
-        t(
-          `Delete ${student.fullName} from the directory?`,
-          `حذف ${student.fullName} من الدليل؟`,
-        ),
-      )
-    )
-      return;
-    deletion.mutate(
-      { id: student.id },
+    confirm(
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
-          setToast(t("Student record deleted", "تم حذف سجل الطالب"));
-        },
+        title: t(
+          `Delete ${student.fullName}?`,
+          `حذف ${student.fullName}؟`,
+        ),
+        description: t(
+          `Delete ${student.fullName} from the directory? This cannot be undone.`,
+          `حذف ${student.fullName} من الدليل؟ لا يمكن التراجع عن هذا الإجراء.`,
+        ),
+        confirmLabel: t("Delete", "حذف"),
+        destructive: true,
       },
+      () =>
+        deletion.mutate(
+          { id: student.id },
+          {
+            onSuccess: () => {
+              queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
+              setToast(t("Student record deleted", "تم حذف سجل الطالب"));
+            },
+          },
+        ),
     );
   };
   return (
@@ -1609,6 +1965,29 @@ function StudentsPage() {
           </div>
         }
       />
+      <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row">
+        <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 sm:max-w-md">
+          <Search size={16} className="text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t(
+              "Search by name or student number",
+              "ابحث بالاسم أو رقم الطالب",
+            )}
+            className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+            data-testid="input-search-students"
+          />
+        </div>
+        <TableFilterBar
+          fields={filterFields}
+          values={filters.values}
+          setFilter={filters.setFilter}
+          resetFilter={filters.resetFilter}
+          activeCount={filters.activeCount}
+          t={t}
+        />
+      </div>
       {toast && (
         <div
           className="mb-4 flex items-center gap-2 rounded-lg border border-[#32B77E]/35 bg-[#32B77E]/10 px-4 py-3 text-sm text-[#32B77E] rise-in"
@@ -1646,7 +2025,7 @@ function StudentsPage() {
         <EmptyState
           icon={GraduationCap}
           title={
-            search || status
+            search || filters.activeCount > 0
               ? t(
                   "No students match this view",
                   "لا يوجد طلاب مطابقون لهذا العرض",
@@ -1654,7 +2033,7 @@ function StudentsPage() {
               : t("Start your student directory", "ابدأ دليل الطلاب")
           }
           detail={
-            search || status
+            search || filters.activeCount > 0
               ? t(
                   "Try another search term or clear the filters.",
                   "جرّب كلمة بحث أخرى أو امسح عوامل التصفية.",
@@ -1665,7 +2044,7 @@ function StudentsPage() {
                 )
           }
           action={
-            !search && !status ? (
+            !search && filters.activeCount === 0 ? (
               <Button onClick={openNew} data-testid="button-empty-add-student">
                 <Plus size={15} /> {t("Add first student", "إضافة أول طالب")}
               </Button>
@@ -1674,18 +2053,74 @@ function StudentsPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[940px] grid-cols-[2fr_1fr_1.15fr_.8fr_1.25fr_1fr_.75fr_88px] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-            <span>{t("Student", "الطالب")}</span>
-            <span className="text-center">{t("Number", "الرقم")}</span>
-            <span className="text-center">
+          <div className="grid min-w-[1000px] grid-cols-[2fr_.6fr_1fr_1.15fr_.8fr_1.25fr_1fr_.75fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+            <SortHeader
+              columnKey="fullName"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              <span className="truncate">{t("Student", "الطالب")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="gender"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Gender", "الجنس")}
+            </SortHeader>
+            <SortHeader
+              columnKey="studentNumber"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Number", "الرقم")}
+            </SortHeader>
+            <SortHeader
+              columnKey="nationalId"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
               {t("National ID", "الهوية الوطنية")}
-            </span>
-            <span>{t("Class", "الفصل")}</span>
-            <span>{t("Guardian", "ولي الأمر")}</span>
-            <span className="text-center">
+            </SortHeader>
+            <SortHeader
+              columnKey="class"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              {t("Class", "الفصل")}
+            </SortHeader>
+            <SortHeader
+              columnKey="guardian"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              {t("Guardian", "ولي الأمر")}
+            </SortHeader>
+            <SortHeader
+              columnKey="enrollmentDate"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
               {t("Enrolled", "تاريخ التسجيل")}
-            </span>
-            <span className="text-center">{t("Status", "الحالة")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="status"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Status", "الحالة")}
+            </SortHeader>
             <span />
           </div>
           {studentPages.pageItems.map((student) => (
@@ -1751,38 +2186,11 @@ const teacherSections: {
   }[];
 }[] = [
   {
-    title: "Account",
-    titleAr: "الحساب",
-    fields: [
-      {
-        key: "username",
-        label: "Username",
-        arabic: "اسم المستخدم",
-        placeholder: "teacher01",
-      },
-      {
-        key: "password",
-        label: "Password",
-        arabic: "كلمة المرور",
-        type: "password",
-      },
-      {
-        key: "isEmployee",
-        label: "Is an employee",
-        arabic: "موظف؟",
-        options: [
-          ["true", "Yes", "\u0646\u0639\u0645"],
-          ["false", "No", "\u0644\u0627"],
-        ],
-      },
-    ],
-  },
-  {
     title: "Personal information",
     titleAr: "البيانات الشخصية",
     fields: [
-      { key: "name", label: "Name", arabic: "الاسم" },
-      { key: "surname", label: "Surname", arabic: "اللقب" },
+      { key: "name", label: "Name", arabic: "الاسم", required: true },
+      { key: "surname", label: "Surname", arabic: "اللقب", required: true },
       {
         key: "englishName",
         label: "English name",
@@ -1800,8 +2208,8 @@ const teacherSections: {
         label: "Gender",
         arabic: "الجنس",
         options: [
-          ["male", "Male", "\u0630\u0643\u0631"],
-          ["female", "Female", "\u0623\u0646\u062B\u0649"],
+          ["male", "Male", "ذكر"],
+          ["female", "Female", "أنثى"],
         ],
       },
       {
@@ -1809,24 +2217,11 @@ const teacherSections: {
         label: "Marital status",
         arabic: "الحالة الاجتماعية",
         options: [
-          ["single", "Single", "\u0623\u0639\u0632\u0628"],
-          ["married", "Married", "\u0645\u062A\u0632\u0648\u062C"],
-          ["divorced", "Divorced", "\u0645\u0637\u0644\u0642"],
-          ["widowed", "Widowed", "\u0623\u0631\u0645\u0644"],
+          ["single", "Single", "أعزب"],
+          ["married", "Married", "متزوج"],
+          ["divorced", "Divorced", "مطلق"],
+          ["widowed", "Widowed", "أرمل"],
         ],
-      },
-      { key: "religion", label: "Religion", arabic: "الديانة" },
-      {
-        key: "height",
-        label: "Height (cm)",
-        arabic: "الطول (سم)",
-        type: "number",
-      },
-      {
-        key: "weight",
-        label: "Weight (kg)",
-        arabic: "الوزن (كج)",
-        type: "number",
       },
     ],
   },
@@ -1846,9 +2241,6 @@ const teacherSections: {
         arabic: "البريد الالكتروني",
         type: "email",
       },
-      { key: "address", label: "Address", arabic: "العنوان" },
-      { key: "area", label: "Area", arabic: "المنطقة" },
-      { key: "country", label: "Country", arabic: "البلد" },
     ],
   },
   {
@@ -1860,8 +2252,8 @@ const teacherSections: {
         label: "Employee code",
         arabic: "الرقم الوظيفي",
         placeholder: "TCH-014",
+        required: true,
       },
-      { key: "branch", label: "Branch", arabic: "الفرع" },
       {
         key: "academicLevel",
         label: "Academic level",
@@ -1885,22 +2277,12 @@ const teacherSections: {
         ],
       },
       {
-        key: "weeklyClasses",
-        label: "Weekly classes",
-        arabic: "الحصص الأسبوعية",
-        type: "number",
-      },
-      {
         key: "status",
         label: "Status",
         arabic: "الحالة",
         options: [
-          ["active", "Active", "\u0646\u0634\u0637"],
-          [
-            "inactive",
-            "Inactive",
-            "\u063A\u064A\u0631\u0020\u0646\u0634\u0637",
-          ],
+          ["active", "Active", "نشط"],
+          ["inactive", "Inactive", "غير نشط"],
         ],
       },
     ],
@@ -2508,6 +2890,7 @@ function EmployeesPage() {
   const [toast, setToast] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const { t } = useT();
+  const confirm = useConfirm();
   const query = useGetEmployees(
     { search: search || undefined },
     {
@@ -2520,11 +2903,47 @@ function EmployeesPage() {
   const createEmployee = useCreateEmployee();
   const queryClient = useQueryClient();
   const employees = Array.isArray(query.data) ? query.data : [];
-  const filteredEmployees = useMemo(() => employees.filter((e) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (e.fullName || "").toLowerCase().includes(q) || (e.fullNameArabic || "").toLowerCase().includes(q) || (e.jobTitle || "").toLowerCase().includes(q) || (e.employeeNumber || "").toLowerCase().includes(q);
-  }), [employees, search]);
+  const sortColumns: SortColumn<Employee>[] = [
+    { key: "fullName", accessor: (e) => e.fullName },
+    { key: "employeeNumber", accessor: (e) => e.employeeNumber },
+    { key: "jobTitle", accessor: (e) => e.jobTitle },
+    { key: "nationalId", accessor: (e) => e.nationalId },
+    { key: "phone", accessor: (e) => e.phone },
+    { key: "status", accessor: (e) => e.status },
+  ];
+  const { sorted, sortKey, sortDir, toggleSort } = useSort<Employee>(
+    employees,
+    sortColumns,
+    "fullName",
+  );
+  const filterFields: FilterField[] = [
+    {
+      key: "jobTitle",
+      label: "Job title",
+      arabic: "المسمى الوظيفي",
+      options: Array.from(
+        new Set(employees.map((e) => e.jobTitle).filter(Boolean)),
+      ).sort() as string[],
+      accessor: (e) => e.jobTitle,
+    },
+    {
+      key: "status",
+      label: "Status",
+      arabic: "الحالة",
+      options: ["active", "inactive"],
+      accessor: (e) => e.status,
+    },
+  ];
+  const filters = useTableFilters(filterFields);
+  const filteredEmployees = useMemo(() => {
+    return sorted.filter((e) => {
+      if (!search) return filters.matches(filters.values, e);
+      const f = filters.matches(filters.values, e);
+      if (!f) return false;
+      const q = search.toLowerCase();
+      return (e.fullName || "").toLowerCase().includes(q) || (e.fullNameArabic || "").toLowerCase().includes(q) || (e.jobTitle || "").toLowerCase().includes(q) || (e.employeeNumber || "").toLowerCase().includes(q);
+    });
+  }, [sorted, search, filters.values, filterFields]);
   const employeePages = usePagination(filteredEmployees);
   const openNew = () => {
     setEditing(undefined);
@@ -2535,25 +2954,28 @@ function EmployeesPage() {
     setDialogOpen(true);
   };
   const remove = (employee: Employee) => {
-    if (
-      !window.confirm(
-        t(
-          `Delete ${employee.fullName} from the staff directory?`,
-          `هل تريد حذف ${employee.fullName} من سجل الموظفين؟`,
-        ),
-      )
-    )
-      return;
-    deletion.mutate(
-      { id: employee.id },
+    confirm(
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({
-            queryKey: getGetEmployeesQueryKey(),
-          });
-          setToast(t("Employee record deleted", "تم حذف سجل الموظف"));
-        },
+        title: t(`Delete ${employee.fullName}?`, `حذف ${employee.fullName}؟`),
+        description: t(
+          `Delete ${employee.fullName} from the staff directory? This cannot be undone.`,
+          `حذف ${employee.fullName} من سجل الموظفين؟ لا يمكن التراجع عن هذا الإجراء.`,
+        ),
+        confirmLabel: t("Delete", "حذف"),
+        destructive: true,
       },
+      () =>
+        deletion.mutate(
+          { id: employee.id },
+          {
+            onSuccess: () => {
+              queryClient.invalidateQueries({
+                queryKey: getGetEmployeesQueryKey(),
+              });
+              setToast(t("Employee record deleted", "تم حذف سجل الموظف"));
+            },
+          },
+        ),
     );
   };
   return (
@@ -2612,6 +3034,14 @@ function EmployeesPage() {
             data-testid="input-search-employees"
           />
         </div>
+        <TableFilterBar
+          fields={filterFields}
+          values={filters.values}
+          setFilter={filters.setFilter}
+          resetFilter={filters.resetFilter}
+          activeCount={filters.activeCount}
+          t={t}
+        />
         <button
           onClick={() => query.refetch()}
           className="h-fit rounded-lg border border-border bg-card px-3 py-2 text-muted-foreground transition-colors hover:border-primary hover:text-primary"
@@ -2680,17 +3110,57 @@ function EmployeesPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[900px] grid-cols-[2fr_.9fr_1fr_1.15fr_1fr_.7fr_88px] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-            <span>{t("Employee", "الموظف")}</span>
-            <span className="text-center">
+          <div className="grid min-w-[900px] grid-cols-[2fr_.9fr_1fr_1.15fr_1fr_.7fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+            <SortHeader
+              columnKey="fullName"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              <span className="truncate">{t("Employee", "الموظف")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="employeeNumber"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
               {t("Employee No", "الرقم الوظيفي")}
-            </span>
-            <span>{t("Job title", "المسمى الوظيفي")}</span>
-            <span className="text-center">
+            </SortHeader>
+            <SortHeader
+              columnKey="jobTitle"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              {t("Job title", "المسمى الوظيفي")}
+            </SortHeader>
+            <SortHeader
+              columnKey="nationalId"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
               {t("National ID", "الهوية الوطنية")}
-            </span>
-            <span className="text-center">{t("Phone", "الهاتف")}</span>
-            <span className="text-center">{t("Status", "الحالة")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="phone"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Phone", "الهاتف")}
+            </SortHeader>
+            <SortHeader
+              columnKey="status"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Status", "الحالة")}
+            </SortHeader>
             <span />
           </div>
           {employeePages.pageItems.map((employee) => (
@@ -2746,6 +3216,7 @@ function TeachersPage() {
   const [toast, setToast] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const { t } = useT();
+  const confirm = useConfirm();
   const query = useGetTeachers(
     { search: search || undefined },
     {
@@ -2758,11 +3229,47 @@ function TeachersPage() {
   const createTeacher = useCreateTeacher();
   const queryClient = useQueryClient();
   const teachers = Array.isArray(query.data) ? query.data : [];
-  const filteredTeachers = useMemo(() => teachers.filter((te) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (te.fullName || "").toLowerCase().includes(q) || (te.fullNameArabic || "").toLowerCase().includes(q) || (te.subject || "").toLowerCase().includes(q) || (te.employeeCode || "").toLowerCase().includes(q);
-  }), [teachers, search]);
+  const sortColumns: SortColumn<Teacher>[] = [
+    { key: "fullName", accessor: (te) => te.fullName },
+    { key: "employeeCode", accessor: (te) => te.employeeCode },
+    { key: "subject", accessor: (te) => te.subject },
+    { key: "nationalId", accessor: (te) => te.nationalId },
+    { key: "phone", accessor: (te) => te.phone },
+    { key: "status", accessor: (te) => te.status },
+  ];
+  const { sorted, sortKey, sortDir, toggleSort } = useSort<Teacher>(
+    teachers,
+    sortColumns,
+    "fullName",
+  );
+  const filterFields: FilterField[] = [
+    {
+      key: "subject",
+      label: "Subject",
+      arabic: "المادة",
+      options: Array.from(
+        new Set(teachers.map((te) => te.subject).filter(Boolean)),
+      ).sort() as string[],
+      accessor: (te) => te.subject,
+    },
+    {
+      key: "status",
+      label: "Status",
+      arabic: "الحالة",
+      options: ["active", "inactive"],
+      accessor: (te) => te.status,
+    },
+  ];
+  const filters = useTableFilters(filterFields);
+  const filteredTeachers = useMemo(() => {
+    return sorted.filter((te) => {
+      const f = filters.matches(filters.values, te);
+      if (!f) return false;
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (te.fullName || "").toLowerCase().includes(q) || (te.fullNameArabic || "").toLowerCase().includes(q) || (te.subject || "").toLowerCase().includes(q) || (te.employeeCode || "").toLowerCase().includes(q);
+    });
+  }, [sorted, search, filters.values, filterFields]);
   const teacherPages = usePagination(filteredTeachers);
   const openNew = () => {
     setEditing(undefined);
@@ -2773,23 +3280,26 @@ function TeachersPage() {
     setDialogOpen(true);
   };
   const remove = (teacher: Teacher) => {
-    if (
-      !window.confirm(
-        t(
-          `Delete ${teacher.fullName} from the faculty directory?`,
-          `هل تريد حذف ${teacher.fullName} من دليل هيئة التدريس؟`,
-        ),
-      )
-    )
-      return;
-    deletion.mutate(
-      { id: teacher.id },
+    confirm(
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetTeachersQueryKey() });
-          setToast(t("Teacher record deleted", "تم حذف سجل المعلم"));
-        },
+        title: t(`Delete ${teacher.fullName}?`, `حذف ${teacher.fullName}؟`),
+        description: t(
+          `Delete ${teacher.fullName} from the faculty directory? This cannot be undone.`,
+          `حذف ${teacher.fullName} من دليل هيئة التدريس؟ لا يمكن التراجع عن هذا الإجراء.`,
+        ),
+        confirmLabel: t("Delete", "حذف"),
+        destructive: true,
       },
+      () =>
+        deletion.mutate(
+          { id: teacher.id },
+          {
+            onSuccess: () => {
+              queryClient.invalidateQueries({ queryKey: getGetTeachersQueryKey() });
+              setToast(t("Teacher record deleted", "تم حذف سجل المعلم"));
+            },
+          },
+        ),
     );
   };
   return (
@@ -2848,6 +3358,14 @@ function TeachersPage() {
             data-testid="input-search-teachers"
           />
         </div>
+        <TableFilterBar
+          fields={filterFields}
+          values={filters.values}
+          setFilter={filters.setFilter}
+          resetFilter={filters.resetFilter}
+          activeCount={filters.activeCount}
+          t={t}
+        />
         <button
           onClick={() => query.refetch()}
           className="h-fit rounded-lg border border-border bg-card px-3 py-2 text-muted-foreground transition-colors hover:border-primary hover:text-primary"
@@ -2916,17 +3434,57 @@ function TeachersPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[900px] grid-cols-[2fr_.9fr_1fr_1.15fr_1fr_.7fr_88px] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-            <span>{t("Teacher", "المعلم")}</span>
-            <span className="text-center">
+          <div className="grid min-w-[900px] grid-cols-[2fr_.9fr_1fr_1.15fr_1fr_.7fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+            <SortHeader
+              columnKey="fullName"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              <span className="truncate">{t("Teacher", "المعلم")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="employeeCode"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
               {t("Employee No", "الرقم الوظيفي")}
-            </span>
-            <span>{t("Subject", "المادة")}</span>
-            <span className="text-center">
+            </SortHeader>
+            <SortHeader
+              columnKey="subject"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              {t("Subject", "المادة")}
+            </SortHeader>
+            <SortHeader
+              columnKey="nationalId"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
               {t("National ID", "الهوية الوطنية")}
-            </span>
-            <span className="text-center">{t("Phone", "الهاتف")}</span>
-            <span className="text-center">{t("Status", "الحالة")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="phone"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Phone", "الهاتف")}
+            </SortHeader>
+            <SortHeader
+              columnKey="status"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Status", "الحالة")}
+            </SortHeader>
             <span />
           </div>
           {teacherPages.pageItems.map((teacher) => (
@@ -3028,7 +3586,12 @@ function BookDialog({
     setForm((current) => ({ ...current, [key]: value }));
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!String(form.title ?? "").trim()) return;
+    if (
+      !String(form.title ?? "").trim() ||
+      (!String(form.category ?? "").trim() &&
+        !String(form.customCategory ?? "").trim())
+    )
+      return;
     const text = (key: keyof BookInput & string) => {
       const v = String(form[key] ?? "").trim();
       return v ? { [key]: v } : {};
@@ -3113,11 +3676,13 @@ function BookDialog({
           label: "Barcode / ISBN",
           arabic: "الباركود",
           placeholder: "Scan or type the barcode",
+          required: true,
         },
         {
           key: "category",
           label: "Category",
           arabic: "التصنيف",
+          required: true,
           options: categories.map(
             (category) =>
               [category, category, category] as [string, string, string],
@@ -3133,6 +3698,7 @@ function BookDialog({
           key: "language",
           label: "Language",
           arabic: "اللغة",
+          required: true,
           options: [
             ["Arabic", "Arabic", "\u0627\u0644\u0639\u0631\u0628\u064A\u0629"],
             [
@@ -3147,7 +3713,6 @@ function BookDialog({
             ],
           ],
         },
-        { key: "volume", label: "Volume", arabic: "المجلد" },
         { key: "shelf", label: "Shelf", arabic: "الرف" },
       ],
     },
@@ -3155,7 +3720,7 @@ function BookDialog({
       title: "Copies & status",
       titleAr: "النسخ والحالة",
       fields: [
-        { key: "copies", label: "Copies", arabic: "عدد النسخ", type: "number" },
+        { key: "copies", label: "Copies", arabic: "عدد النسخ", type: "number", required: true },
         {
           key: "status",
           label: "Status",
@@ -3172,51 +3737,6 @@ function BookDialog({
           label: "Date added",
           arabic: "تاريخ الإضافة",
           type: "date",
-        },
-      ],
-    },
-    {
-      title: "Publication",
-      titleAr: "بيانات النشر",
-      fields: [
-        {
-          key: "publicationPlace",
-          label: "Publication place",
-          arabic: "مكان النشر",
-        },
-        {
-          key: "publicationDate",
-          label: "Publication date",
-          arabic: "تاريخ النشر",
-          placeholder: "1995 or 1995-03-01",
-        },
-        {
-          key: "depositNumber",
-          label: "Deposit number",
-          arabic: "رقم الإيداع",
-        },
-        {
-          key: "generalNumber",
-          label: "General number",
-          arabic: "الرقم العام",
-        },
-        {
-          key: "specialNumber",
-          label: "Special number",
-          arabic: "الرقم الخاص",
-        },
-      ],
-    },
-    {
-      title: "Details",
-      titleAr: "تفاصيل إضافية",
-      fields: [
-        { key: "description", label: "Description", arabic: "الوصف" },
-        {
-          key: "coverImage",
-          label: "Cover image URL",
-          arabic: "رابط صورة الغلاف",
-          type: "url",
         },
       ],
     },
@@ -3277,6 +3797,7 @@ function BookDialog({
                       </span>
                       {field.options ? (
                         <select
+                          required={field.required && field.key !== "category"}
                           value={String(form[field.key] ?? "")}
                           onChange={(event) =>
                             set(field.key, event.target.value)
@@ -3284,6 +3805,11 @@ function BookDialog({
                           className={`${inputCls} cursor-pointer appearance-none`}
                           data-testid={`input-book-${field.key}`}
                         >
+                          {field.required && (
+                            <option value="">
+                              {t("Select…", "اختر…")}
+                            </option>
+                          )}
                           {field.options.map(([value, label, ar]) => (
                             <option key={value} value={value}>
                               {t(label, ar)}
@@ -3292,7 +3818,7 @@ function BookDialog({
                         </select>
                       ) : (
                         <input
-                          required={field.key === "title"}
+                          required={field.required}
                           type={field.type ?? "text"}
                           min={field.type === "number" ? 0 : undefined}
                           value={String(form[field.key] ?? "")}
@@ -3555,7 +4081,6 @@ function BorrowDialog({
 
 function LibraryPage() {
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Book | undefined>();
   const [borrowing, setBorrowing] = useState<Book>();
@@ -3595,13 +4120,13 @@ function LibraryPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   const { t } = useT();
+  const confirm = useConfirm();
   const query = useGetBooks(
-    { search: search || undefined, category: category || undefined },
+    { search: search || undefined },
     {
       query: {
         queryKey: getGetBooksQueryKey({
           search: search || undefined,
-          category: category || undefined,
         }),
       },
     },
@@ -3613,11 +4138,58 @@ function LibraryPage() {
     { query: { queryKey: getGetBorrowsQueryKey({ active: true }) } },
   );
   const returnBorrow = useReturnBorrow();
+  const markCondition = useMarkBookCondition();
   const queryClient = useQueryClient();
   const books = Array.isArray(query.data) ? query.data : [];
   const borrows = Array.isArray(borrowsQuery.data) ? borrowsQuery.data : [];
   const borrowPages = usePagination(borrows);
-  const bookPages = usePagination(books);
+  const sortColumns: SortColumn<Book>[] = [
+    { key: "title", accessor: (book) => book.title },
+    { key: "author", accessor: (book) => book.author },
+    { key: "language", accessor: (book) => book.language },
+    { key: "copies", accessor: (book) => book.availableCopies ?? book.copies },
+    { key: "shelf", accessor: (book) => book.shelf },
+    { key: "isbn", accessor: (book) => book.isbn },
+    { key: "category", accessor: (book) => book.category },
+  ];
+  const { sorted: sortedBooks, sortKey, sortDir, toggleSort } = useSort<Book>(
+    books,
+    sortColumns,
+    "title",
+  );
+  const filterFields: FilterField[] = [
+    {
+      key: "category",
+      label: "Category",
+      arabic: "التصنيف",
+      options: Array.from(
+        new Set(books.map((book) => book.category).filter(Boolean)),
+      ).sort() as string[],
+      accessor: (book) => book.category,
+    },
+    {
+      key: "language",
+      label: "Language",
+      arabic: "اللغة",
+      options: Array.from(
+        new Set(books.map((book) => book.language).filter(Boolean)),
+      ).sort() as string[],
+      accessor: (book) => book.language,
+    },
+    {
+      key: "status",
+      label: "Status",
+      arabic: "الحالة",
+      options: ["available", "borrowed", "lost", "damaged"],
+      accessor: (book) => book.status || "available",
+    },
+  ];
+  const filters = useTableFilters(filterFields);
+  const filteredBooks = useMemo(
+    () => sortedBooks.filter((book) => filters.matches(filters.values, book)),
+    [sortedBooks, filters.values, filterFields],
+  );
+  const bookPages = usePagination(filteredBooks);
   const categories = useMemo(
     () =>
       Array.from(new Set(books.map((book) => book.category).filter(Boolean))),
@@ -3633,29 +4205,79 @@ function LibraryPage() {
     setDialogOpen(true);
   };
   const remove = (book: Book) => {
-    if (
-      !window.confirm(
-        t(
-          `Delete “${book.title}” from the catalogue?`,
-          `هل تريد حذف "${book.title}" من الفهرس؟`,
-        ),
-      )
-    )
-      return;
-    deletion.mutate(
-      { id: book.id },
+    confirm(
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetBooksQueryKey() });
-          setScanned(undefined);
-          setToast(
-            t("Book removed from the catalogue", "تم حذف الكتاب من الفهرس"),
-          );
-        },
+        title: t(`Delete “${book.title}”?`, `حذف "${book.title}"؟`),
+        description: t(
+          `Delete “${book.title}” from the catalogue? This cannot be undone.`,
+          `حذف "${book.title}" من الفهرس؟ لا يمكن التراجع عن هذا الإجراء.`,
+        ),
+        confirmLabel: t("Delete", "حذف"),
+        destructive: true,
       },
+      () =>
+        deletion.mutate(
+          { id: book.id },
+          {
+            onSuccess: () => {
+              queryClient.invalidateQueries({ queryKey: getGetBooksQueryKey() });
+              setScanned(undefined);
+              setToast(
+                t("Book removed from the catalogue", "تم حذف الكتاب من الفهرس"),
+              );
+            },
+          },
+        ),
     );
   };
   const scannedBook = scanned?.status === "found" ? scanned.book : undefined;
+  const handleConditionChange = (
+    book: Book,
+    action: "lost" | "damaged" | "fixed" | "found",
+  ) => {
+    const label =
+      action === "lost"
+        ? t("Mark a copy as lost", "وضع علامة على نسخة كمفقودة")
+        : action === "damaged"
+          ? t("Mark a copy as damaged", "وضع علامة على نسخة كتالفة")
+          : action === "fixed"
+            ? t("Restore a damaged copy", "استعادة نسخة تالفة")
+            : t("Restore a lost copy", "استعادة نسخة مفقودة");
+    confirm(
+      {
+        title: label,
+        description: t(
+          `Are you sure you want to ${action === "fixed" || action === "found" ? "restore" : "mark"} “${book.title}”?`,
+          action === "fixed" || action === "found"
+            ? `هل تريد استعادة "${book.title}"؟`
+            : `هل تريد وضع علامة على "${book.title}"؟`,
+        ),
+        confirmLabel: t("Yes", "نعم"),
+        destructive: action === "lost" || action === "damaged",
+      },
+      () =>
+        markCondition.mutate(
+          { id: book.id, data: { action } },
+          {
+            onSuccess: () => {
+              queryClient.invalidateQueries({ queryKey: getGetBooksQueryKey() });
+              setToast(
+                t(
+                  `Copy marked as ${action}`,
+                  action === "lost"
+                    ? "تم وضع علامة على نسخة كمفقودة"
+                    : action === "damaged"
+                      ? "تم وضع علامة على نسخة كتالفة"
+                      : action === "fixed"
+                        ? "تم استعادة النسخة التالفة"
+                        : "تم استعادة النسخة المفقودة",
+                ),
+              );
+            },
+          },
+        ),
+    );
+  };
   const handleScan = async (event: FormEvent) => {
     event.preventDefault();
     const code = scan.trim();
@@ -3880,27 +4502,14 @@ function LibraryPage() {
           />
         </div>
         <div className="flex gap-2">
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3">
-            <SlidersHorizontal size={14} className="text-muted-foreground" />
-            <select
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              className="h-10 bg-transparent text-xs font-medium outline-none"
-              data-testid="select-book-category"
-            >
-              <option value="">
-                {t(
-                  "All categories",
-                  "\u0643\u0644\u0020\u0627\u0644\u062A\u0635\u0646\u064A\u0641\u0627\u062A",
-                )}
-              </option>
-              {categories.map((item) => (
-                <option value={item} key={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </div>
+          <TableFilterBar
+            fields={filterFields}
+            values={filters.values}
+            setFilter={filters.setFilter}
+            resetFilter={filters.resetFilter}
+            activeCount={filters.activeCount}
+            t={t}
+          />
           <button
             onClick={() => query.refetch()}
             className="h-fit rounded-lg border border-border bg-card px-3 py-2 text-muted-foreground transition-colors hover:border-primary hover:text-primary"
@@ -3945,7 +4554,7 @@ function LibraryPage() {
         <EmptyState
           icon={Library}
           title={
-            search || category
+            search || filters.activeCount > 0
               ? t(
                   "No books match this view",
                   "\u0644\u0627\u0020\u062A\u0648\u062C\u062F\u0020\u0643\u062A\u0628\u0020\u0645\u0637\u0627\u0628\u0642\u0629\u0020\u0644\u0647\u0630\u0627\u0020\u0627\u0644\u0639\u0631\u0636",
@@ -3956,7 +4565,7 @@ function LibraryPage() {
                 )
           }
           detail={
-            search || category
+            search || filters.activeCount > 0
               ? t(
                   "Try another search term or clear the filters.",
                   "\u062C\u0631\u0651\u0628\u0020\u0643\u0644\u0645\u0629\u0020\u0628\u062D\u062B\u0020\u0623\u062E\u0631\u0649\u0020\u0623\u0648\u0020\u0627\u0645\u0633\u062D\u0020\u0639\u0648\u0627\u0645\u0644\u0020\u0627\u0644\u062A\u0635\u0641\u064A\u0629\u002E",
@@ -3967,7 +4576,7 @@ function LibraryPage() {
                 )
           }
           action={
-            !search && !category ? (
+            !search && filters.activeCount === 0 ? (
               <Button onClick={openNew} data-testid="button-empty-add-book">
                 <Plus size={15} />{" "}
                 {t(
@@ -3980,17 +4589,57 @@ function LibraryPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_88px] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-            <span>{t("Book", "\u0627\u0644\u0643\u062A\u0627\u0628")}</span>
-            <span>{t("Author", "\u0627\u0644\u0645\u0624\u0644\u0641")}</span>
-            <span className="text-center">
+          <div className="grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_176px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+            <SortHeader
+              columnKey="title"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              <span className="truncate">{t("Book", "\u0627\u0644\u0643\u062A\u0627\u0628")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="author"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              {t("Author", "\u0627\u0644\u0645\u0624\u0644\u0641")}
+            </SortHeader>
+            <SortHeader
+              columnKey="language"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
               {t("Language", "\u0627\u0644\u0644\u063A\u0629")}
-            </span>
-            <span className="text-center">
+            </SortHeader>
+            <SortHeader
+              columnKey="copies"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
               {t("Copies", "\u0627\u0644\u0646\u0633\u062E")}
-            </span>
-            <span className="text-center">{t("Shelf", "الرف")}</span>
-            <span className="text-center">{t("Barcode", "الباركود")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="shelf"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Shelf", "الرف")}
+            </SortHeader>
+            <SortHeader
+              columnKey="isbn"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Barcode", "الباركود")}
+            </SortHeader>
             <span />
           </div>
           {bookPages.pageItems.map((book) => (
@@ -4080,38 +4729,19 @@ function LibraryPage() {
                       : "—"}
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    returnBorrow.mutate(
-                      { id: borrow.id },
-                      {
-                        onSuccess: () => {
-                          queryClient.invalidateQueries({
-                            queryKey: getGetBorrowsQueryKey(),
-                          });
-                          queryClient.invalidateQueries({
-                            queryKey: getGetBooksQueryKey(),
-                          });
-                          setToast(
-                            t(
-                              "Book returned to the shelf",
-                              "عاد الكتاب إلى الرف",
-                            ),
-                          );
-                        },
-                      },
-                    )
-                  }
-                  className="h-8 shrink-0 px-3 text-xs hover:border-[#32B77E] hover:text-[#32B77E]"
-                  disabled={
-                    returnBorrow.isPending &&
-                    returnBorrow.variables?.id === borrow.id
-                  }
-                  data-testid={`button-return-borrow-${borrow.id}`}
-                >
-                  {t("Return", "إرجاع")}
-                </Button>
+                <ReturnBorrowControls
+                  borrow={borrow}
+                  mutation={returnBorrow}
+                  onSuccess={() => {
+                    queryClient.invalidateQueries({
+                      queryKey: getGetBorrowsQueryKey(),
+                    });
+                    queryClient.invalidateQueries({
+                      queryKey: getGetBooksQueryKey(),
+                    });
+                    setToast(t("Book returned to the shelf", "عاد الكتاب إلى الرف"));
+                  }}
+                />
               </div>
             ))}
             <Pagination
@@ -4159,16 +4789,21 @@ function BookRow({
   book,
   onEdit,
   onDelete,
+  onConditionChange,
 }: {
   book: Book;
   onEdit: (book: Book) => void;
   onDelete: (book: Book) => void;
+  onConditionChange: (book: Book, action: "lost" | "damaged" | "fixed" | "found") => void;
 }) {
+  const { t } = useT();
   const available = book.availableCopies ?? book.copies;
+  const lostCopies = book.lostCopies ?? 0;
+  const damagedCopies = book.damagedCopies ?? 0;
   const percent = book.copies ? Math.round((available / book.copies) * 100) : 0;
   return (
     <div
-      className="group grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
+      className="group grid min-w-[920px] grid-cols-[2fr_1fr_.75fr_1.25fr_.65fr_1.1fr_176px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
       data-testid={`row-book-${book.id}`}
     >
       <div className="flex items-center gap-3">
@@ -4179,8 +4814,24 @@ function BookRow({
           <div className="line-clamp-1 text-sm font-semibold text-[#263064]">
             {book.title}
           </div>
-          <div className="text-[10px] uppercase tracking-[.12em] text-muted-foreground">
-            {book.category}
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[.12em] text-muted-foreground">
+            <span>{book.category}</span>
+            {lostCopies > 0 && (
+              <span
+                className="rounded-full bg-[#B92327]/10 px-1.5 py-0.5 normal-case tracking-normal text-[#B92327]"
+                data-testid={`badge-book-lost-${book.id}`}
+              >
+                {lostCopies} {t("lost", "مفقود")}
+              </span>
+            )}
+            {damagedCopies > 0 && (
+              <span
+                className="rounded-full bg-accent/20 px-1.5 py-0.5 normal-case tracking-normal text-accent-foreground"
+                data-testid={`badge-book-damaged-${book.id}`}
+              >
+                {damagedCopies} {t("damaged", "تالف")}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -4200,7 +4851,7 @@ function BookRow({
         </span>
       </div>
       <span className="text-center text-xs text-muted-foreground">
-        {book.shelf ? `Shelf ${book.shelf}` : "—"}
+        {book.shelf ? `${t("Shelf", "الرف")} ${book.shelf}` : "—"}
       </span>
       <span
         className="justify-self-center text-center font-mono text-xs text-muted-foreground"
@@ -4208,10 +4859,10 @@ function BookRow({
       >
         {book.isbn || "—"}
       </span>
-      <div className="flex justify-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
+      <div className="flex justify-end gap-1">
         <button
           onClick={() => onEdit(book)}
-          className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-primary"
           data-testid={`button-edit-book-${book.id}`}
           aria-label={`Edit ${book.title}`}
         >
@@ -4219,7 +4870,7 @@ function BookRow({
         </button>
         <button
           onClick={() => onDelete(book)}
-          className="rounded-md p-2 text-muted-foreground hover:bg-[#B92327]/10 hover:text-destructive"
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-[#B92327]/10 hover:text-destructive"
           data-testid={`button-delete-book-${book.id}`}
           aria-label={`Delete ${book.title}`}
         >
@@ -4256,7 +4907,18 @@ function DistributionPage() {
         .map(([klass, count]) => ({ grade, klass, count, key: `${grade}-${klass}` }))
     );
   }, [groups]);
-  const distPages = usePagination(flatRows);
+  type FlatRow = { grade: string; klass: string; count: number; key: string };
+  const sortColumns: SortColumn<FlatRow>[] = [
+    { key: "grade", accessor: (r) => r.grade },
+    { key: "klass", accessor: (r) => r.klass },
+    { key: "count", accessor: (r) => r.count },
+  ];
+  const { sorted, sortKey, sortDir, toggleSort } = useSort<FlatRow>(
+    flatRows,
+    sortColumns,
+    "grade",
+  );
+  const distPages = usePagination(sorted);
   return (
     <div className="rise-in">
       <PageHeading
@@ -4324,20 +4986,44 @@ function DistributionPage() {
             ))}
           </div>
           <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-            <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-              <span>
+            <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+              <SortHeader
+                columnKey="grade"
+                activeKey={sortKey}
+                activeDir={sortDir}
+                onSort={toggleSort}
+                className="justify-start"
+              >
                 {t("Grade", "\u0627\u0644\u0645\u0631\u062D\u0644\u0629")}
-              </span>
-              <span>{t("Class", "\u0627\u0644\u0641\u0635\u0644")}</span>
-              <span>
+              </SortHeader>
+              <SortHeader
+                columnKey="klass"
+                activeKey={sortKey}
+                activeDir={sortDir}
+                onSort={toggleSort}
+                className="justify-start"
+              >
+                {t("Class", "\u0627\u0644\u0641\u0635\u0644")}
+              </SortHeader>
+              <SortHeader
+                columnKey="count"
+                activeKey={sortKey}
+                activeDir={sortDir}
+                onSort={toggleSort}
+              >
                 {t("Students", "\u0627\u0644\u0637\u0644\u0627\u0628")}
-              </span>
-              <span>
+              </SortHeader>
+              <SortHeader
+                columnKey="count"
+                activeKey={sortKey}
+                activeDir={sortDir}
+                onSort={toggleSort}
+              >
                 {t(
                   "Share of school",
                   "\u0646\u0633\u0628\u0629\u0020\u0645\u0646\u0020\u0627\u0644\u0645\u062F\u0631\u0633\u0629",
                 )}
-              </span>
+              </SortHeader>
             </div>
             {distPages.pageItems.map(({ grade, klass, count, key }) => {
               const percent = total ? Math.round((count / total) * 100) : 0;
@@ -4391,6 +5077,99 @@ function DistributionPage() {
   );
 }
 
+function ReturnBorrowControls({
+  borrow,
+  mutation,
+  onSuccess,
+  size = "sm",
+}: {
+  borrow: Borrow;
+  mutation: ReturnType<typeof useReturnBorrow>;
+  onSuccess: (condition: "good" | "damaged" | "lost") => void;
+  size?: "sm" | "xs";
+}) {
+  const { t } = useT();
+  const confirm = useConfirm();
+  const pending =
+    mutation.isPending && mutation.variables?.id === borrow.id;
+  const run = (condition: "good" | "damaged" | "lost") => {
+    const description =
+      condition === "good"
+        ? t(
+            `Return “${borrow.bookTitle}” to the shelf?`,
+            `هل تريد إعادة "${borrow.bookTitle}" إلى الرف؟`,
+          )
+        : condition === "damaged"
+          ? t(
+              `Confirm that “${borrow.bookTitle}” was returned damaged?`,
+              `هل تؤكد أن "${borrow.bookTitle}" أُعيد ككتاب تالف؟`,
+            )
+          : t(
+              `Report “${borrow.bookTitle}” as lost?`,
+              `هل تريد الإبلاغ عن فقدان "${borrow.bookTitle}"؟`,
+            );
+    confirm(
+      {
+        title: t(
+          condition === "good"
+            ? "Return book"
+            : condition === "damaged"
+              ? "Return as damaged"
+              : "Report as lost",
+          condition === "good"
+            ? "إعادة الكتاب"
+            : condition === "damaged"
+              ? "الإعادة كتاب تالف"
+              : "الإبلاغ كمفقود",
+        ),
+        description,
+        confirmLabel: t("Yes", "نعم"),
+        destructive: condition !== "good",
+      },
+      () =>
+        mutation.mutate(
+          { id: borrow.id, data: { condition } },
+          { onSuccess: () => onSuccess(condition) },
+        ),
+    );
+  };
+  const btn = size === "sm" ? "h-8 px-3 text-xs" : "h-7 px-2.5 text-[11px]";
+  const extra = size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-1 py-0.5 text-[10px]";
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button
+        variant="outline"
+        onClick={() => run("good")}
+        className={`${btn} shrink-0 hover:border-[#32B77E] hover:text-[#32B77E]`}
+        disabled={pending}
+        data-testid={`button-return-borrow-${borrow.id}`}
+      >
+        {t("Return", "إرجاع")}
+      </Button>
+      <div className="flex gap-1">
+        <button
+          onClick={() => run("damaged")}
+          disabled={pending}
+          className={`rounded-md ${extra} font-medium text-muted-foreground hover:text-accent-foreground disabled:opacity-40`}
+          data-testid={`button-return-borrow-damaged-${borrow.id}`}
+          title={t("Return as damaged", "الإعادة ككتاب تالف")}
+        >
+          {t("Damaged", "تالف")}
+        </button>
+        <button
+          onClick={() => run("lost")}
+          disabled={pending}
+          className={`rounded-md ${extra} font-medium text-muted-foreground hover:text-destructive disabled:opacity-40`}
+          data-testid={`button-return-borrow-lost-${borrow.id}`}
+          title={t("Report as lost", "الإبلاغ كمفقود")}
+        >
+          {t("Lost", "مفقود")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BorrowsPage() {
   const { t } = useT();
   const [search, setSearch] = useState("");
@@ -4414,14 +5193,36 @@ function BorrowsPage() {
   const returnBorrow = useReturnBorrow();
   const queryClient = useQueryClient();
   const borrows = (Array.isArray(query.data) ? query.data : []) as Borrow[];
+  const sortColumns: SortColumn<Borrow>[] = [
+    { key: "borrowerName", accessor: (b) => b.borrowerName },
+    { key: "bookTitle", accessor: (b) => b.bookTitle },
+    { key: "borrowedAt", accessor: (b) => b.borrowedAt },
+    { key: "dueDate", accessor: (b) => b.dueDate },
+  ];
+  const { sorted, sortKey, sortDir, toggleSort } = useSort<Borrow>(
+    borrows,
+    sortColumns,
+    "borrowedAt",
+  );
+  const filterFields: FilterField[] = [
+    {
+      key: "borrowerType",
+      label: "Borrower type",
+      arabic: "نوع المستعير",
+      options: ["student", "teacher", "employee"],
+      accessor: (b) => b.borrowerType,
+    },
+  ];
+  const filters = useTableFilters(filterFields);
   const filteredBorrows = useMemo(
     () =>
-      borrows.filter((borrow) =>
-        `${borrow.borrowerName} ${borrow.bookTitle} ${borrow.bookBarcode || ""}`
+      sorted.filter((borrow) => {
+        if (!filters.matches(filters.values, borrow)) return false;
+        return `${borrow.borrowerName} ${borrow.bookTitle} ${borrow.bookBarcode || ""}`
           .toLowerCase()
-          .includes(search.toLowerCase()),
-      ),
-    [borrows, search],
+          .includes(search.toLowerCase());
+      }),
+    [sorted, search, filters.values, filterFields],
   );
   const borrowPages = usePagination(filteredBorrows);
   useEffect(() => {
@@ -4461,25 +5262,6 @@ function BorrowsPage() {
     setScanning(false);
     setScan("");
   };
-  const returnScannedBorrow = () => {
-    if (!scannedBorrows.length) return;
-    scannedBorrows.forEach((borrow) =>
-      returnBorrow.mutate(
-        { id: borrow.id },
-        {
-          onSuccess: () => {
-            queryClient.invalidateQueries({
-              queryKey: getGetBorrowsQueryKey({ active: true }),
-            });
-            queryClient.invalidateQueries({ queryKey: getGetBooksQueryKey() });
-            setScannedBorrows((current) =>
-              current.filter((item) => item.id !== borrow.id),
-            );
-          },
-        },
-      ),
-    );
-  };
   const clearScanResult = () => {
     setScannedBorrows([]);
     setMissingScan(undefined);
@@ -4489,7 +5271,7 @@ function BorrowsPage() {
       <PageHeading
         eyebrow="Resources · 04 · Lending"
         title="Borrows"
-        arabic="��لاستعارات"
+        arabic="الاستعارات"
         description={t(
           "Keep track of books currently away from the shelves.",
           "تابع الكتب الموجودة حاليًا خارج الرفوف.",
@@ -4541,6 +5323,29 @@ function BorrowsPage() {
           </span>
         )}
       </form>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="relative flex-1 sm:max-w-md">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t(
+              "Search borrower or book…",
+              "ابحث عن المستعير أو الكتاب…",
+            )}
+            className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+            data-testid="input-borrows-search"
+          />
+        </div>
+        <TableFilterBar
+          fields={filterFields}
+          values={filters.values}
+          setFilter={filters.setFilter}
+          resetFilter={filters.resetFilter}
+          activeCount={filters.activeCount}
+          t={t}
+        />
+      </div>
       {scannedBorrows.length > 0 && (
         <div
           className="mb-5 rounded-xl border border-[#32B77E]/35 bg-[#32B77E]/10 p-4"
@@ -4560,33 +5365,29 @@ function BorrowsPage() {
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {borrow.bookTitle} ·{" "}
-                  {t(borrow.borrowerType, borrow.borrowerType)}
+                  {borrow.borrowerType === "teacher"
+                    ? t("Teacher", "المعلم")
+                    : borrow.borrowerType === "employee"
+                      ? t("Employee", "الموظف")
+                      : t("Student", "الطالب")}
                 </div>
               </div>
-              <Button
-                onClick={() =>
-                  returnBorrow.mutate(
-                    { id: borrow.id },
-                    {
-                      onSuccess: () => {
-                        setScannedBorrows((current) =>
-                          current.filter((item) => item.id !== borrow.id),
-                        );
-                        queryClient.invalidateQueries({
-                          queryKey: getGetBorrowsQueryKey({ active: true }),
-                        });
-                        queryClient.invalidateQueries({
-                          queryKey: getGetBooksQueryKey(),
-                        });
-                      },
-                    },
-                  )
-                }
-                disabled={returnBorrow.isPending}
-                data-testid={`button-borrows-scan-return-${borrow.id}`}
-              >
-                {t("Return", "إرجاع")}
-              </Button>
+              <ReturnBorrowControls
+                borrow={borrow}
+                mutation={returnBorrow}
+                size="xs"
+                onSuccess={() => {
+                  setScannedBorrows((current) =>
+                    current.filter((item) => item.id !== borrow.id),
+                  );
+                  queryClient.invalidateQueries({
+                    queryKey: getGetBorrowsQueryKey({ active: true }),
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: getGetBooksQueryKey(),
+                  });
+                }}
+              />
             </div>
           ))}
           <button
@@ -4645,17 +5446,47 @@ function BorrowsPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[760px] grid-cols-[1.5fr_1.5fr_1fr_1fr_100px] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-            <span>{t("Student", "الطالب")}</span>
-            <span>{t("Book", "الكتاب")}</span>
-            <span>{t("Borrowed", "تاريخ الإعارة")}</span>
-            <span>{t("Due date", "تاريخ الاستحقاق")}</span>
+          <div className="grid min-w-[760px] grid-cols-[1.5fr_1.5fr_1fr_1fr_176px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+            <SortHeader
+              columnKey="borrowerName"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              <span className="truncate">{t("Student", "الطالب")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="bookTitle"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              {t("Book", "الكتاب")}
+            </SortHeader>
+            <SortHeader
+              columnKey="borrowedAt"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Borrowed", "تاريخ الإعارة")}
+            </SortHeader>
+            <SortHeader
+              columnKey="dueDate"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Due date", "تاريخ الاستحقاق")}
+            </SortHeader>
             <span />
           </div>
           {borrowPages.pageItems.map((borrow) => (
             <div
               key={borrow.id}
-              className="grid min-w-[760px] grid-cols-[1.5fr_1.5fr_1fr_1fr_100px] items-center border-b border-border/70 px-5 py-4 text-sm last:border-b-0"
+              className="grid min-w-[760px] grid-cols-[1.5fr_1.5fr_1fr_1fr_176px] items-center border-b border-border/70 px-5 py-4 text-sm last:border-b-0"
             >
               <div className="font-semibold text-[#263064]">
                 {borrow.borrowerName}
@@ -4667,29 +5498,18 @@ function BorrowsPage() {
               <div className="text-xs text-muted-foreground" dir="ltr">
                 {borrow.dueDate ? formatDate(String(borrow.dueDate)) : "—"}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  returnBorrow.mutate(
-                    { id: borrow.id },
-                    {
-                      onSuccess: () => {
-                        queryClient.invalidateQueries({
-                          queryKey: getGetBorrowsQueryKey({ active: true }),
-                        });
-                        queryClient.invalidateQueries({
-                          queryKey: getGetBooksQueryKey(),
-                        });
-                      },
-                    },
-                  )
-                }
-                disabled={returnBorrow.isPending}
-                data-testid={`button-return-borrow-${borrow.id}`}
-              >
-                {t("Return", "إرجاع")}
-              </Button>
+              <ReturnBorrowControls
+                borrow={borrow}
+                mutation={returnBorrow}
+                onSuccess={() => {
+                  queryClient.invalidateQueries({
+                    queryKey: getGetBorrowsQueryKey({ active: true }),
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: getGetBooksQueryKey(),
+                  });
+                }}
+              />
             </div>
           ))}
           <Pagination
@@ -4722,6 +5542,281 @@ function BorrowsPage() {
         </DialogContent>
       </Dialog>
       <BorrowDialog open={Boolean(borrowing)} onOpenChange={(value) => { if (!value) setBorrowing(undefined); }} book={borrowing} onSaved={() => queryClient.invalidateQueries({ queryKey: getGetBorrowsQueryKey({ active: true }) })} />
+    </div>
+  );
+}
+
+type HistoryFilter = "all" | "active" | "returned";
+
+function BorrowHistoryPage() {
+  const { t } = useT();
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<HistoryFilter>("all");
+  const query = useGetBorrows(
+    {},
+    { query: { queryKey: getGetBorrowsQueryKey({}) } },
+  );
+  const borrows = (Array.isArray(query.data) ? query.data : []) as Borrow[];
+  const sortColumns: SortColumn<Borrow>[] = [
+    { key: "borrowerName", accessor: (b) => b.borrowerName },
+    { key: "bookTitle", accessor: (b) => b.bookTitle },
+    { key: "borrowedAt", accessor: (b) => b.borrowedAt },
+    { key: "dueDate", accessor: (b) => b.dueDate },
+    { key: "returnedAt", accessor: (b) => b.returnedAt },
+    { key: "condition", accessor: (b) => b.condition ?? "good" },
+  ];
+  const { sorted, sortKey, sortDir, toggleSort } = useSort<Borrow>(
+    borrows,
+    sortColumns,
+    "borrowedAt",
+  );
+  const filterFields: FilterField[] = [
+    {
+      key: "borrowerType",
+      label: "Borrower type",
+      arabic: "نوع المستعير",
+      options: ["student", "teacher", "employee"],
+      accessor: (b) => b.borrowerType,
+    },
+    {
+      key: "condition",
+      label: "Condition",
+      arabic: "الحالة",
+      options: ["good", "damaged", "lost"],
+      accessor: (b) => b.condition ?? "good",
+    },
+  ];
+  const filters = useTableFilters(filterFields);
+  const filtered = useMemo(() => {
+    const term = search
+      .toLowerCase()
+      .trim()
+      .normalize("NFKC");
+    return sorted.filter((borrow) => {
+      if (!filters.matches(filters.values, borrow)) return false;
+      if (status === "active" && borrow.returnedAt !== null) return false;
+      if (status === "returned" && !borrow.returnedAt) return false;
+      if (term) {
+        const haystack = `${borrow.borrowerName || ""} ${borrow.bookTitle || ""} ${borrow.bookBarcode || ""} ${borrow.condition || ""}`
+          .toLowerCase()
+          .normalize("NFKC");
+        if (!haystack.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [sorted, search, status, filters.values, filterFields]);
+  const pages = usePagination(filtered);
+  const conditionBadge = (
+    condition: BorrowCondition | undefined,
+  ) => {
+    if (!condition || condition === "good") {
+      return (
+        <span className="rounded-full bg-[#32B77E]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#32B77E]">
+          {t("Good", "جيد")}
+        </span>
+      );
+    }
+    if (condition === "damaged") {
+      return (
+        <span className="rounded-full bg-[#EC9F42]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#EC9F42]">
+          {t("Damaged", "تالف")}
+        </span>
+      );
+    }
+    return (
+      <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-destructive">
+        {t("Lost", "مفقود")}
+      </span>
+    );
+  };
+  const statusBadge = (returnedAt: string | null | undefined) =>
+    returnedAt ? (
+      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {t("Returned", "مُعاد")}
+      </span>
+    ) : (
+      <span className="rounded-full bg-[#263064]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#263064]">
+        {t("Active", "نشط")}
+      </span>
+    );
+  return (
+    <div className="rise-in">
+      <PageHeading
+        eyebrow="Resources · 04 · Lending"
+        title="Borrow History"
+        arabic="سجل الاستعارات"
+        description={t(
+          "A complete record of every book borrowed and returned.",
+          "سجل كامل لكل كتاب تم استعارته وإعادته.",
+        )}
+      />
+      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t(
+              "Search borrower, book or barcode…",
+              "ابحث عن المستعير أو الكتاب أو الباركود…",
+            )}
+            className="h-11 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+            data-testid="input-borrow-history-search"
+          />
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+          {(
+            [
+              { key: "all", label: t("All", "الكل") },
+              { key: "active", label: t("Active", "نشط") },
+              { key: "returned", label: t("Returned", "مُعاد") },
+            ] as { key: HistoryFilter; label: string }[]
+          ).map((option) => (
+            <button
+              key={option.key}
+              onClick={() => setStatus(option.key)}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${status === option.key ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground hover:text-[#263064]"}`}
+              data-testid={`button-borrow-history-${option.key}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <TableFilterBar
+          fields={filterFields}
+          values={filters.values}
+          setFilter={filters.setFilter}
+          resetFilter={filters.resetFilter}
+          activeCount={filters.activeCount}
+          t={t}
+        />
+      </div>
+      {query.isLoading ? (
+        <LoadingCards count={3} />
+      ) : query.isError ? (
+        <ErrorState
+          label="borrow history"
+          labelAr="سجل الاستعارات"
+          onRetry={() => query.refetch()}
+        />
+      ) : !filtered.length ? (
+        <EmptyState
+          icon={Clock3}
+          title={t("No borrow history", "لا يوجد سجل استعارات")}
+          detail={t(
+            "Borrowed and returned books will appear here.",
+            "ستظهر الكتب المستعارة والمُعادة هنا.",
+          )}
+        />
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
+          <div className="grid min-w-[860px] grid-cols-[1.4fr_1.5fr_1fr_1fr_1fr_104px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+            <SortHeader
+              columnKey="borrowerName"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              <span className="truncate">{t("Borrower", "المستعير")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="bookTitle"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              {t("Book", "الكتاب")}
+            </SortHeader>
+            <SortHeader
+              columnKey="borrowedAt"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Borrowed", "تاريخ الإعارة")}
+            </SortHeader>
+            <SortHeader
+              columnKey="dueDate"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Due date", "تاريخ الاستحقاق")}
+            </SortHeader>
+            <SortHeader
+              columnKey="returnedAt"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              <span className="truncate">
+                {t("Returned / Condition", "الإعادة / الحالة")}
+              </span>
+            </SortHeader>
+            <span />
+          </div>
+          {pages.pageItems.map((borrow) => (
+            <div
+              key={borrow.id}
+              className="grid min-w-[860px] grid-cols-[1.4fr_1.5fr_1fr_1fr_1fr_104px] items-center border-b border-border/70 px-5 py-4 text-sm last:border-b-0"
+            >
+              <div>
+                <div className="font-semibold text-[#263064]">
+                  {borrow.borrowerName || "—"}
+                </div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  {borrow.borrowerType === "teacher"
+                    ? t("Teacher", "المعلم")
+                    : borrow.borrowerType === "employee"
+                      ? t("Employee", "الموظف")
+                      : t("Student", "الطالب")}
+                </div>
+              </div>
+              <div className="text-muted-foreground">
+                {borrow.bookTitle || "—"}
+                {borrow.bookBarcode && (
+                  <div className="mt-0.5 font-mono text-[10px] text-muted-foreground/70">
+                    {borrow.bookBarcode}
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground" dir="ltr">
+                {borrow.borrowedAt ? formatDate(String(borrow.borrowedAt)) : "—"}
+              </div>
+              <div className="text-xs text-muted-foreground" dir="ltr">
+                {borrow.dueDate ? formatDate(String(borrow.dueDate)) : "—"}
+              </div>
+              <div className="flex flex-col items-start gap-1">
+                {borrow.returnedAt ? (
+                  <span className="text-xs text-muted-foreground" dir="ltr">
+                    {formatDate(String(borrow.returnedAt))}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+                {conditionBadge(borrow.condition)}
+              </div>
+              <div className="text-right">{statusBadge(borrow.returnedAt)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {filtered.length > 0 && (
+        <Pagination
+          page={pages.page}
+          pageCount={pages.pageCount}
+          totalItems={pages.totalItems}
+          pageSize={pages.pageSize}
+          onPageChange={pages.setPage}
+          onPageSizeChange={pages.setPageSize}
+        />
+      )}
     </div>
   );
 }
@@ -4810,8 +5905,8 @@ function AnalyticsPage() {
     0,
   );
   const borrowedCopies = Math.max(copies - available, 0);
-  const lostBooks = books.filter((b) => b.status === "lost").length;
-  const damagedBooks = books.filter((b) => b.status === "damaged").length;
+  const lostBooks = books.reduce((total, book) => total + (book.lostCopies ?? 0), 0);
+  const damagedBooks = books.reduce((total, book) => total + (book.damagedCopies ?? 0), 0);
   const categories = new Set(books.map((book) => book.category).filter(Boolean))
     .size;
   const borrowedPercent = copies
@@ -4820,20 +5915,16 @@ function AnalyticsPage() {
   const activeBorrows = borrows.filter((b) => !b.returnedAt);
   const [reportTab, setReportTab] = useState<"overview" | "borrows" | "books">("overview");
 
-  const gradeDistribution = useMemo(() => {
+  const categoryDistribution = useMemo(() => {
     const map = new Map<string, number>();
-    activeBorrows.forEach((b) => {
-      const grade = "Grade " + ((b as any).grade || "");
-      map.set(grade, (map.get(grade) || 0) + 1);
+    books.forEach((book) => {
+      const cat = book.category || "Other";
+      map.set(cat, (map.get(cat) || 0) + book.copies);
     });
-    if (map.size === 0) {
-      books.forEach((book) => {
-        const cat = book.category || "Other";
-        map.set(cat, (map.get(cat) || 0) + book.copies);
-      });
-    }
-    return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
-  }, [activeBorrows, books]);
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [books]);
 
   const monthlyBorrows = useMemo(() => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -4983,7 +6074,7 @@ function AnalyticsPage() {
                   </h2>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RechartsBarChart data={gradeDistribution}>
+                      <RechartsBarChart data={categoryDistribution}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
                         <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                         <YAxis tick={{ fontSize: 11 }} />
@@ -5110,36 +6201,91 @@ function AnalyticsPage() {
 
 function CategoriesPage() {
   const { t } = useT();
+  const [search, setSearch] = useState("");
+  const [groupSort, setGroupSort] = useState<"count" | "name">("count");
+  const [groupDir, setGroupDir] = useState<"asc" | "desc">("desc");
   const query = useGetBooks(undefined, {
     query: { queryKey: getGetBooksQueryKey(undefined) },
   });
   const books = Array.isArray(query.data) ? query.data : [];
   const groups = useMemo(() => {
+    const term = search.trim().toLowerCase();
     const map = new Map<string, Book[]>();
     for (const book of books) {
+      if (
+        term &&
+        !`${book.title} ${book.author || ""} ${book.isbn || ""}`
+          .toLowerCase()
+          .includes(term)
+      )
+        continue;
       const key = book.category || "Uncategorised";
       map.set(key, [...(map.get(key) ?? []), book]);
     }
-    return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
-  }, [books]);
+    const entries = Array.from(map.entries());
+    const multiplier =
+      groupSort === "count" ? (groupDir === "asc" ? 1 : -1) : 0;
+    entries.sort((a, b) => {
+      if (groupSort === "count")
+        return (a[1].length - b[1].length) * multiplier;
+      return groupDir === "asc"
+        ? a[0].localeCompare(b[0])
+        : b[0].localeCompare(a[0]);
+    });
+    return entries;
+  }, [books, search, groupSort, groupDir]);
   const groupPages = usePagination(groups);
   return (
     <div className="rise-in">
       <PageHeading
         eyebrow="Resources · 04 · Catalogue"
-        title={t(
-          "Book categories",
-          "\u062A\u0635\u0646\u064A\u0641\u0627\u062A\u0020\u0627\u0644\u0643\u062A\u0628",
-        )}
-        arabic={t(
-          "\u062A\u0635\u0646\u064A\u0641\u0627\u062A\u0020\u0627\u0644\u0643\u062A\u0628",
-          "Book categories",
-        )}
+        title="Book categories"
+        arabic="تصنيفات الكتب"
         description={t(
           "Every shelf in the library, grouped by how the collection is organised.",
           "\u0643\u0644\u0020\u0631\u0641\u0020\u0641\u064A\u0020\u0627\u0644\u0645\u0643\u062A\u0628\u0629\u060C\u0020\u0645\u062C\u0645\u0651\u0639\u0629\u0020\u062D\u0633\u0628\u0020\u062A\u0646\u0638\u064A\u0645\u0020\u0627\u0644\u0645\u062C\u0645\u0648\u0639\u0629\u002E",
         )}
       />
+      <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row">
+        <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 sm:max-w-md">
+          <Search size={16} className="text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t(
+              "Search title, author or barcode",
+              "ابحث بالعنوان أو المؤلف أو الباركود",
+            )}
+            className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+            data-testid="input-search-categories"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={groupSort}
+            onChange={(event) =>
+              setGroupSort(event.target.value as "count" | "name")
+            }
+            className="rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none"
+            data-testid="select-category-sort"
+          >
+            <option value="count">{t("Sort by count", "حسب العدد")}</option>
+            <option value="name">{t("Sort by name", "حسب الاسم")}</option>
+          </select>
+          <button
+            onClick={() => setGroupDir((d) => (d === "asc" ? "desc" : "asc"))}
+            className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+            data-testid="button-category-sort-dir"
+            aria-label={t("Toggle sort order", "تبديل اتجاه الفرز")}
+          >
+            {groupDir === "asc" ? (
+              <ArrowUpRight size={16} className="-rotate-45" />
+            ) : (
+              <ArrowUpRight size={16} className="rotate-90" />
+            )}
+          </button>
+        </div>
+      </div>
       {query.isLoading ? (
         <LoadingCards count={3} />
       ) : query.isError ? (
@@ -5238,7 +6384,7 @@ function CategoriesPage() {
                       {book.language}
                     </span>
                     <span className="justify-self-center text-center text-xs text-muted-foreground">
-                      {book.shelf ? `Shelf ${book.shelf}` : "—"}
+                      {book.shelf ? `${t("Shelf", "الرف")} ${book.shelf}` : "—"}
                     </span>
                     <span
                       className="justify-self-center text-center font-mono text-xs text-muted-foreground"
@@ -5287,26 +6433,53 @@ function IndexPage() {
       query: { queryKey: getGetBooksQueryKey({ search: search || undefined }) },
     },
   );
+  const rawBooks = Array.isArray(query.data) ? query.data : [];
+  const sortColumns: SortColumn<Book>[] = [
+    { key: "title", accessor: (b) => b.title },
+    { key: "author", accessor: (b) => b.author },
+    { key: "category", accessor: (b) => b.category },
+    { key: "language", accessor: (b) => b.language },
+    { key: "shelf", accessor: (b) => b.shelf },
+    { key: "isbn", accessor: (b) => b.isbn },
+    { key: "copies", accessor: (b) => b.availableCopies ?? b.copies },
+  ];
+  const { sorted, sortKey, sortDir, toggleSort } = useSort<Book>(
+    rawBooks,
+    sortColumns,
+    "title",
+  );
+  const filterFields: FilterField[] = [
+    {
+      key: "category",
+      label: "Category",
+      arabic: "التصنيف",
+      options: Array.from(
+        new Set(rawBooks.map((b) => b.category).filter(Boolean)),
+      ).sort() as string[],
+      accessor: (b) => b.category,
+    },
+    {
+      key: "language",
+      label: "Language",
+      arabic: "اللغة",
+      options: Array.from(
+        new Set(rawBooks.map((b) => b.language).filter(Boolean)),
+      ).sort() as string[],
+      accessor: (b) => b.language,
+    },
+  ];
+  const filters = useTableFilters(filterFields);
   const books = useMemo(
-    () =>
-      [...(Array.isArray(query.data) ? query.data : [])].sort((a, b) =>
-        a.title.localeCompare(b.title),
-      ),
-    [query.data],
+    () => sorted.filter((b) => filters.matches(filters.values, b)),
+    [sorted, filters.values, filterFields],
   );
   const bookPages = usePagination(books);
   return (
     <div className="rise-in">
       <PageHeading
         eyebrow="Resources · 04 · Index"
-        title={t(
-          "Library index",
-          "\u0641\u0647\u0631\u0633\u0020\u0627\u0644\u0645\u0643\u062A\u0628\u0629",
-        )}
-        arabic={t(
-          "\u0641\u0647\u0631\u0633\u0020\u0627\u0644\u0645\u0643\u062A\u0628\u0629",
-          "Library index",
-        )}
+        title="Library index"
+        arabic="فهرس المكتبة"
         description={t(
           "The complete catalogue in one alphabetical listing, ready for quick lookup.",
           "\u0627\u0644\u0643\u0627\u062A\u0627\u0644\u0648\u062C\u0020\u0627\u0644\u0643\u0627\u0645\u0644\u0020\u0641\u064A\u0020\u0642\u0627\u0626\u0645\u0629\u0020\u0623\u0628\u062C\u062F\u064A\u0629\u0020\u0648\u0627\u062D\u062F\u0629\u060C\u0020\u062C\u0627\u0647\u0632\u0020\u0644\u0644\u0628\u062D\u062B\u0020\u0627\u0644\u0633\u0631\u064A\u0639\u002E",
@@ -5326,6 +6499,14 @@ function IndexPage() {
             data-testid="input-search-index"
           />
         </div>
+        <TableFilterBar
+          fields={filterFields}
+          values={filters.values}
+          setFilter={filters.setFilter}
+          resetFilter={filters.resetFilter}
+          activeCount={filters.activeCount}
+          t={t}
+        />
       </div>
       {query.isLoading ? (
         <LoadingCards count={3} />
@@ -5376,14 +6557,66 @@ function IndexPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[880px] grid-cols-[2fr_1.2fr_1fr_.7fr_.7fr_1.1fr_.7fr] border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-            <span>{t("Title", "العنوان")}</span>
-            <span>{t("Author", "المؤلف")}</span>
-            <span>{t("Category", "التصنيف")}</span>
-            <span className="text-center">{t("Language", "اللغة")}</span>
-            <span className="text-center">{t("Shelf", "الرف")}</span>
-            <span className="text-center">{t("Barcode", "الباركود")}</span>
-            <span className="text-center">{t("Copies", "النسخ")}</span>
+          <div className="grid min-w-[880px] grid-cols-[2fr_1.2fr_1fr_.7fr_.7fr_1.1fr_.7fr] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+            <SortHeader
+              columnKey="title"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              <span className="truncate">{t("Title", "العنوان")}</span>
+            </SortHeader>
+            <SortHeader
+              columnKey="author"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              {t("Author", "المؤلف")}
+            </SortHeader>
+            <SortHeader
+              columnKey="category"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+              className="justify-start"
+            >
+              {t("Category", "التصنيف")}
+            </SortHeader>
+            <SortHeader
+              columnKey="language"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Language", "اللغة")}
+            </SortHeader>
+            <SortHeader
+              columnKey="shelf"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Shelf", "الرف")}
+            </SortHeader>
+            <SortHeader
+              columnKey="isbn"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Barcode", "الباركود")}
+            </SortHeader>
+            <SortHeader
+              columnKey="copies"
+              activeKey={sortKey}
+              activeDir={sortDir}
+              onSort={toggleSort}
+            >
+              {t("Copies", "النسخ")}
+            </SortHeader>
           </div>
           {bookPages.pageItems.map((book) => (
             <div
@@ -5436,6 +6669,8 @@ function IndexPage() {
 
 function SettingsPage() {
   const { t } = useT();
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
   const query = useGetAcademicYears({
     query: { queryKey: getGetAcademicYearsQueryKey() },
   });
@@ -5445,6 +6680,29 @@ function SettingsPage() {
     (year) => today >= year.startDate && today <= year.endDate,
   )?.id;
   const setSelected = (_id: number) => undefined;
+  const handleExport = async () => {
+    setExporting(true);
+    setExportError("");
+    try {
+      await exportDatabase({
+        students: () => getStudents(),
+        teachers: () => getTeachers(),
+        employees: () => getEmployees(),
+        books: () => getBooks(),
+        borrows: () => getBorrows(),
+        academicYears: () => getAcademicYears(),
+      });
+    } catch (err) {
+      setExportError(
+        t(
+          "The export failed. Please try again.",
+          "\u0641\u0634\u0644\u062A\u0020\u0639\u0645\u0644\u064A\u0629\u0020\u0627\u0644\u062A\u0635\u062F\u064A\u0631\u002E\u0020\u064A\u0631\u062C\u0649\u0020\u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629\u0020\u0645\u0631\u0629\u0020\u0623\u062E\u0631\u0649\u002E",
+        ),
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
   return (
     <div className="rise-in">
       <PageHeading
@@ -5615,6 +6873,57 @@ function SettingsPage() {
           </div>
         </section>
       </div>
+      <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-primary">
+              <Database size={18} />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                {t(
+                  "Data backup",
+                  "\u0627\u0644\u0646\u0633\u062E\u0629\u0020\u0627\u0644\u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629",
+                )}
+              </div>
+              <h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-[#263064]">
+                {t(
+                  "Export database backup",
+                  "\u062A\u0635\u062F\u064A\u0631\u0020\u0646\u0633\u062E\u0629\u0020\u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629",
+                )}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                {t(
+                  "Download a JSON backup containing all records (students, teachers, employees, books, borrows and academic years).",
+                  "\u0642\u0645\u0020\u062A\u0646\u0632\u064A\u0644\u0020\u0646\u0633\u062E\u0629\u0020\u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629\u0020\u0628\u0635\u064A\u063A\u0629\u0020JSON\u0020\u062A\u062D\u062A\u0648\u064A\u0020\u0639\u0644\u0649\u0020\u062C\u0645\u064A\u0639\u0020\u0627\u0644\u0633\u062C\u0644\u0627\u062A\u0020\u0028\u0627\u0644\u0637\u0644\u0627\u0628\u2026",
+                )}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="default"
+            className="shrink-0"
+            onClick={handleExport}
+            disabled={exporting}
+            data-testid="button-export-backup"
+          >
+            {exporting ? (
+              <RefreshCw size={16} className="animate-spin" />
+            ) : (
+              <Download size={16} />
+            )}
+            {exporting
+              ? t("Exporting…", "\u062C\u0627\u0631\u064A\u0020\u0627\u0644\u062A\u0635\u062F\u064A\u0631\u2026")
+              : t("Export JSON", "\u062A\u0635\u062F\u064A\u0631\u0020JSON")}
+          </Button>
+        </div>
+        {exportError && (
+          <p className="mt-4 flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle size={15} />
+            {exportError}
+          </p>
+        )}
+      </section>
     </div>
   );
 }
@@ -5633,6 +6942,7 @@ function Router() {
           <Route path="/library" component={LibraryPage} />
           <Route path="/library/categories" component={CategoriesPage} />
           <Route path="/library/borrows" component={BorrowsPage} />
+          <Route path="/library/history" component={BorrowHistoryPage} />
           <Route path="/library/index" component={IndexPage} />
           <Route path="/library/analytics" component={AnalyticsPage} />
           <Route path="/settings" component={SettingsWithPassword} />
@@ -5850,10 +7160,12 @@ function App() {
     <LanguageProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <WouterRouter base={routerBase} hook={routerHook}>
-            <AuthGate />
-          </WouterRouter>
-          <Toaster />
+          <ConfirmProvider>
+            <WouterRouter base={routerBase} hook={routerHook}>
+              <AuthGate />
+            </WouterRouter>
+            <Toaster />
+          </ConfirmProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </LanguageProvider>

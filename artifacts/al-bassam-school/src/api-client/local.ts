@@ -108,17 +108,17 @@ function seedIfEmpty() {
   localStorage.setItem('al-bassam-teachers-next-id', '3');
 
   const students: Student[] = [
-    { id: 1, fullName: 'Sara Al-Harbi', fullNameArabic: 'سارة الحربي', studentNumber: 'AB-2024-014', nationalId: '1023456789', grade: 'Grade 8', className: '8A', guardianName: 'Khalid Al-Harbi', guardianPhone: '+966501112233', status: 'active', enrollmentDate: '2024-09-01' },
-    { id: 2, fullName: 'Omar Al-Qahtani', fullNameArabic: 'عمر القحطاني', studentNumber: 'AB-2024-015', nationalId: '1023456790', grade: 'Grade 7', className: '7B', guardianName: 'Noura Al-Qahtani', guardianPhone: '+966502223344', status: 'active', enrollmentDate: '2024-09-01' },
-    { id: 3, fullName: 'Lina Saeed', fullNameArabic: 'لينا سعيد', studentNumber: 'AB-2025-003', nationalId: '1055566677', grade: 'Grade 9', className: '9A', guardianName: 'Ahmed Saeed', guardianPhone: '+966503334455', status: 'active', enrollmentDate: '2023-09-01' },
+    { id: 1, fullName: 'Sara Al-Harbi', fullNameArabic: 'سارة الحربي', gender: 'female', studentNumber: 'AB-2024-014', nationalId: '1023456789', grade: 'Grade 8', className: '8A', guardianName: 'Khalid Al-Harbi', guardianPhone: '+966501112233', status: 'active', enrollmentDate: '2024-09-01' },
+    { id: 2, fullName: 'Omar Al-Qahtani', fullNameArabic: 'عمر القحطاني', gender: 'male', studentNumber: 'AB-2024-015', nationalId: '1023456790', grade: 'Grade 7', className: '7B', guardianName: 'Noura Al-Qahtani', guardianPhone: '+966502223344', status: 'active', enrollmentDate: '2024-09-01' },
+    { id: 3, fullName: 'Lina Saeed', fullNameArabic: 'لينا سعيد', gender: 'female', studentNumber: 'AB-2025-003', nationalId: '1055566677', grade: 'Grade 9', className: '9A', guardianName: 'Ahmed Saeed', guardianPhone: '+966503334455', status: 'active', enrollmentDate: '2023-09-01' },
   ];
   write(LS.students, students);
   localStorage.setItem('al-bassam-students-next-id', '4');
 
   const books: Book[] = [
-    { id: 1, title: 'Complete ICT IGCSE', author: 'Paul Culling', isbn: '9780981775470', category: 'Technology', language: 'English', volume: '1', copies: 8, availableCopies: 5, dateAdded: '2024-09-15', depositNumber: 'DEP-001', status: 'available', publicationPlace: 'London', publicationDate: '2020', generalNumber: 'GN-001', specialNumber: '', description: '', coverImage: '', shelf: 'B-04' },
-    { id: 2, title: 'Our Planet', author: 'David Attenborough', isbn: '9780521536608', category: 'Science', language: 'English', volume: '', copies: 5, availableCopies: 4, dateAdded: '2024-10-01', depositNumber: 'DEP-002', status: 'available', publicationPlace: 'Cambridge', publicationDate: '2021', generalNumber: 'GN-002', specialNumber: '', description: '', coverImage: '', shelf: 'A-12' },
-    { id: 3, title: 'The University Murderers', author: 'Richard MacAndrew', isbn: '9780521184954', category: 'Literature', language: 'English', volume: '', copies: 3, availableCopies: 2, dateAdded: '2024-10-10', depositNumber: 'DEP-003', status: 'available', publicationPlace: 'Cambridge', publicationDate: '2019', generalNumber: 'GN-003', specialNumber: '', description: '', coverImage: '', shelf: 'C-07' },
+    { id: 1, title: 'Complete ICT IGCSE', author: 'Paul Culling', isbn: '9780981775470', category: 'Technology', language: 'English', volume: '1', copies: 8, availableCopies: 5, lostCopies: 0, damagedCopies: 0, dateAdded: '2024-09-15', depositNumber: 'DEP-001', status: 'available', publicationPlace: 'London', publicationDate: '2020', generalNumber: 'GN-001', specialNumber: '', description: '', coverImage: '', shelf: 'B-04' },
+    { id: 2, title: 'Our Planet', author: 'David Attenborough', isbn: '9780521536608', category: 'Science', language: 'English', volume: '', copies: 5, availableCopies: 3, lostCopies: 1, damagedCopies: 1, dateAdded: '2024-10-01', depositNumber: 'DEP-002', status: 'available', publicationPlace: 'Cambridge', publicationDate: '2021', generalNumber: 'GN-002', specialNumber: '', description: '', coverImage: '', shelf: 'A-12' },
+    { id: 3, title: 'The University Murderers', author: 'Richard MacAndrew', isbn: '9780521184954', category: 'Literature', language: 'English', volume: '', copies: 3, availableCopies: 2, lostCopies: 0, damagedCopies: 0, dateAdded: '2024-10-10', depositNumber: 'DEP-003', status: 'available', publicationPlace: 'Cambridge', publicationDate: '2019', generalNumber: 'GN-003', specialNumber: '', description: '', coverImage: '', shelf: 'C-07' },
   ];
   write(LS.books, books);
   localStorage.setItem('al-bassam-books-next-id', '4');
@@ -606,19 +606,62 @@ const createBorrowFn = (_opts?: any) =>
 export const useCreateBorrow = createBorrowFn;
 
 const returnBorrowFn = (_opts?: any) =>
-  useMutation<Borrow, Error, { id: number }, unknown>({
+  useMutation<Borrow, Error, { id: number; data?: { condition?: string | null } }, unknown>({
     mutationKey: ['returnBorrow'],
-    mutationFn: async ({ id }) => {
+    mutationFn: async ({ id, data }) => {
       const items = read<Borrow>(LS.borrows);
       const idx = items.findIndex((b) => b.id === id);
       if (idx === -1) throw new Error('Borrow not found');
+      const books = read<Book>(LS.books);
+      const book = books.find((b) => b.id === items[idx].bookId);
+      const condition = data?.condition === 'damaged' || data?.condition === 'lost' ? data.condition : 'good';
       items[idx].returnedAt = new Date().toISOString();
+      items[idx].condition = condition as any;
+      if (book) {
+        if (condition === 'good') book.availableCopies = Math.min(book.copies, (book.availableCopies ?? 0) + 1);
+        else if (condition === 'damaged') book.damagedCopies = (book.damagedCopies ?? 0) + 1;
+        else book.lostCopies = (book.lostCopies ?? 0) + 1;
+        write(LS.books, books);
+      }
       write(LS.borrows, items);
       return items[idx];
     },
   });
 
 export const useReturnBorrow = returnBorrowFn;
+
+const markBookConditionFn = (_opts?: any) =>
+  useMutation<Book, Error, { id: number; data: { action: 'lost' | 'damaged' | 'fixed' | 'found' } }, unknown>({
+    mutationKey: ['markBookCondition'],
+    mutationFn: async ({ id, data }) => {
+      const items = read<Book>(LS.books);
+      const idx = items.findIndex((b) => b.id === id);
+      if (idx === -1) throw new Error('Book not found');
+      const book = items[idx];
+      const avail = book.availableCopies ?? 0;
+      const lost = book.lostCopies ?? 0;
+      const damaged = book.damagedCopies ?? 0;
+      if (data.action === 'lost') {
+        if (avail < 1) throw new Error('No copy is on the shelf to mark as lost');
+        book.availableCopies = avail - 1; book.lostCopies = lost + 1;
+      } else if (data.action === 'damaged') {
+        if (avail < 1) throw new Error('No copy is on the shelf to mark as damaged');
+        book.availableCopies = avail - 1; book.damagedCopies = damaged + 1;
+      } else if (data.action === 'found') {
+        if (lost < 1) throw new Error('There are no lost copies to restore');
+        book.availableCopies = avail + 1; book.lostCopies = lost - 1;
+      } else if (data.action === 'fixed') {
+        if (damaged < 1) throw new Error('There are no damaged copies to restore');
+        book.availableCopies = avail + 1; book.damagedCopies = damaged - 1;
+      } else {
+        throw new Error('Invalid condition action');
+      }
+      write(LS.books, items);
+      return book;
+    },
+  });
+
+export const useMarkBookCondition = markBookConditionFn;
 
 // Stubs for unused exports
 export const getHealthCheckQueryKey = () => ['/api/healthz'] as const;

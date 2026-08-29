@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, ilike, isNull, or, sql, gte, lte, count, sum } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, or, sql, gte, lte } from "drizzle-orm";
 import { db, academicYearsTable, attendanceTable, booksTable, borrowsTable, employeesTable, studentsTable, teachersTable } from "@workspace/db";
 import { z } from "zod";
 import {
   CreateBookBody,
   CreateBookResponse,
+  CreateBorrowBody,
+  CreateBorrowResponse,
   CreateStudentBody,
   CreateStudentResponse,
   CreateTeacherBody,
@@ -15,17 +17,28 @@ import {
   GetAcademicYearsResponse,
   GetBooksQueryParams,
   GetBooksResponse,
+  GetBorrowsQueryParams,
+  GetBorrowsResponse,
   GetDashboardSummaryResponse,
   GetStudentsQueryParams,
   GetStudentsResponse,
   GetTeachersQueryParams,
   GetTeachersResponse,
+  MarkBookConditionBody,
+  MarkBookConditionParams,
+  MarkBookConditionResponse,
+  ReturnBorrowBody,
+  ReturnBorrowParams,
+  ReturnBorrowResponse,
+  UpdateBookBody,
+  UpdateBookParams,
+  UpdateBookResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
 router.get("/dashboard/summary", async (_req, res): Promise<void> => {
-  const [students, teachers, books, recent, borrowedBooks] = await Promise.all([
+  const [students, teachers, books, recent, borrowedBooks, availableBooks] = await Promise.all([
     db.select({ id: studentsTable.id }).from(studentsTable).where(eq(studentsTable.status, "active")),
     db.select({ id: teachersTable.id }).from(teachersTable).where(eq(teachersTable.status, "active")),
     db.select({ id: booksTable.id }).from(booksTable),
@@ -34,15 +47,24 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       title: studentsTable.fullName,
       timestamp: studentsTable.createdAt,
     }).from(studentsTable).orderBy(desc(studentsTable.createdAt)).limit(4),
-    db.select({ count: count(borrowsTable.id) }).from(borrowsTable).where(isNull(borrowsTable.returnedAt)),
+    db.select({
+      borrowed: sql<number>`COALESCE(SUM(${booksTable.copies} - ${booksTable.availableCopies} - ${booksTable.lostCopies} - ${booksTable.damagedCopies}), 0)`,
+    }).from(booksTable),
+    db.select({
+      available: sql<number>`COALESCE(SUM(${booksTable.availableCopies}), 0)`,
+    }).from(booksTable),
   ]);
+  const borrowedCount = Math.max(0, Number(borrowedBooks[0]?.borrowed ?? 0));
+  const availableCount = Number(availableBooks[0]?.available ?? 0);
   const borrowedRate = books.length > 0
-    ? Math.round((Number(borrowedBooks[0]?.count ?? 0) / books.length) * 1000) / 10
+    ? Math.round((borrowedCount / books.length) * 1000) / 10
     : 0;
   res.json(GetDashboardSummaryResponse.parse({
     students: students.length,
     teachers: teachers.length,
     books: books.length,
+    availableBooks: availableCount,
+    borrowedBooks: borrowedCount,
     attendanceRate: borrowedRate,
     recentActivity: recent.map((item) => ({
       id: item.id,
@@ -302,37 +324,39 @@ router.post("/library/books", async (req, res): Promise<void> => {
   res.status(201).json(CreateBookResponse.parse(book));
 });
 
-// router.patch("/library/books/:id", async (req, res): Promise<void> => {
-//   const params = UpdateBookParams.safeParse(req.params);
-//   const parsed = UpdateBookBody.safeParse(req.body);
-//   if (!params.success) {
-//     res.status(400).json({ error: params.error.message });
-//     return;
-//   }
-//   if (!parsed.success) {
-//     res.status(400).json({ error: parsed.error.message });
-//     return;
-//   }
-//   const [existing] = await db.select().from(booksTable).where(eq(booksTable.id, params.data.id));
-//   if (!existing) {
-//     res.status(404).json({ error: "Book not found" });
-//     return;
-//   }
-//   const borrowed = existing.copies - existing.availableCopies;
-//   const copies = parsed.data.copies ?? existing.copies;
-//   const availableCopies = Math.max(0, copies - borrowed);
-//   const { dateAdded: incomingDateAdded, ...bookRest } = parsed.data;
-//   const [book] = await db.update(booksTable).set({
-//     ...bookRest,
-//     ...(parsed.data.category !== undefined ? { category: parsed.data.category } : {}),
-//     ...(incomingDateAdded !== undefined
-//       ? { dateAdded: new Date(incomingDateAdded).toISOString().slice(0, 10) }
-//       : {}),
-//     copies,
-//     availableCopies,
-//   }).where(eq(booksTable.id, params.data.id)).returning();
-//   res.json(UpdateBookResponse.parse(book));
-// });
+router.patch("/library/books/:id", async (req, res): Promise<void> => {
+  const params = UpdateBookParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsed = UpdateBookBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [existing] = await db.select().from(booksTable).where(eq(booksTable.id, params.data.id));
+  if (!existing) {
+    res.status(404).json({ error: "Book not found" });
+    return;
+  }
+  const lost = existing.lostCopies;
+  const damaged = existing.damagedCopies;
+  const borrowed = existing.copies - existing.availableCopies - lost - damaged;
+  const copies = parsed.data.copies ?? existing.copies;
+  const availableCopies = Math.max(0, copies - borrowed - lost - damaged);
+  const { dateAdded: incomingDateAdded, ...bookRest } = parsed.data;
+  const [book] = await db.update(booksTable).set({
+    ...bookRest,
+    ...(parsed.data.category !== undefined ? { category: parsed.data.category } : {}),
+    ...(incomingDateAdded !== undefined
+      ? { dateAdded: new Date(incomingDateAdded).toISOString().slice(0, 10) }
+      : {}),
+    copies,
+    availableCopies,
+  }).where(eq(booksTable.id, params.data.id)).returning();
+  res.json(UpdateBookResponse.parse(book));
+});
 
 router.delete("/library/books/:id", async (req, res): Promise<void> => {
   const params = DeleteBookParams.safeParse(req.params);
@@ -348,97 +372,162 @@ router.delete("/library/books/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-// router.get("/library/borrows", async (req, res): Promise<void> => {
-//   const parsed = GetBorrowsQueryParams.safeParse(req.query);
-//   const filters = [];
-//   if (parsed.success && parsed.data.active) filters.push(isNull(borrowsTable.returnedAt));
-//   const rows = await db.select({
-//     id: borrowsTable.id,
-//     bookId: borrowsTable.bookId,
-//     studentId: borrowsTable.studentId,
-//     borrowerType: borrowsTable.borrowerType,
-//     borrowerId: borrowsTable.borrowerId,
-//     borrowedAt: borrowsTable.borrowedAt,
-//     dueDate: borrowsTable.dueDate,
-//     returnedAt: borrowsTable.returnedAt,
-//     bookTitle: booksTable.title,
-//     bookBarcode: booksTable.isbn,
-//     studentName: studentsTable.fullName,
-//     teacherName: teachersTable.fullName,
-//     employeeName: employeesTable.fullName,
-//   }).from(borrowsTable)
-//     .innerJoin(booksTable, eq(borrowsTable.bookId, booksTable.id))
-//     .leftJoin(studentsTable, eq(borrowsTable.studentId, studentsTable.id))
-//     .leftJoin(teachersTable, and(eq(borrowsTable.borrowerType, "teacher"), eq(borrowsTable.borrowerId, teachersTable.id)))
-//     .leftJoin(employeesTable, and(eq(borrowsTable.borrowerType, "employee"), eq(borrowsTable.borrowerId, employeesTable.id)))
-//     .where(filters.length ? and(...filters) : undefined)
-//     .orderBy(desc(borrowsTable.borrowedAt));
-//   res.json(GetBorrowsResponse.parse(rows.map((row) => ({
-//     ...row,
-//     borrowerId: row.borrowerId ?? row.studentId ?? 0,
-//     borrowerName: row.studentName ?? row.teacherName ?? row.employeeName ?? "Unknown borrower",
-//     dueDate: row.dueDate ? new Date(row.dueDate) : null,
-//   }))));
-// });
+router.patch("/library/books/:id/condition", async (req, res): Promise<void> => {
+  const params = MarkBookConditionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsed = MarkBookConditionBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { action } = parsed.data;
+  await db.transaction(async (tx) => {
+    const [existing] = await tx.select().from(booksTable).where(eq(booksTable.id, params.data.id));
+    if (!existing) {
+      res.status(404).json({ error: "Book not found" });
+      return;
+    }
+    const lost = existing.lostCopies;
+    const damaged = existing.damagedCopies;
+    const available = existing.availableCopies;
+    let next: { lostCopies: number; damagedCopies: number; availableCopies: number } | null = null;
+    if (action === "lost") {
+      if (available < 1) res.status(409).json({ error: "No copy is on the shelf to mark as lost" });
+      else next = { lostCopies: lost + 1, damagedCopies: damaged, availableCopies: available - 1 };
+    } else if (action === "damaged") {
+      if (available < 1) res.status(409).json({ error: "No copy is on the shelf to mark as damaged" });
+      else next = { lostCopies: lost, damagedCopies: damaged + 1, availableCopies: available - 1 };
+    } else if (action === "found") {
+      if (lost < 1) res.status(409).json({ error: "There are no lost copies to restore" });
+      else next = { lostCopies: lost - 1, damagedCopies: damaged, availableCopies: available + 1 };
+    } else if (action === "fixed") {
+      if (damaged < 1) res.status(409).json({ error: "There are no damaged copies to restore" });
+      else next = { lostCopies: lost, damagedCopies: damaged - 1, availableCopies: available + 1 };
+    }
+    if (next) {
+      const [book] = await tx.update(booksTable).set(next).where(eq(booksTable.id, params.data.id)).returning();
+      res.json(MarkBookConditionResponse.parse(book));
+    }
+  });
+});
 
-// router.post("/library/borrows", async (req, res): Promise<void> => {
-//   const parsed = CreateBorrowBody.safeParse(req.body);
-//   if (!parsed.success) {
-//     res.status(400).json({ error: parsed.error.message });
-//     return;
-//   }
-//   const [book] = await db.select().from(booksTable).where(eq(booksTable.id, parsed.data.bookId));
-//   if (!book) {
-//     res.status(404).json({ error: "Book not found" });
-//     return;
-//   }
-//   if (book.availableCopies <= 0) {
-//     res.status(409).json({ error: "No copies of this book are currently available" });
-//     return;
-//   }
-//   const [existingBorrow] = await db.select({ id: borrowsTable.id }).from(borrowsTable).where(and(
-//     eq(borrowsTable.bookId, parsed.data.bookId),
-//     eq(borrowsTable.borrowerType, parsed.data.borrowerType),
-//     eq(borrowsTable.borrowerId, parsed.data.borrowerId),
-//     isNull(borrowsTable.returnedAt),
-//   ));
-//   if (existingBorrow) {
-//     res.status(409).json({ error: "This borrower already has an active loan for this book" });
-//     return;
-//   }
-//   const [borrow] = await db.insert(borrowsTable).values({
-//     bookId: parsed.data.bookId,
-//     studentId: parsed.data.borrowerType === "student" ? parsed.data.borrowerId : null,
-//     borrowerType: parsed.data.borrowerType,
-//     borrowerId: parsed.data.borrowerId,
-//     dueDate: parsed.data.dueDate ? parsed.data.dueDate.toISOString().slice(0, 10) : null,
-//   }).returning();
-//   await db.update(booksTable).set({ availableCopies: book.availableCopies - 1 }).where(eq(booksTable.id, book.id));
-//   res.status(201).json(CreateBorrowResponse.parse(borrow));
-// });
+router.get("/library/borrows", async (req, res): Promise<void> => {
+  const parsed = GetBorrowsQueryParams.safeParse(req.query);
+  const filters = [];
+  if (parsed.success && parsed.data.active) filters.push(isNull(borrowsTable.returnedAt));
+  const rows = await db.select({
+    id: borrowsTable.id,
+    bookId: borrowsTable.bookId,
+    studentId: borrowsTable.studentId,
+    borrowerType: borrowsTable.borrowerType,
+    borrowerId: borrowsTable.borrowerId,
+    borrowedAt: borrowsTable.borrowedAt,
+    dueDate: borrowsTable.dueDate,
+    returnedAt: borrowsTable.returnedAt,
+    condition: borrowsTable.condition,
+    bookTitle: booksTable.title,
+    bookBarcode: booksTable.isbn,
+    studentName: studentsTable.fullName,
+    teacherName: teachersTable.fullName,
+    employeeName: employeesTable.fullName,
+  }).from(borrowsTable)
+    .innerJoin(booksTable, eq(borrowsTable.bookId, booksTable.id))
+    .leftJoin(studentsTable, eq(borrowsTable.studentId, studentsTable.id))
+    .leftJoin(teachersTable, and(eq(borrowsTable.borrowerType, "teacher"), eq(borrowsTable.borrowerId, teachersTable.id)))
+    .leftJoin(employeesTable, and(eq(borrowsTable.borrowerType, "employee"), eq(borrowsTable.borrowerId, employeesTable.id)))
+    .where(filters.length ? and(...filters) : undefined)
+    .orderBy(desc(borrowsTable.borrowedAt));
+  res.json(GetBorrowsResponse.parse(rows.map((row) => ({
+    ...row,
+    borrowerId: row.borrowerId ?? row.studentId ?? 0,
+    borrowerName: row.studentName ?? row.teacherName ?? row.employeeName ?? "Unknown borrower",
+  }))));
+});
 
-// router.patch("/library/borrows/:id/return", async (req, res): Promise<void> => {
-//   const params = ReturnBorrowParams.safeParse(req.params);
-//   if (!params.success) {
-//     res.status(400).json({ error: params.error.message });
-//     return;
-//   }
-//   const [existing] = await db.select().from(borrowsTable).where(eq(borrowsTable.id, params.data.id));
-//   if (!existing) {
-//     res.status(404).json({ error: "Borrow not found" });
-//     return;
-//   }
-//   if (existing.returnedAt) {
-//     res.status(409).json({ error: "This borrow was already returned" });
-//     return;
-//   }
-//   const returnedAt = new Date();
-//   const [borrow] = await db.update(borrowsTable).set({ returnedAt }).where(eq(borrowsTable.id, params.data.id)).returning();
-//   await db.update(booksTable).set({
-//     availableCopies: sql`LEAST(${booksTable.copies}, ${booksTable.availableCopies} + 1)`,
-//   }).where(eq(booksTable.id, existing.bookId));
-//   res.json(ReturnBorrowResponse.parse(borrow));
-// });
+router.post("/library/borrows", async (req, res): Promise<void> => {
+  const parsed = CreateBorrowBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, parsed.data.bookId));
+  if (!book) {
+    res.status(404).json({ error: "Book not found" });
+    return;
+  }
+  if (book.availableCopies <= 0) {
+    res.status(409).json({ error: "No copies of this book are currently available" });
+    return;
+  }
+  const [existingBorrow] = await db.select({ id: borrowsTable.id }).from(borrowsTable).where(and(
+    eq(borrowsTable.bookId, parsed.data.bookId),
+    eq(borrowsTable.borrowerType, parsed.data.borrowerType),
+    eq(borrowsTable.borrowerId, parsed.data.borrowerId),
+    isNull(borrowsTable.returnedAt),
+  ));
+  if (existingBorrow) {
+    res.status(409).json({ error: "This borrower already has an active loan for this book" });
+    return;
+  }
+  const [borrow] = await db.insert(borrowsTable).values({
+    bookId: parsed.data.bookId,
+    studentId: parsed.data.borrowerType === "student" ? parsed.data.borrowerId : null,
+    borrowerType: parsed.data.borrowerType,
+    borrowerId: parsed.data.borrowerId,
+    dueDate: parsed.data.dueDate ? parsed.data.dueDate.toISOString().slice(0, 10) : null,
+  }).returning();
+  await db.update(booksTable).set({ availableCopies: book.availableCopies - 1 }).where(eq(booksTable.id, book.id));
+  res.status(201).json(CreateBorrowResponse.parse(borrow));
+});
+
+router.patch("/library/borrows/:id/return", async (req, res): Promise<void> => {
+  const params = ReturnBorrowParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsed = ReturnBorrowBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const condition = parsed.data.condition ?? "good";
+  await db.transaction(async (tx) => {
+    const [existing] = await tx.select().from(borrowsTable).where(eq(borrowsTable.id, params.data.id));
+    if (!existing) {
+      res.status(404).json({ error: "Borrow not found" });
+      return;
+    }
+    if (existing.returnedAt) {
+      res.status(409).json({ error: "This borrow was already returned" });
+      return;
+    }
+    const returnedAt = new Date();
+    const [borrow] = await tx.update(borrowsTable).set({ returnedAt, condition }).where(eq(borrowsTable.id, params.data.id)).returning();
+    if (condition === "good") {
+      await tx.update(booksTable).set({
+        availableCopies: sql`LEAST(${booksTable.copies}, ${booksTable.availableCopies} + 1)`,
+      }).where(eq(booksTable.id, existing.bookId));
+    } else if (condition === "damaged") {
+      await tx.update(booksTable).set({
+        damagedCopies: sql`${booksTable.damagedCopies} + 1`,
+      }).where(eq(booksTable.id, existing.bookId));
+    } else {
+      await tx.update(booksTable).set({
+        lostCopies: sql`${booksTable.lostCopies} + 1`,
+      }).where(eq(booksTable.id, existing.bookId));
+    }
+    res.json(ReturnBorrowResponse.parse({
+      ...borrow,
+      borrowerType: existing.borrowerType,
+      borrowerId: existing.borrowerId ?? existing.studentId ?? 0,
+      bookId: existing.bookId,
+    }));
+  });
+});
 
 const attendanceInput = z.object({
   studentId: z.coerce.number().int().positive(),

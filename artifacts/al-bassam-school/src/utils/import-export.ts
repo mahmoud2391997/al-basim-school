@@ -37,6 +37,7 @@ const SCHEMAS: Record<EntityType, EntitySchema> = {
     columns: [
       { key: "fullName", header: "Full Name", headerAr: "الاسم الكامل", required: true },
       { key: "fullNameArabic", header: "Arabic Name", headerAr: "الاسم بالعربية", required: true },
+      { key: "gender", header: "Gender", headerAr: "الجنس", required: true },
       { key: "studentNumber", header: "Student No", headerAr: "رقم الطالب", required: true },
       { key: "nationalId", header: "National ID", headerAr: "الهوية الوطنية", required: true },
       { key: "grade", header: "Grade", headerAr: "الصف", required: true },
@@ -53,16 +54,16 @@ const SCHEMAS: Record<EntityType, EntitySchema> = {
     columns: [
       { key: "name", header: "First Name", headerAr: "الاسم الأول", required: true },
       { key: "surname", header: "Last Name", headerAr: "اسم العائلة", required: true },
-      { key: "employeeCode", header: "Employee Code", headerAr: "الرقم الوظيفي", required: true },
+      { key: "englishName", header: "English Name", headerAr: "الاسم بالانجليزية", required: false },
       { key: "nationalId", header: "National ID", headerAr: "الهوية الوطنية", required: false },
-      { key: "gender", header: "Gender", headerAr: "الجنس", required: false },
       { key: "nationality", header: "Nationality", headerAr: "الجنسية", required: false },
+      { key: "gender", header: "Gender", headerAr: "الجنس", required: false },
+      { key: "maritalStatus", header: "Marital Status", headerAr: "الحالة الاجتماعية", required: false },
       { key: "phone", header: "Phone", headerAr: "الهاتف", required: false },
       { key: "email", header: "Email", headerAr: "البريد الإلكتروني", required: false },
-      { key: "subject", header: "Subject", headerAr: "المادة", required: false },
-      { key: "branch", header: "Branch", headerAr: "الفرع", required: false },
+      { key: "employeeCode", header: "Employee Code", headerAr: "الرقم الوظيفي", required: true },
       { key: "academicLevel", header: "Academic Level", headerAr: "المستوى الدراسي", required: false },
-      { key: "weeklyClasses", header: "Weekly Classes", headerAr: "الحصص الأسبوعية", required: false, type: "number" },
+      { key: "subject", header: "Subject", headerAr: "المادة", required: false },
       { key: "status", header: "Status", headerAr: "الحالة", required: false },
     ],
   },
@@ -96,16 +97,15 @@ const SCHEMAS: Record<EntityType, EntitySchema> = {
     columns: [
       { key: "title", header: "Title", headerAr: "العنوان", required: true },
       { key: "author", header: "Author", headerAr: "المؤلف", required: false },
-      { key: "isbn", header: "ISBN", headerAr: "ردمك", required: false },
-      { key: "category", header: "Category", headerAr: "التصنيف", required: false },
-      { key: "language", header: "Language", headerAr: "اللغة", required: false },
-      { key: "volume", header: "Volume", headerAr: "المجلد", required: false },
-      { key: "copies", header: "Copies", headerAr: "عدد النسخ", required: false, type: "number" },
-      { key: "publicationPlace", header: "Publication Place", headerAr: "مكان النشر", required: false },
-      { key: "publicationDate", header: "Publication Date", headerAr: "تاريخ النشر", required: false },
+      { key: "isbn", header: "ISBN", headerAr: "ردمك", required: true },
+      { key: "category", header: "Category", headerAr: "التصنيف", required: true },
+      { key: "language", header: "Language", headerAr: "اللغة", required: true },
+      { key: "copies", header: "Copies", headerAr: "عدد النسخ", required: true, type: "number" },
+      { key: "availableCopies", header: "Available", headerAr: "المتاح", required: false, type: "number" },
+      { key: "lostCopies", header: "Lost", headerAr: "المفقود", required: false, type: "number" },
+      { key: "damagedCopies", header: "Damaged", headerAr: "التالف", required: false, type: "number" },
+      { key: "status", header: "Status", headerAr: "الحالة", required: false },
       { key: "shelf", header: "Shelf", headerAr: "الرف", required: false },
-      { key: "depositNumber", header: "Deposit No", headerAr: "رقم الإيداع", required: false },
-      { key: "generalNumber", header: "General No", headerAr: "الرقم العام", required: false },
     ],
   },
 };
@@ -370,7 +370,7 @@ export async function exportToDOCX(data: Record<string, any>[], type: EntityType
   downloadBlob(blob, generateFilename(type, "docx"));
 }
 
-// ─── SAMPLE DATA ────────────────────────────────────────────────��────
+// ─── SAMPLE DATA ───────────────────────────────────────────────────────
 
 const SAMPLE_DATA: Record<EntityType, Record<string, string>[]> = {
   students: [
@@ -419,4 +419,28 @@ export function downloadSampleData(type: EntityType) {
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   saveAs(blob, `sample_${schema.label.toLowerCase()}.xlsx`);
+}
+
+// ─── DATABASE BACKUP (JSON EXPORT) ─────────────────────────────────
+
+export async function exportDatabase(
+  fetchers: Record<string, () => Promise<unknown[]>>,
+) {
+  const meta = {
+    app: "Al-Bassam School Library",
+    exportedAt: new Date().toISOString(),
+    version: "1.0",
+  };
+  const collections: Record<string, unknown[]> = {};
+  for (const [name, fetch] of Object.entries(fetchers)) {
+    collections[name] = await fetch();
+  }
+  const backup = { meta, collections };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {
+    type: "application/json",
+  });
+  saveAs(
+    blob,
+    `al-bassam_backup_${new Date().toISOString().slice(0, 10)}.json`,
+  );
 }
