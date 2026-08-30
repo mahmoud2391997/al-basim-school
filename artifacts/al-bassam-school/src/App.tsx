@@ -6329,8 +6329,12 @@ function AnalyticsPage() {
     {},
     { query: { queryKey: getGetBorrowsQueryKey({}) } },
   );
+  const studentsQuery = useGetStudents(undefined, {
+    query: { queryKey: getGetStudentsQueryKey(undefined) },
+  });
   const books = Array.isArray(booksQuery.data) ? booksQuery.data : [];
   const borrows = Array.isArray(borrowsQuery.data) ? borrowsQuery.data : [];
+  const students = Array.isArray(studentsQuery.data) ? studentsQuery.data : [];
   const copies = books.reduce((total, book) => total + book.copies, 0);
   const available = books.reduce(
     (total, book) => total + (book.availableCopies ?? book.copies),
@@ -6345,7 +6349,7 @@ function AnalyticsPage() {
     ? Math.round((borrowedCopies / copies) * 1000) / 10
     : 0;
   const activeBorrows = borrows.filter((b) => !b.returnedAt);
-  const [reportTab, setReportTab] = useState<"overview" | "borrows" | "books">("overview");
+  const [reportTab, setReportTab] = useState<"overview" | "borrows" | "books" | "grade">("overview");
 
   const categoryDistribution = useMemo(() => {
     const map = new Map<string, number>();
@@ -6371,6 +6375,28 @@ function AnalyticsPage() {
   const uniqueTitles = useMemo(() => {
     return new Set(books.map((b) => b.title?.trim().toLowerCase()).filter(Boolean)).size;
   }, [books]);
+
+  const borrowsByGrade = useMemo(() => {
+    const studentByGrade = new Map<number, string>();
+    students.forEach((s) => {
+      if (s.id != null) studentByGrade.set(s.id, s.grade);
+    });
+    const map = new Map<string, number>();
+    borrows.forEach((b) => {
+      let grade: string;
+      if (b.borrowerType === "student" && b.studentId != null && studentByGrade.has(b.studentId)) {
+        grade = studentByGrade.get(b.studentId)!;
+      } else {
+        grade = t("Staff / Other", "الكادر / أخرى");
+      }
+      map.set(grade, (map.get(grade) || 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [borrows, students, t]);
+
+  const totalBorrowCount = borrowsByGrade.reduce((sum, g) => sum + g.count, 0);
 
   return (
     <div className="rise-in">
@@ -6423,7 +6449,7 @@ function AnalyticsPage() {
           </div>
 
           <div className="mt-6 flex gap-2 border-b border-border pb-px">
-            {(["overview", "borrows", "books"] as const).map((tab) => (
+            {(["overview", "borrows", "books", "grade"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setReportTab(tab)}
@@ -6437,7 +6463,9 @@ function AnalyticsPage() {
                   ? t("Overview", "نظرة عامة")
                   : tab === "borrows"
                     ? t("Borrow reports", "تقارير الإعارات")
-                    : t("Book reports", "تقارير الكتب")}
+                    : tab === "books"
+                      ? t("Book reports", "تقارير الكتب")
+                      : t("Borrows per grade", "الإعارات حسب الصف")}
               </button>
             ))}
           </div>
@@ -6642,6 +6670,94 @@ function AnalyticsPage() {
                 exportType="books"
                 t={t}
               />
+            </div>
+          )}
+
+          {reportTab === "grade" && (
+            <div className="mt-6 space-y-6">
+              <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                      {t("Distribution", "التوزيع")}
+                    </div>
+                    <h3 className="mt-1 text-lg font-bold text-[#263064]">
+                      {t("Borrows per grade", "الإعارات حسب الصف")}
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t("Share of total borrows by grade level", "نسبة الإعارات من الإجمالي حسب الصف الدراسي")}
+                    </p>
+                  </div>
+                  <span className="font-mono text-lg font-bold text-[#263064]">
+                    {totalBorrowCount} {t("borrows", "إعارة")}
+                  </span>
+                </div>
+                {borrowsByGrade.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    {t("No records found.", "لا توجد سجلات.")}
+                  </p>
+                ) : (
+                  <>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsBarChart data={borrowsByGrade}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
+                          <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                          <RechartsTooltip />
+                          <Bar dataKey="count" fill="#263064" radius={[4, 4, 0, 0]} />
+                        </RechartsBarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-6 overflow-x-auto rounded-lg border border-border">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border bg-[#263064]/5">
+                            <th className="px-4 py-2.5 text-start text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              {t("Grade", "الصف")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              {t("Borrows", "الإعارات")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              {t("Percentage", "النسبة")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {borrowsByGrade.map((g, i) => {
+                            const percent = totalBorrowCount
+                              ? Math.round((g.count / totalBorrowCount) * 1000) / 10
+                              : 0;
+                            return (
+                              <tr
+                                key={i}
+                                className="border-b border-border/50 transition-colors hover:bg-muted/30 last:border-b-0"
+                              >
+                                <td className="px-4 py-2.5 font-medium text-[#263064]">{g.name}</td>
+                                <td className="px-4 py-2.5 text-center text-muted-foreground">{g.count}</td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <div className="mx-auto flex max-w-[220px] items-center gap-2">
+                                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                                      <div
+                                        className="h-full rounded-full bg-primary"
+                                        style={{ width: `${percent}%` }}
+                                      />
+                                    </div>
+                                    <span className="min-w-[48px] text-xs font-semibold text-[#263064]">
+                                      {percent}%
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </section>
             </div>
           )}
         </>
