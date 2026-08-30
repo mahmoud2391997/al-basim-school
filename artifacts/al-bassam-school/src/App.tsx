@@ -263,7 +263,7 @@ function LogoMark({ compact = false }: { compact?: boolean }) {
       data-testid="brand-logo"
     >
       <div
-        className={`flex items-center justify-center overflow-hidden rounded-lg bg-card shadow-[0_0_0_1px_rgba(219,180,108,.45),0_3px_12px_rgba(0,0,0,.28)] ${compact ? "h-14 w-14 shrink-0" : "h-14 w-[176px] max-w-full px-2"}`}
+        className={`flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-[0_0_0_1px_rgba(219,180,108,.45),0_3px_12px_rgba(0,0,0,.28)] ${compact ? "h-14 w-14 shrink-0" : "h-14 w-[176px] max-w-full px-2"}`}
       >
         <img
           src={
@@ -575,7 +575,7 @@ function Shell({ children }: { children: ReactNode }) {
           <div
             className={`${collapsed ? "mt-3 justify-center" : "mt-5"} flex items-center gap-3${collapsed ? "" : " border-t border-sidebar-border pt-5"}`}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064] dark:text-[#263064]!">
               LA
             </div>
             {!collapsed && (
@@ -4763,7 +4763,7 @@ function LibraryPage() {
       />
       <form
         onSubmit={handleScan}
-        className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center"
+        className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center dark:border-[#DBB46C]/40 dark:from-card dark:to-[#DBB46C]/10"
         data-testid="form-scan-barcode"
       >
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#263064] text-[#DBB46C]">
@@ -5240,7 +5240,7 @@ function BookRow({
           <BookOpen size={17} strokeWidth={1.7} />
         </div>
         <div className="min-w-0">
-          <div className="line-clamp-1 text-sm font-semibold text-[#263064]">
+          <div className="line-clamp-1 text-sm font-semibold text-foreground">
             {book.title}
           </div>
           <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[.12em] text-muted-foreground">
@@ -5255,7 +5255,7 @@ function BookRow({
             )}
             {damagedCopies > 0 && (
               <span
-                className="rounded-full bg-accent/20 px-1.5 py-0.5 normal-case tracking-normal text-accent-foreground"
+                className="rounded-full bg-accent/20 px-1.5 py-0.5 normal-case tracking-normal text-accent-foreground dark:text-[#EC9F42]"
                 data-testid={`badge-book-damaged-${book.id}`}
               >
                 {damagedCopies} {t("damaged", "تالف")}
@@ -5275,7 +5275,7 @@ function BookRow({
             style={{ width: `${percent}%` }}
           />
         </div>
-        <span className="text-center font-mono text-xs font-bold text-[#263064]">
+        <span className="text-center font-mono text-xs font-bold text-foreground">
           {available}/{book.copies}
         </span>
       </div>
@@ -5319,7 +5319,7 @@ function BookRow({
           <button
             onClick={() => onConditionChange(book, "damaged")}
             disabled={available <= 0}
-            className="rounded-md border border-accent/40 px-2 py-1 text-[10px] font-semibold text-accent-foreground hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-md border border-accent/40 px-2 py-1 text-[10px] font-semibold text-accent-foreground hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40 dark:text-[#EC9F42] dark:border-accent/50"
             data-testid={`button-damaged-book-${book.id}`}
           >
             {t("Broken", "تالف")}
@@ -5497,13 +5497,13 @@ function DistributionPage() {
                   className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center border-b border-border/70 px-5 py-3 transition-colors last:border-b-0 hover:bg-secondary/40"
                   data-testid={`row-distribution-${grade.toLowerCase().replaceAll(" ", "-")}-${klass.toLowerCase()}`}
                 >
-                  <span className="text-start text-sm font-semibold text-[#263064]">
+                  <span className="text-start text-sm font-semibold text-foreground">
                     {grade}
                   </span>
                   <span className="justify-self-center text-center font-mono text-xs text-muted-foreground">
                     {klass}
                   </span>
-                  <strong className="justify-self-center text-center font-mono text-sm text-[#263064]">
+                  <strong className="justify-self-center text-center font-mono text-sm text-foreground">
                     {count}
                   </strong>
                   <div className="flex items-center justify-center gap-3">
@@ -5614,7 +5614,7 @@ function ReturnBorrowControls({
         <button
           onClick={() => run("damaged")}
           disabled={pending}
-          className={`rounded-md border border-accent/40 ${extra} font-semibold text-accent-foreground hover:bg-accent/10 disabled:opacity-40`}
+          className={`rounded-md border border-accent/40 ${extra} font-semibold text-accent-foreground hover:bg-accent/10 disabled:opacity-40 dark:text-[#EC9F42] dark:border-accent/50`}
           data-testid={`button-return-borrow-damaged-${borrow.id}`}
           title={t("Return as damaged", "الإعادة ككتاب تالف")}
         >
@@ -5744,7 +5744,7 @@ function BorrowsPage() {
       />
       <form
         onSubmit={handleScan}
-        className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center"
+        className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center dark:border-[#DBB46C]/40 dark:from-card dark:to-[#DBB46C]/10"
         data-testid="form-borrows-scan-barcode"
       >
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#263064] text-[#DBB46C]">
@@ -5954,7 +5954,7 @@ function BorrowsPage() {
               key={borrow.id}
               className="grid min-w-[760px] grid-cols-[1.45fr_1.45fr_1fr_1fr_220px] items-center border-b border-border/70 px-5 py-3 text-sm last:border-b-0"
             >
-              <div className="text-start font-semibold text-[#263064] truncate">
+              <div className="text-start font-semibold text-foreground truncate">
                 {borrow.borrowerName}
               </div>
               <div className="text-start text-muted-foreground truncate">{borrow.bookTitle}</div>
@@ -6103,7 +6103,7 @@ function BorrowHistoryPage() {
         {t("Returned", "مُعاد")}
       </span>
     ) : (
-      <span className="rounded-full bg-[#263064]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#263064]">
+      <span className="rounded-full bg-[#263064]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-foreground">
         {t("Active", "نشط")}
       </span>
     );
@@ -6237,7 +6237,7 @@ function BorrowHistoryPage() {
               className="grid min-w-[860px] grid-cols-[1.4fr_1.5fr_1fr_1fr_1.2fr_104px] items-center border-b border-border/70 px-5 py-3 text-sm last:border-b-0"
             >
               <div className="text-start">
-                <div className="font-semibold text-[#263064]">
+                <div className="font-semibold text-foreground">
                   {borrow.borrowerName || "—"}
                 </div>
                 <div className="mt-0.5 text-[11px] text-muted-foreground">
@@ -7449,7 +7449,7 @@ function SettingsPage() {
           )}
         </section>
         <section className="rounded-xl bg-[#263064] p-7 text-[#FCFBF0]">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#DBB46C] text-[#263064]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#DBB46C] text-[#263064] dark:text-[#263064]!">
             <SlidersHorizontal size={18} />
           </div>
           <h2 className="mt-7 text-2xl font-bold leading-tight tracking-[-.04em]">

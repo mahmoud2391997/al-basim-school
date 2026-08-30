@@ -48,7 +48,7 @@ function DefaultFallback({ error, resetError }: ErrorFallbackProps) {
         </p>
         {/* Dev only: messages can carry API responses and other internals. */}
         {import.meta.env.DEV ? (
-          <pre className="mt-4 overflow-x-auto rounded bg-[#DBB46C]/20 p-3 text-left text-xs text-[#263064]">
+          <pre className="mt-4 overflow-x-auto rounded bg-[#DBB46C]/20 p-3 text-left text-xs text-[#263064] dark:text-[#263064]!">
             {error.message || String(error)}
           </pre>
         ) : null}
