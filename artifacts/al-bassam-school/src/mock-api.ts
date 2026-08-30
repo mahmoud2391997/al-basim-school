@@ -1,4 +1,4 @@
-const KEY = 'al-bassam-school-demo-v3';
+const KEY = 'al-bassam-school-demo-v4';
 
 type Row = Record<string, any> & { id: number };
 type Store = Record<string, Row[]>;
@@ -27,8 +27,8 @@ function generateSeedData(): Store {
   const classEn = ['A', 'B', 'C', 'D'];
 
   const saudiFirstMale = ['محمد', 'أحمد', 'خالد', 'عبدالله', 'عمر', 'ياسر', 'فيصل', 'سلطان', 'ناصر', 'حسن', 'علي', 'ماجد', 'تركي', 'راشد', 'سعود'];
-  const saudiLastMale = ['الحربي', 'القحطاني', 'المطيري', 'العتيبي', 'الشمري', 'الزهراني', 'الدوسري', 'الرشيدي', 'الغامدي', 'ال breeze', 'القصيمي', 'ال-member', 'ال.sha3lan', 'النعيمي', 'ال柘木'];
-  const saudiFirstFemale = ['فاطمة', 'نورة', 'سارة', 'منال', 'هدى', 'أريج', 'رنا', 'لمياء', 'عبدالله', 'عفاف', 'سمية', 'حنان', 'ليلى', 'مريم', 'نجلاء'];
+  const saudiLastMale = ['الحربي', 'القحطاني', 'المطيري', 'العتيبي', 'الشمري', 'الزهراني', 'الدوسري', 'الرشيدي', 'الغامدي', 'البقمي', 'القصيمي', 'النفيعي', 'الشهري', 'النعيمي', 'السهلي'];
+  const saudiFirstFemale = ['فاطمة', 'نورة', 'سارة', 'منال', 'هدى', 'أريج', 'رنا', 'لمياء', 'ريم', 'عفاف', 'سمية', 'حنان', 'ليلى', 'مريم', 'نجلاء'];
   const saudiLastFemale = ['الحربي', 'القحطاني', 'المطيري', 'العتيبي', 'الشمري', 'الزهراني', 'الدوسري', 'الرشيدي', 'الغامدي', 'القصيمي'];
 
   const subjects = [
@@ -55,10 +55,10 @@ function generateSeedData(): Store {
     { title: 'الأتوبيس', titleAr: 'الأتوبيس', author: ' Antoine de Saint-Exupéry', authorAr: ' أنطوان دو سانت', category: 'الأدب', categoryEn: 'Literature', lang: 'French' },
     { title: 'The Prophet', titleAr: 'النبي', author: 'Kahlil Gibran', authorAr: 'خليل جبران', category: 'الأدب', categoryEn: 'Literature', lang: 'English' },
     { title: 'New Headway', titleAr: 'نيو هيدواي', author: 'Liz Soars', authorAr: 'ليز سورز', category: 'اللغة الإنجليزية', categoryEn: 'English Language', lang: 'English' },
-    { title: 'عجائب الكون', titleAr: 'عجائب الكون', author: 'صالح pobli', authorAr: 'صالح بوضي', category: 'العلوم', categoryEn: 'Science', lang: 'Arabic' },
+    { title: 'عجائب الكون', titleAr: 'عجائب الكون', author: 'صالح بوضي', authorAr: 'صالح بوضي', category: 'العلوم', categoryEn: 'Science', lang: 'Arabic' },
     { title: 'تاريخ خالد', titleAr: 'تاريخ خالد', author: 'خالد حسيني', authorAr: 'خالد حسيني', category: 'التاريخ', categoryEn: 'History', lang: 'Arabic' },
     { title: ' محاضرات في الفلسفة', titleAr: 'محاضرات في الفلسفة', author: 'برتراند راسل', authorAr: 'برتراند راسل', category: 'فلسفة', categoryEn: 'Philosophy', lang: 'English' },
-    { title: 'ictionaries of Arabic', titleAr: ' معجم عربي', author: ' Mustafa Haddad', authorAr: 'مصطفى حداد', category: 'اللغة العربية', categoryEn: 'Arabic Language', lang: 'Arabic' },
+    { title: 'Dictionary of Arabic', titleAr: 'معجم عربي', author: 'Mustafa Haddad', authorAr: 'مصطفى حداد', category: 'اللغة العربية', categoryEn: 'Arabic Language', lang: 'Arabic' },
     { title: 'Our World', titleAr: 'عالمنا', author: 'Helen Andelin', authorAr: 'هيلن أنديلن', category: 'التربية', categoryEn: 'Education', lang: 'English' },
     { title: ' Ciencias Naturales', titleAr: ' علوم طبيعية', author: 'María García', authorAr: 'ماريا غارسيا', category: 'العلوم', categoryEn: 'Science', lang: 'Spanish' },
     { title: 'Cultura Islam', titleAr: ' ثقافة إسلامية', author: 'Ahmad Hasan', authorAr: 'أحمد حسن', category: 'التربية الإسلامية', categoryEn: 'Islamic Studies', lang: 'Arabic' },

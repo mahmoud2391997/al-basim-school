@@ -305,7 +305,7 @@ const navItems = [
   {
     href: "/students",
     label: "Students",
-    arabic: "الطلا��",
+    arabic: "الطلاب",
     icon: GraduationCap,
     tabs: [
       { label: "Student records", arabic: "سجلات الطلاب", href: "/students" },
@@ -385,7 +385,7 @@ function Shell({ children }: { children: ReactNode }) {
           <LogoMark compact={collapsed} />
           <button
             onClick={() => setMobileOpen(false)}
-            className={`${language === "ar" ? "mr-auto" : "ml-auto"} rounded-md p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-primary-foreground md:hidden`}
+            className={`${language === "ar" ? "mr-auto" : "ml-auto"} rounded-md p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:hidden`}
             data-testid="button-close-mobile-menu"
             aria-label={text(
               "Close menu",
@@ -455,7 +455,7 @@ function Shell({ children }: { children: ReactNode }) {
                     <Link
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
-                      className={`group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${active ? "nav-active bg-sidebar-accent text-primary-foreground" : "text-sidebar-foreground/65"}`}
+                      className={`group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${active ? "nav-active bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/65"}`}
                       data-testid={`link-nav-${item.label.toLowerCase()}`}
                     >
                       <Icon
@@ -481,7 +481,7 @@ function Shell({ children }: { children: ReactNode }) {
                             [item.href]: !(current[item.href] ?? active),
                           }))
                         }
-                        className="rounded-md p-2 text-sidebar-foreground/45 hover:bg-sidebar-accent hover:text-primary-foreground"
+                        className="rounded-md p-2 text-sidebar-foreground/45 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         aria-label={text(
                           "Toggle sub-tabs",
                           "توسيع أو طي التبويبات الفرعية",
@@ -509,7 +509,7 @@ function Shell({ children }: { children: ReactNode }) {
                           <Link
                             key={tab.href}
                             href={tab.href}
-                            className={`block rounded-md px-3 py-2 text-[11px] transition-colors ${location === tab.href ? "bg-sidebar-accent/70 font-semibold text-primary-foreground" : "text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-primary-foreground"}`}
+                            className={`block rounded-md px-3 py-2 text-[11px] transition-colors ${location === tab.href ? "bg-sidebar-accent/70 font-semibold text-sidebar-accent-foreground" : "text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                             data-testid={`link-nav-tab-${tab.href.replaceAll("/", "-")}`}
                           >
                             {text(tab.label, tab.arabic)}
@@ -529,7 +529,7 @@ function Shell({ children }: { children: ReactNode }) {
           <Link
             href="/settings"
             onClick={() => setMobileOpen(false)}
-            className={`group flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/settings" ? "nav-active bg-sidebar-accent text-primary-foreground" : "text-sidebar-foreground/65"}`}
+            className={`group flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/settings" ? "nav-active bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/65"}`}
             data-testid="link-nav-settings"
           >
             <Settings2
@@ -580,12 +580,12 @@ function Shell({ children }: { children: ReactNode }) {
           <div
             className={`${collapsed ? "mt-3 justify-center" : "mt-5"} flex items-center gap-3${collapsed ? "" : " border-t border-sidebar-border pt-5"}`}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-foreground">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064] dark:text-[#263064]!">
               LA
             </div>
             {!collapsed && (
               <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-semibold text-primary-foreground">
+                <div className="truncate text-xs font-semibold text-sidebar-foreground">
                   {text(
                     "Library Admin",
                     "آمين المكتبة",
@@ -1683,7 +1683,7 @@ function Dashboard() {
                 <div className="rounded-lg border border-[#32B77E]/30 bg-[#32B77E]/5 p-3 text-xs flex items-center gap-2 text-[#32B77E]">
                   <CircleCheck size={15} className="shrink-0" />
                   <span className="font-semibold">
-                    {t("All borrows up to date & in order", "ك��فة الإعارات منتظمة ولا توجد متأخرات")}
+                    {t("All borrows up to date & in order", "كافة الإعارات منتظمة ولا توجد متأخرات")}
                   </span>
                 </div>
               )}
@@ -2107,7 +2107,7 @@ function StudentDialog({
             >
               {t(
                 "Could not save — the student number or national ID may already be in use.",
-                "تعذر الحفظ — قد يكون ر��م الطالب أو الهوية الوط��ية مستخدماً بالفعل.",
+                "تعذر الحفظ — قد يكون رقم الطالب أو الهوية الوطنية مستخدماً بالفعل.",
               )}
             </div>
           )}
@@ -2335,7 +2335,7 @@ function StudentsPage() {
           {
             onSuccess: () => {
               queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
-              setToast(t("Student record deleted", "تم حذف سجل الطال��"));
+              setToast(t("Student record deleted", "تم حذف سجل الطالب"));
             },
           },
         ),
@@ -2819,7 +2819,7 @@ function TeacherDialog({
                 <DialogTitle className="mt-1 text-2xl text-foreground">
                   {t(
                     isEditing ? "Update teacher" : "Add a teacher",
-                    isEditing ? "تحديث بيانات مع��م" : "إضافة معلم",
+                    isEditing ? "تحديث بيانات معلم" : "إضافة معلم",
                   )}
                 </DialogTitle>
                 <DialogDescription className="mt-1">
@@ -3106,7 +3106,7 @@ function EmployeeDialog({
         label: "Employee number",
         arabic: "الرقم الوظيفي",
       },
-      { key: "nationalId", label: "National ID", arabic: "الهوية الوط��ية" },
+      { key: "nationalId", label: "National ID", arabic: "الهوية الوطنية" },
       { key: "jobTitle", label: "Job title", arabic: "المسمى الوظيفي" },
       { key: "phone", label: "Phone", arabic: "الهاتف" },
     ];
@@ -4733,7 +4733,7 @@ function LibraryPage() {
         arabic="المكتبة"
         description={t(
           "A living catalogue for the stories, references and discoveries on every shelf.",
-          "فهرس حيّ للقصص والمراجع والاكت��افات على كل رف.",
+          "فهرس حيّ للقصص والمراجع والاكتشافات على كل رف.",
         )}
         action={
           <div className="flex items-center gap-2">
@@ -5769,7 +5769,7 @@ function BorrowsPage() {
               />
               <span>
                 {scannerAt
-                  ? `${t("Connected", "متص��")} · ${scannerAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  ? `${t("Connected", "متصل")} · ${scannerAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                   : t("Not detected", "غير مكتشف")}
               </span>
             </span>
@@ -7860,7 +7860,7 @@ function AuthGate() {
                 )
               : t(
                   "Enter your administrator credentials to access the school workspace.",
-                  "أدخل اسم المستخدم وكلمة المرور للمتابعة إلى مساح�� الع��ل.",
+                  "أدخل اسم المستخدم وكلمة المرور للمتابعة إلى مساحة العمل.",
                 )}
           </p>
 
