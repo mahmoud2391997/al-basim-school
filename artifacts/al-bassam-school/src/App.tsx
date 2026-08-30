@@ -3008,10 +3008,14 @@ function TeacherRow({
   teacher,
   onEdit,
   onDelete,
+  selected = false,
+  onSelect,
 }: {
   teacher: Teacher;
   onEdit: (teacher: Teacher) => void;
   onDelete: (teacher: Teacher) => void;
+  selected?: boolean;
+  onSelect?: (checked: boolean) => void;
 }) {
   const { t } = useT();
   const statusLabel =
@@ -3022,6 +3026,7 @@ function TeacherRow({
       data-testid={`row-teacher-${teacher.id}`}
     >
       <div className="flex items-center gap-3 text-start">
+        {onSelect && <Checkbox checked={selected} onCheckedChange={(checked) => onSelect(checked === true)} aria-label={`Select ${teacher.fullName}`} data-testid={`checkbox-teacher-${teacher.id}`} />}
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#14BAC6]/10 text-xs font-bold text-[#14BAC6]">
           {teacher.fullName
             .split(" ")
@@ -3160,7 +3165,7 @@ function EmployeeDialog({
   const fields: { key: keyof EmployeeInput; label: string; arabic: string }[] =
     [
       { key: "fullName", label: "Full name", arabic: "الاسم الكامل" },
-      { key: "fullNameArabic", label: "Arabic name", arabic: "الاسم بالعربية" },
+      { key: "fullNameArabic", label: "Arabic name", arabic: "ال��سم بالعربية" },
       {
         key: "employeeNumber",
         label: "Employee number",
@@ -3248,7 +3253,7 @@ function EmployeeDialog({
             >
               {t(
                 "Could not save — the employee number or national ID may already be in use.",
-                "تعذر الحفظ — قد يكون الرقم الوظيفي أو الهوية الوطنية مستخدماً بالفعل.",
+                "تعذر الحفظ — قد يكون الرقم الوظيفي أو ��لهوية الوطنية مستخدماً بالفعل.",
               )}
             </div>
           )}
@@ -3284,10 +3289,14 @@ function EmployeeRow({
   employee,
   onEdit,
   onDelete,
+  selected = false,
+  onSelect,
 }: {
   employee: Employee;
   onEdit: (employee: Employee) => void;
   onDelete: (employee: Employee) => void;
+  selected?: boolean;
+  onSelect?: (checked: boolean) => void;
 }) {
   const { t } = useT();
   const statusLabel =
@@ -3300,6 +3309,7 @@ function EmployeeRow({
       data-testid={`row-employee-${employee.id}`}
     >
       <div className="flex items-center gap-3 text-start">
+        {onSelect && <Checkbox checked={selected} onCheckedChange={(checked) => onSelect(checked === true)} aria-label={`Select ${employee.fullName}`} data-testid={`checkbox-employee-${employee.id}`} />}
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#DBB46C]/20 text-xs font-bold text-[#EC9F42]">
           {employee.fullName
             .split(" ")
@@ -5284,11 +5294,15 @@ function BookRow({
   onEdit,
   onDelete,
   onConditionChange,
+  selected = false,
+  onSelect,
 }: {
   book: Book;
   onEdit: (book: Book) => void;
   onDelete: (book: Book) => void;
   onConditionChange: (book: Book, action: "lost" | "damaged" | "fixed" | "found") => void;
+  selected?: boolean;
+  onSelect?: (checked: boolean) => void;
 }) {
   const { t } = useT();
   const available = book.availableCopies ?? book.copies;
@@ -5301,6 +5315,7 @@ function BookRow({
       data-testid={`row-book-${book.id}`}
     >
       <div className="flex items-center gap-3 text-start">
+        {onSelect && <Checkbox checked={selected} onCheckedChange={(checked) => onSelect(checked === true)} aria-label={`Select ${book.title}`} data-testid={`checkbox-book-${book.id}`} />}
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#DBB46C]/20 text-[#EC9F42]">
           <BookOpen size={17} strokeWidth={1.7} />
         </div>
