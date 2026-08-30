@@ -128,6 +128,11 @@ import { ImportDialog } from "@/components/import-dialog";
 import { ExportMenu } from "@/components/export-menu";
 import { NotificationsMenu } from "@/components/notifications-menu";
 import { GlobalSearchDialog } from "@/components/global-search-dialog";
+import {
+  getDefaultAcademicYear,
+  getStoredAcademicYearId,
+  setStoredAcademicYearId,
+} from "@/utils/academic-year";
 import { UserNavDropdown } from "@/components/user-nav-dropdown";
 import {
   downloadTemplate,
@@ -380,7 +385,7 @@ function Shell({ children }: { children: ReactNode }) {
           <LogoMark compact={collapsed} />
           <button
             onClick={() => setMobileOpen(false)}
-            className={`${language === "ar" ? "mr-auto" : "ml-auto"} rounded-md p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-[#FCFBF0] md:hidden`}
+            className={`${language === "ar" ? "mr-auto" : "ml-auto"} rounded-md p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-primary-foreground md:hidden`}
             data-testid="button-close-mobile-menu"
             aria-label={text(
               "Close menu",
@@ -404,7 +409,7 @@ function Shell({ children }: { children: ReactNode }) {
             )}
             <button
               onClick={toggleCollapsed}
-              className="rounded-md bg-white p-1.5 text-[#263064] shadow-[0_0_0_1px_rgba(219,180,108,.45)] transition-colors hover:bg-white/85 dark:bg-sidebar-accent dark:text-sidebar-accent-foreground dark:hover:bg-sidebar-accent/80"
+              className="rounded-md bg-white p-1.5 text-foreground shadow-[0_0_0_1px_rgba(219,180,108,.45)] transition-colors hover:bg-white/85 dark:bg-sidebar-accent dark:text-sidebar-accent-foreground dark:hover:bg-sidebar-accent/80"
               data-testid="button-collapse-sidebar"
               aria-label={text(
                 collapsed ? "Open sidebar" : "Collapse sidebar",
@@ -450,7 +455,7 @@ function Shell({ children }: { children: ReactNode }) {
                     <Link
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
-                      className={`group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${active ? "nav-active bg-sidebar-accent text-[#FCFBF0]" : "text-sidebar-foreground/65"}`}
+                      className={`group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${active ? "nav-active bg-sidebar-accent text-primary-foreground" : "text-sidebar-foreground/65"}`}
                       data-testid={`link-nav-${item.label.toLowerCase()}`}
                     >
                       <Icon
@@ -476,7 +481,7 @@ function Shell({ children }: { children: ReactNode }) {
                             [item.href]: !(current[item.href] ?? active),
                           }))
                         }
-                        className="rounded-md p-2 text-sidebar-foreground/45 hover:bg-sidebar-accent hover:text-[#FCFBF0]"
+                        className="rounded-md p-2 text-sidebar-foreground/45 hover:bg-sidebar-accent hover:text-primary-foreground"
                         aria-label={text(
                           "Toggle sub-tabs",
                           "توسيع أو طي التبويبات الفرعية",
@@ -504,7 +509,7 @@ function Shell({ children }: { children: ReactNode }) {
                           <Link
                             key={tab.href}
                             href={tab.href}
-                            className={`block rounded-md px-3 py-2 text-[11px] transition-colors ${location === tab.href ? "bg-sidebar-accent/70 font-semibold text-[#FCFBF0]" : "text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-[#FCFBF0]"}`}
+                            className={`block rounded-md px-3 py-2 text-[11px] transition-colors ${location === tab.href ? "bg-sidebar-accent/70 font-semibold text-primary-foreground" : "text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-primary-foreground"}`}
                             data-testid={`link-nav-tab-${tab.href.replaceAll("/", "-")}`}
                           >
                             {text(tab.label, tab.arabic)}
@@ -524,7 +529,7 @@ function Shell({ children }: { children: ReactNode }) {
           <Link
             href="/settings"
             onClick={() => setMobileOpen(false)}
-            className={`group flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/settings" ? "nav-active bg-sidebar-accent text-[#FCFBF0]" : "text-sidebar-foreground/65"}`}
+            className={`group flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/settings" ? "nav-active bg-sidebar-accent text-primary-foreground" : "text-sidebar-foreground/65"}`}
             data-testid="link-nav-settings"
           >
             <Settings2
@@ -575,12 +580,12 @@ function Shell({ children }: { children: ReactNode }) {
           <div
             className={`${collapsed ? "mt-3 justify-center" : "mt-5"} flex items-center gap-3${collapsed ? "" : " border-t border-sidebar-border pt-5"}`}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-foreground">
               LA
             </div>
             {!collapsed && (
               <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-semibold text-[#FCFBF0]">
+                <div className="truncate text-xs font-semibold text-primary-foreground">
                   {text(
                     "Library Admin",
                     "آمين المكتبة",
@@ -600,7 +605,7 @@ function Shell({ children }: { children: ReactNode }) {
       {mobileOpen && (
         <button
           onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 z-30 bg-[#263064]/50 md:hidden"
+          className="fixed inset-0 z-30 bg-primary/50 md:hidden"
           aria-label={text(
             "Close navigation overlay",
             "\u0625\u063A\u0644\u0627\u0642\u0020\u062A\u0631\u0627\u0643\u0628\u0020\u0627\u0644\u062A\u0646\u0642\u0644",
@@ -658,14 +663,14 @@ function Shell({ children }: { children: ReactNode }) {
             >
               <button
                 onClick={() => setLanguage("en")}
-                className={`rounded-md px-2 py-1 transition-colors ${language === "en" ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground"}`}
+                className={`rounded-md px-2 py-1 transition-colors ${language === "en" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                 data-testid="button-language-en"
               >
                 EN
               </button>
               <button
                 onClick={() => setLanguage("ar")}
-                className={`rounded-md px-2 py-1 transition-colors ${language === "ar" ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground"}`}
+                className={`rounded-md px-2 py-1 transition-colors ${language === "ar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                 data-testid="button-language-ar"
               >
                 ع
@@ -782,7 +787,7 @@ function PageHeading({
           {t(eyebrow, eyebrowAr ?? eyebrow)}
         </div>
         <div className="flex flex-wrap items-baseline gap-3">
-          <h1 className="text-3xl font-bold tracking-[-.04em] text-[#263064] sm:text-[40px]">
+          <h1 className="text-3xl font-bold tracking-[-.04em] text-foreground sm:text-[40px]">
             {t(title, arabic)}
           </h1>
           <span
@@ -1015,7 +1020,7 @@ function SortHeader({
     <button
       type="button"
       onClick={() => onSort(columnKey)}
-      className={`group inline-flex w-full items-center gap-1.5 outline-none transition-colors ${active ? "text-[#263064] font-bold" : "hover:text-[#263064]"} ${alignClass} ${className ?? ""}`}
+      className={`group inline-flex w-full items-center gap-1.5 outline-none transition-colors ${active ? "text-foreground font-bold" : "hover:text-foreground"} ${alignClass} ${className ?? ""}`}
       data-testid={`button-sort-${columnKey}`}
     >
       <span className="inline-flex items-center gap-1">
@@ -1087,7 +1092,7 @@ function TableFilterBar({
         <Filter size={13} />
         {t("Filter", "التصفية")}
         {activeCount > 0 && (
-          <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-[#FCFBF0]">
+          <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
             {activeCount}
           </span>
         )}
@@ -1194,7 +1199,7 @@ function EmptyState({
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary text-primary">
         <Icon size={25} strokeWidth={1.6} />
       </div>
-      <h3 className="font-semibold text-[#263064]">{title}</h3>
+      <h3 className="font-semibold text-foreground">{title}</h3>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">{detail}</p>
       {action && <div className="mt-5">{action}</div>}
     </div>
@@ -1218,7 +1223,7 @@ function StatCard({
 }) {
   const { t } = useT();
   const tones = {
-    navy: "bg-[#263064] text-[#FCFBF0]",
+    navy: "bg-primary text-primary-foreground",
     teal: "bg-[#14BAC6]/10 text-[#14BAC6]",
     gold: "bg-[#DBB46C]/20 text-[#EC9F42]",
     sky: "bg-[#14BAC6]/10 text-[#14BAC6]",
@@ -1244,7 +1249,7 @@ function StatCard({
             {t(arabic, label)}
           </div>
         </div>
-        <strong className="font-mono text-[29px] tracking-[-.06em] text-[#263064]">
+        <strong className="font-mono text-[29px] tracking-[-.06em] text-foreground">
           {value}
         </strong>
       </div>
@@ -1402,7 +1407,7 @@ function Dashboard() {
           <div className="flex items-center gap-2">
             <Button
               onClick={() => setLocation("/library/borrows")}
-              className="h-11 rounded-lg bg-[#263064] px-4 text-sm text-[#FCFBF0] hover:bg-[#263064]/90 gap-1.5"
+              className="h-11 rounded-lg bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90 gap-1.5"
               data-testid="button-open-borrows"
             >
               <BookOpen size={16} />
@@ -1505,7 +1510,7 @@ function Dashboard() {
                 <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                   {t("Live Feed", "العمليات الحية")}
                 </div>
-                <h2 className="mt-0.5 text-xl font-bold tracking-[-.03em] text-[#263064]">
+                <h2 className="mt-0.5 text-xl font-bold tracking-[-.03em] text-foreground">
                   {t("Circulation & Operational Activity", "حركة الإعارة والنشاط التشغيلي")}
                 </h2>
               </div>
@@ -1514,25 +1519,25 @@ function Dashboard() {
               <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1 text-xs">
                 <button
                   onClick={() => setActivityTab("all")}
-                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "all" ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "all" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {t("All", "الكل")}
                 </button>
                 <button
                   onClick={() => setActivityTab("borrows")}
-                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "borrows" ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "borrows" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {t("Borrows", "الإعارات")}
                 </button>
                 <button
                   onClick={() => setActivityTab("books")}
-                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "books" ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "books" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {t("Books", "الكتب")}
                 </button>
                 <button
                   onClick={() => setActivityTab("students")}
-                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "students" ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "students" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {t("Students", "الطلاب")}
                 </button>
@@ -1559,7 +1564,7 @@ function Dashboard() {
                   const toneClasses = {
                     amber: "bg-[#DBB46C]/20 text-[#EC9F42]",
                     green: "bg-[#32B77E]/15 text-[#32B77E]",
-                    navy: "bg-[#263064]/10 text-[#263064]",
+                    navy: "bg-primary/10 text-foreground",
                     teal: "bg-[#14BAC6]/15 text-[#14BAC6]",
                     red: "bg-[#B92327]/10 text-[#B92327]",
                   }[item.badgeTone];
@@ -1576,7 +1581,7 @@ function Dashboard() {
                           <Icon size={16} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-bold text-[#263064] group-hover:text-primary">
+                          <p className="truncate text-xs font-bold text-foreground group-hover:text-primary">
                             {item.title}
                           </p>
                           <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
@@ -1635,7 +1640,7 @@ function Dashboard() {
                   <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                     {t("Operations Hub", "مركز العمليات")}
                   </div>
-                  <h3 className="text-base font-bold text-[#263064]">
+                  <h3 className="text-base font-bold text-foreground">
                     {t("Priority & Quick Access", "المهام والوصول السريع")}
                   </h3>
                 </div>
@@ -1666,7 +1671,7 @@ function Dashboard() {
                 >
                   <div className="flex items-center gap-2">
                     <Clock3 size={15} className="text-[#EC9F42] shrink-0" />
-                    <span className="font-semibold text-[#263064]">
+                    <span className="font-semibold text-foreground">
                       {dueSoonBorrows.length} {t("Loan(s) due within 3 days", "إعارة تستحق خلال 3 أيام")}
                     </span>
                   </div>
@@ -1678,7 +1683,7 @@ function Dashboard() {
                 <div className="rounded-lg border border-[#32B77E]/30 bg-[#32B77E]/5 p-3 text-xs flex items-center gap-2 text-[#32B77E]">
                   <CircleCheck size={15} className="shrink-0" />
                   <span className="font-semibold">
-                    {t("All borrows up to date & in order", "كافة الإعارات منتظمة ولا توجد متأخرات")}
+                    {t("All borrows up to date & in order", "ك��فة الإعارات منتظمة ولا توجد متأخرات")}
                   </span>
                 </div>
               )}
@@ -1704,11 +1709,11 @@ function Dashboard() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setLocation("/library/borrows")}
-                  className="flex flex-col items-start gap-1 rounded-lg border border-border bg-[#263064]/5 p-3 text-start transition-colors hover:border-primary/50 hover:bg-[#263064]/10"
+                  className="flex flex-col items-start gap-1 rounded-lg border border-border bg-primary/5 p-3 text-start transition-colors hover:border-primary/50 hover:bg-primary/10"
                   data-testid="quick-action-borrow"
                 >
-                  <BookOpen size={16} className="text-[#263064]" />
-                  <span className="text-xs font-bold text-[#263064]">
+                  <BookOpen size={16} className="text-foreground" />
+                  <span className="text-xs font-bold text-foreground">
                     {t("Issue Loan", "إعارة كتاب")}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
@@ -1722,7 +1727,7 @@ function Dashboard() {
                   data-testid="quick-action-add-book"
                 >
                   <Plus size={16} className="text-[#14BAC6]" />
-                  <span className="text-xs font-bold text-[#263064]">
+                  <span className="text-xs font-bold text-foreground">
                     {t("Add Book", "إضافة كتاب")}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
@@ -1736,7 +1741,7 @@ function Dashboard() {
                   data-testid="quick-action-add-student"
                 >
                   <GraduationCap size={16} className="text-primary" />
-                  <span className="text-xs font-bold text-[#263064]">
+                  <span className="text-xs font-bold text-foreground">
                     {t("Enrol Student", "تسجيل طالب")}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
@@ -1750,7 +1755,7 @@ function Dashboard() {
                   data-testid="quick-action-reports"
                 >
                   <FileSpreadsheet size={16} className="text-[#32B77E]" />
-                  <span className="text-xs font-bold text-[#263064]">
+                  <span className="text-xs font-bold text-foreground">
                     {t("Export Reports", "التقارير و Excel")}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
@@ -1763,7 +1768,7 @@ function Dashboard() {
             {/* Circulation Capacity Meters */}
             <div className="mt-5 space-y-2.5 rounded-lg border border-border bg-muted/20 p-3.5 text-xs">
               <div>
-                <div className="flex items-center justify-between text-[11px] font-semibold text-[#263064]">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-foreground">
                   <span>{t("Library Circulation Rate", "معدل إشغال المكتبة")}</span>
                   <span className="font-mono">{loanRate}%</span>
                 </div>
@@ -1787,7 +1792,7 @@ function Dashboard() {
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-5 py-3.5 text-xs soft-shadow">
         <div className="flex items-center gap-3">
           <span className="flex h-2.5 w-2.5 rounded-full bg-[#32B77E] animate-pulse" />
-          <span className="font-bold text-[#263064]">
+          <span className="font-bold text-foreground">
             {t("System Status: Online & Locally Persistent", "حالة النظام: متصل وجاهز للعمل مع المزامنة المحلية")}
           </span>
         </div>
@@ -1964,7 +1969,7 @@ function StudentDialog({
                     isEditing ? "تعديل السجل" : "تسجيل جديد",
                   )}
                 </div>
-                <DialogTitle className="mt-1 text-2xl text-[#263064]">
+                <DialogTitle className="mt-1 text-2xl text-foreground">
                   {t(
                     isEditing ? "Update student" : "Add a student",
                     isEditing ? "تحديث بيانات طالب" : "إضافة طالب",
@@ -1989,7 +1994,7 @@ function StudentDialog({
               if (field.options) {
                 return (
                   <label className="block" key={field.key}>
-                    <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                    <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-foreground">
                       <span>{t(field.label, field.arabic)} *</span>
                       <span className={`text-[9px] font-normal text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}>
                         {t(field.arabic, field.label)}
@@ -2013,7 +2018,7 @@ function StudentDialog({
               if (field.key === "grade") {
                 return (
                   <label className="block" key={field.key}>
-                    <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                    <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-foreground">
                       <span>{t(field.label, field.arabic)} *</span>
                       <span className={`text-[9px] font-normal text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}>
                         {t(field.arabic, field.label)}
@@ -2037,7 +2042,7 @@ function StudentDialog({
               if (field.key === "className") {
                 return (
                   <label className="block" key={field.key}>
-                    <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                    <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-foreground">
                       <span>{t(field.label, field.arabic)} *</span>
                       <span className={`text-[9px] font-normal text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}>
                         {t(field.arabic, field.label)}
@@ -2060,7 +2065,7 @@ function StudentDialog({
               }
               return (
                 <label className="block" key={field.key}>
-                  <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                  <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-foreground">
                     <span>{!['guardianName', 'guardianPhone'].includes(field.key) ? `${t(field.label, field.arabic)} *` : t(field.label, field.arabic)}</span>
                     <span
                       className={`text-[9px] font-normal text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}
@@ -2082,7 +2087,7 @@ function StudentDialog({
               );
             })}
             <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold text-[#263064]">
+              <span className="mb-1.5 block text-xs font-semibold text-foreground">
                 {t("Enrollment date", "تاريخ التسجيل")} *
               </span>
               <input
@@ -2102,7 +2107,7 @@ function StudentDialog({
             >
               {t(
                 "Could not save — the student number or national ID may already be in use.",
-                "تعذر الحفظ — قد يكون رقم الطالب أو الهوية الوط��ية مستخدماً بالفعل.",
+                "تعذر الحفظ — قد يكون ر��م الطالب أو الهوية الوط��ية مستخدماً بالفعل.",
               )}
             </div>
           )}
@@ -2118,7 +2123,7 @@ function StudentDialog({
             <Button
               type="submit"
               disabled={pending}
-              className="bg-[#263064] text-[#FCFBF0] hover:bg-[#263064]/85"
+              className="bg-primary text-primary-foreground hover:bg-primary/85"
               data-testid="button-save-student"
             >
               {pending
@@ -2164,7 +2169,7 @@ function StudentRow({
             .join("")}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-[#263064]">
+          <div className="truncate text-sm font-semibold text-foreground">
             {student.fullName}
           </div>
           <div className="ar truncate text-[10px] text-muted-foreground">
@@ -2173,7 +2178,7 @@ function StudentRow({
         </div>
       </div>
       <span
-        className={`justify-self-center text-center text-xs font-medium ${student.gender === "female" ? "text-[#14BAC6]" : "text-[#263064]"}`}
+        className={`justify-self-center text-center text-xs font-medium ${student.gender === "female" ? "text-[#14BAC6]" : "text-foreground"}`}
       >
         {student.gender
           ? t(
@@ -2195,7 +2200,7 @@ function StudentRow({
         {student.nationalId}
       </span>
       <div className="justify-self-center text-center">
-        <div className="text-xs font-medium text-[#263064]">
+        <div className="text-xs font-medium text-foreground">
           {student.grade}
         </div>
         <div className="text-[10px] text-muted-foreground">
@@ -2368,7 +2373,7 @@ function StudentsPage() {
             </Button>
             <Button
               onClick={openNew}
-              className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
+              className="h-11 rounded-lg bg-primary px-5 text-primary-foreground hover:bg-primary/85"
               data-testid="button-add-student"
             >
               <Plus size={17} /> {t("Add student", "إضافة طالب")}
@@ -2464,7 +2469,7 @@ function StudentsPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[1000px] grid-cols-[2fr_.7fr_1.1fr_1.15fr_.9fr_1.25fr_1fr_.8fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[1000px] grid-cols-[2fr_.7fr_1.1fr_1.15fr_.9fr_1.25fr_1fr_.8fr_88px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="fullName"
               activeKey={sortKey}
@@ -2811,7 +2816,7 @@ function TeacherDialog({
                     isEditing ? "تعديل السجل" : "عضو هيئة تدريس جديد",
                   )}
                 </div>
-                <DialogTitle className="mt-1 text-2xl text-[#263064]">
+                <DialogTitle className="mt-1 text-2xl text-foreground">
                   {t(
                     isEditing ? "Update teacher" : "Add a teacher",
                     isEditing ? "تحديث بيانات مع��م" : "إضافة معلم",
@@ -2843,7 +2848,7 @@ function TeacherDialog({
                 <div className="grid gap-4 sm:grid-cols-3">
                   {section.fields.map((field) => (
                     <label className="block" key={field.key}>
-                      <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                      <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-foreground">
                         <span>
                           {field.required
                             ? `${t(field.label, field.arabic)} *`
@@ -2924,7 +2929,7 @@ function TeacherDialog({
             <Button
               type="submit"
               disabled={pending}
-              className="bg-[#263064] text-[#FCFBF0] hover:bg-[#263064]/85"
+              className="bg-primary text-primary-foreground hover:bg-primary/85"
               data-testid="button-save-teacher"
             >
               {pending
@@ -2965,7 +2970,7 @@ function TeacherRow({
             .join("")}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-[#263064]">
+          <div className="truncate text-sm font-semibold text-foreground">
             {teacher.fullName}
           </div>
           <div className="ar truncate text-[10px] text-muted-foreground">
@@ -2979,7 +2984,7 @@ function TeacherRow({
       >
         {teacher.employeeCode}
       </span>
-      <div className="justify-self-center text-center text-xs font-medium text-[#263064]">
+      <div className="justify-self-center text-center text-xs font-medium text-foreground">
         {teacher.subject}
       </div>
       <span
@@ -3101,7 +3106,7 @@ function EmployeeDialog({
         label: "Employee number",
         arabic: "الرقم الوظيفي",
       },
-      { key: "nationalId", label: "National ID", arabic: "الهوية الوطنية" },
+      { key: "nationalId", label: "National ID", arabic: "الهوية الوط��ية" },
       { key: "jobTitle", label: "Job title", arabic: "المسمى الوظيفي" },
       { key: "phone", label: "Phone", arabic: "الهاتف" },
     ];
@@ -3118,7 +3123,7 @@ function EmployeeDialog({
                     isEditing ? "تعديل السجل" : "موظف جديد",
                   )}
                 </div>
-                <DialogTitle className="mt-1 text-2xl text-[#263064]">
+                <DialogTitle className="mt-1 text-2xl text-foreground">
                   {t(
                     isEditing ? "Update employee" : "Add an employee",
                     isEditing ? "تحديث بيانات موظف" : "إضافة موظف",
@@ -3141,7 +3146,7 @@ function EmployeeDialog({
           <div className="grid gap-4 px-6 py-6 sm:grid-cols-2">
             {fields.map((field) => (
               <label className="block" key={field.key}>
-                <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-foreground">
                   <span>{t(field.label, field.arabic)} *</span>
                   <span
                     className={`text-[9px] font-normal text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}
@@ -3162,7 +3167,7 @@ function EmployeeDialog({
               </label>
             ))}
             <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold text-[#263064]">
+              <span className="mb-1.5 block text-xs font-semibold text-foreground">
                 {t("Status", "الحالة")}
               </span>
               <select
@@ -3199,7 +3204,7 @@ function EmployeeDialog({
             <Button
               type="submit"
               disabled={pending}
-              className="bg-[#263064] text-[#FCFBF0] hover:bg-[#263064]/85"
+              className="bg-primary text-primary-foreground hover:bg-primary/85"
               data-testid="button-save-employee"
             >
               {pending
@@ -3243,7 +3248,7 @@ function EmployeeRow({
             .join("")}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-[#263064]">
+          <div className="truncate text-sm font-semibold text-foreground">
             {employee.fullName}
           </div>
           <div className="ar truncate text-[10px] text-muted-foreground">
@@ -3257,7 +3262,7 @@ function EmployeeRow({
       >
         {employee.employeeNumber}
       </span>
-      <div className="justify-self-center text-center text-xs font-medium text-[#263064]">
+      <div className="justify-self-center text-center text-xs font-medium text-foreground">
         {employee.jobTitle}
       </div>
       <span
@@ -3428,7 +3433,7 @@ function EmployeesPage() {
             </Button>
             <Button
               onClick={openNew}
-              className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
+              className="h-11 rounded-lg bg-primary px-5 text-primary-foreground hover:bg-primary/85"
               data-testid="button-add-employee"
             >
               <Plus size={17} /> {t("Add employee", "إضافة موظف")}
@@ -3526,7 +3531,7 @@ function EmployeesPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[900px] grid-cols-[2fr_1fr_1.1fr_1.2fr_1.1fr_.85fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[900px] grid-cols-[2fr_1fr_1.1fr_1.2fr_1.1fr_.85fr_88px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="fullName"
               activeKey={sortKey}
@@ -3756,7 +3761,7 @@ function TeachersPage() {
             </Button>
             <Button
               onClick={openNew}
-              className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
+              className="h-11 rounded-lg bg-primary px-5 text-primary-foreground hover:bg-primary/85"
               data-testid="button-add-teacher"
             >
               <Plus size={17} /> {t("Add teacher", "إضافة معلم")}
@@ -3854,7 +3859,7 @@ function TeachersPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[900px] grid-cols-[2fr_1fr_1.1fr_1.2fr_1.1fr_.85fr_88px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[900px] grid-cols-[2fr_1fr_1.1fr_1.2fr_1.1fr_.85fr_88px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="fullName"
               activeKey={sortKey}
@@ -4176,7 +4181,7 @@ function BookDialog({
                 "\u0641\u0647\u0631\u0633\u0020\u0627\u0644\u0645\u0643\u062A\u0628\u0629",
               )}
             </div>
-            <DialogTitle className="mt-1 text-2xl text-[#263064]">
+            <DialogTitle className="mt-1 text-2xl text-foreground">
               {t(
                 isEditing ? "Update book" : "Add a book",
                 isEditing
@@ -4207,7 +4212,7 @@ function BookDialog({
                 <div className="grid gap-4 sm:grid-cols-3">
                   {section.fields.map((field) => (
                     <label className="block" key={field.key}>
-                      <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-[#263064]">
+                      <span className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-foreground">
                         <span>
                           {field.required
                             ? `${t(field.label, field.arabic)} *`
@@ -4289,7 +4294,7 @@ function BookDialog({
             <Button
               type="submit"
               disabled={pending}
-              className="bg-[#263064] text-[#FCFBF0] hover:bg-[#263064]/85"
+              className="bg-primary text-primary-foreground hover:bg-primary/85"
               data-testid="button-save-book"
             >
               {pending
@@ -4406,7 +4411,7 @@ function BorrowDialog({
             <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
               {t("Library lending", "إعارات المكتبة")}
             </div>
-            <DialogTitle className="mt-1 text-2xl text-[#263064]">
+            <DialogTitle className="mt-1 text-2xl text-foreground">
               {t("Borrow this book", "استعارة الكتاب")}
             </DialogTitle>
             <DialogDescription className="mt-1">
@@ -4417,7 +4422,7 @@ function BorrowDialog({
           </DialogHeader>
           <div className="grid gap-4 px-6 py-6">
             <label className="grid gap-1.5 text-start">
-              <span className="text-xs font-semibold text-[#263064]">{t("Borrower type", "نوع المستعير")} *</span>
+              <span className="text-xs font-semibold text-foreground">{t("Borrower type", "نوع المستعير")} *</span>
               <select value={borrowerType} onChange={(event) => { setBorrowerType(event.target.value as typeof borrowerType); setBorrowerId(""); }} className="h-10 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" data-testid="select-borrower-type">
                 <option value="student">{t("Student", "الطالب")}</option>
                 <option value="teacher">{t("Teacher", "المعلم")}</option>
@@ -4425,7 +4430,7 @@ function BorrowDialog({
               </select>
             </label>
             <label className="grid gap-1.5 text-start">
-              <span className="text-xs font-semibold text-[#263064]">
+              <span className="text-xs font-semibold text-foreground">
                 {borrowerLabel} *
               </span>
               <select
@@ -4446,7 +4451,7 @@ function BorrowDialog({
               </select>
             </label>
             <label className="grid gap-1.5 text-start">
-              <span className="text-xs font-semibold text-[#263064]">
+              <span className="text-xs font-semibold text-foreground">
                 {t("Return by", "موعد الإرجاع")} *
               </span>
               <input
@@ -4489,7 +4494,7 @@ function BorrowDialog({
             <Button
               type="submit"
               disabled={create.isPending}
-              className="h-10 rounded-lg bg-[#263064] px-4 text-[#FCFBF0] hover:bg-[#263064]/85"
+              className="h-10 rounded-lg bg-primary px-4 text-primary-foreground hover:bg-primary/85"
               data-testid="button-save-borrow"
             >
               {create.isPending
@@ -4753,7 +4758,7 @@ function LibraryPage() {
             </Button>
             <Button
               onClick={openNew}
-              className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85"
+              className="h-11 rounded-lg bg-primary px-5 text-primary-foreground hover:bg-primary/85"
               data-testid="button-add-book"
             >
               <Plus size={17} /> {t("Add book", "إضافة كتاب")}
@@ -4766,7 +4771,7 @@ function LibraryPage() {
         className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center"
         data-testid="form-scan-barcode"
       >
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#263064] text-[#DBB46C]">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-[#DBB46C]">
           <Barcode size={22} />
         </div>
         <div className="min-w-0 flex-1">
@@ -4817,7 +4822,7 @@ function LibraryPage() {
               <BookOpen size={22} strokeWidth={1.7} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="line-clamp-1 text-sm font-bold text-[#263064]">
+              <div className="line-clamp-1 text-sm font-bold text-foreground">
                 {scanned.book.title}
               </div>
               <div className="mt-0.5 text-xs text-muted-foreground">
@@ -4848,7 +4853,7 @@ function LibraryPage() {
                 onClick={() => {
                   if (scannedBook) edit(scannedBook);
                 }}
-                className="h-9 bg-[#263064] px-3 text-xs text-[#FCFBF0] hover:bg-[#263064]/85"
+                className="h-9 bg-primary px-3 text-xs text-primary-foreground hover:bg-primary/85"
                 data-testid="button-scanned-edit"
               >
                 <Pencil size={14} /> {t("Edit record", "تعديل السجل")}
@@ -4896,7 +4901,7 @@ function LibraryPage() {
                 setEditing(undefined);
                 setDialogOpen(true);
               }}
-              className="h-9 shrink-0 bg-[#263064] px-3 text-xs hover:bg-[#263064]/85"
+              className="h-9 shrink-0 bg-primary px-3 text-xs hover:bg-primary/85"
               data-testid="button-scan-add-new"
             >
               <Plus size={14} /> {t("Catalogue it now", "أضفه للفهرس الآن")}
@@ -5013,7 +5018,7 @@ function LibraryPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[920px] grid-cols-[2fr_1.1fr_.8fr_1.25fr_.75fr_1.1fr_250px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[920px] grid-cols-[2fr_1.1fr_.8fr_1.25fr_.75fr_1.1fr_250px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="title"
               activeKey={sortKey}
@@ -5109,7 +5114,7 @@ function LibraryPage() {
                 <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                   {t("Lending desk", "مكتب الإعارة")}
                 </div>
-                <h2 className="mt-0.5 text-sm font-bold text-[#263064]">
+                <h2 className="mt-0.5 text-sm font-bold text-foreground">
                   {t("Active borrows", "الاستعارات النشطة")}
                 </h2>
               </div>
@@ -5130,7 +5135,7 @@ function LibraryPage() {
                   <UsersRound size={15} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="line-clamp-1 text-sm font-semibold text-[#263064]">
+                  <div className="line-clamp-1 text-sm font-semibold text-foreground">
                     {borrow.borrowerName}
                   </div>
                   <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
@@ -5240,7 +5245,7 @@ function BookRow({
           <BookOpen size={17} strokeWidth={1.7} />
         </div>
         <div className="min-w-0">
-          <div className="line-clamp-1 text-sm font-semibold text-[#263064]">
+          <div className="line-clamp-1 text-sm font-semibold text-foreground">
             {book.title}
           </div>
           <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[.12em] text-muted-foreground">
@@ -5275,7 +5280,7 @@ function BookRow({
             style={{ width: `${percent}%` }}
           />
         </div>
-        <span className="text-center font-mono text-xs font-bold text-[#263064]">
+        <span className="text-center font-mono text-xs font-bold text-foreground">
           {available}/{book.copies}
         </span>
       </div>
@@ -5438,7 +5443,7 @@ function DistributionPage() {
                 <div className="ar mt-0.5 text-[10px] text-muted-foreground/70">
                   الصف
                 </div>
-                <strong className="mt-3 block font-mono text-[26px] tracking-[-.05em] text-[#263064]">
+                <strong className="mt-3 block font-mono text-[26px] tracking-[-.05em] text-foreground">
                   {Array.from(classes.values()).reduce(
                     (sum, count) => sum + count,
                     0,
@@ -5451,7 +5456,7 @@ function DistributionPage() {
             ))}
           </div>
           <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-            <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+            <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
               <SortHeader
                 columnKey="grade"
                 activeKey={sortKey}
@@ -5497,13 +5502,13 @@ function DistributionPage() {
                   className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center border-b border-border/70 px-5 py-3 transition-colors last:border-b-0 hover:bg-secondary/40"
                   data-testid={`row-distribution-${grade.toLowerCase().replaceAll(" ", "-")}-${klass.toLowerCase()}`}
                 >
-                  <span className="text-start text-sm font-semibold text-[#263064]">
+                  <span className="text-start text-sm font-semibold text-foreground">
                     {grade}
                   </span>
                   <span className="justify-self-center text-center font-mono text-xs text-muted-foreground">
                     {klass}
                   </span>
-                  <strong className="justify-self-center text-center font-mono text-sm text-[#263064]">
+                  <strong className="justify-self-center text-center font-mono text-sm text-foreground">
                     {count}
                   </strong>
                   <div className="flex items-center justify-center gap-3">
@@ -5520,7 +5525,7 @@ function DistributionPage() {
                 </div>
               );
             })}
-            <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center bg-[#263064]/5 px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">
+            <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center bg-primary/5 px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">
               <span className="text-start">
                 {t("Total", "الإجمالي")}
               </span>
@@ -5740,14 +5745,14 @@ function BorrowsPage() {
           "Keep track of books currently away from the shelves.",
           "تابع الكتب الموجودة حاليًا خارج الرفوف.",
         )}
-        action={<Button onClick={() => setBookPickerOpen(true)} className="h-11 rounded-lg bg-[#263064] px-5 text-[#FCFBF0] hover:bg-[#263064]/85" data-testid="button-borrows-borrow"><Plus size={17} /> {t("Borrow a book", "استعارة كتاب")}</Button>}
+        action={<Button onClick={() => setBookPickerOpen(true)} className="h-11 rounded-lg bg-primary px-5 text-primary-foreground hover:bg-primary/85" data-testid="button-borrows-borrow"><Plus size={17} /> {t("Borrow a book", "استعارة كتاب")}</Button>}
       />
       <form
         onSubmit={handleScan}
         className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center"
         data-testid="form-borrows-scan-barcode"
       >
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#263064] text-[#DBB46C]">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-[#DBB46C]">
           <Barcode size={22} />
         </div>
         <div className="min-w-0 flex-1">
@@ -5815,7 +5820,7 @@ function BorrowsPage() {
           className="mb-5 rounded-xl border border-[#32B77E]/35 bg-[#32B77E]/10 p-4"
           data-testid="panel-borrows-scanned-borrow"
         >
-          <div className="mb-3 text-sm font-bold text-[#263064]">
+          <div className="mb-3 text-sm font-bold text-foreground">
             {t("Borrowers for this barcode", "مستعيرو هذا الباركود")}
           </div>
           {scannedBorrows.map((borrow) => (
@@ -5824,7 +5829,7 @@ function BorrowsPage() {
               className="flex flex-wrap items-center gap-3 border-t border-[#32B77E]/20 py-3 first:border-t-0 first:pt-0"
             >
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-[#263064]">
+                <div className="text-sm font-semibold text-foreground">
                   {borrow.borrowerName}
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -5910,7 +5915,7 @@ function BorrowsPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[760px] grid-cols-[1.45fr_1.45fr_1fr_1fr_220px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[760px] grid-cols-[1.45fr_1.45fr_1fr_1fr_220px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="borrowerName"
               activeKey={sortKey}
@@ -5954,7 +5959,7 @@ function BorrowsPage() {
               key={borrow.id}
               className="grid min-w-[760px] grid-cols-[1.45fr_1.45fr_1fr_1fr_220px] items-center border-b border-border/70 px-5 py-3 text-sm last:border-b-0"
             >
-              <div className="text-start font-semibold text-[#263064] truncate">
+              <div className="text-start font-semibold text-foreground truncate">
                 {borrow.borrowerName}
               </div>
               <div className="text-start text-muted-foreground truncate">{borrow.bookTitle}</div>
@@ -5993,7 +5998,7 @@ function BorrowsPage() {
       <Dialog open={bookPickerOpen} onOpenChange={setBookPickerOpen}>
         <DialogContent className="max-w-md border-border bg-[#FCFBF0] p-0">
           <DialogHeader className="border-b border-border bg-card px-6 py-5 text-start">
-            <DialogTitle className="text-2xl text-[#263064]">{t("Choose a book", "اختر كتابًا")}</DialogTitle>
+            <DialogTitle className="text-2xl text-foreground">{t("Choose a book", "اختر كتابًا")}</DialogTitle>
             <DialogDescription>{t("Select the book to lend.", "اختر الكتاب المراد إعارته.")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 px-6 py-6">
@@ -6005,7 +6010,7 @@ function BorrowsPage() {
           </div>
           <DialogFooter className="border-t border-border bg-card px-6 py-4">
             <Button type="button" variant="outline" onClick={() => setBookPickerOpen(false)}>{t("Cancel", "إلغاء")}</Button>
-            <Button type="button" disabled={!selectedBookId} onClick={() => { const book = books.find((item) => item.id === Number(selectedBookId)); if (book) { setBorrowing(book); setBookPickerOpen(false); setSelectedBookId(""); setBookBarcode(""); } }} className="bg-[#263064] text-[#FCFBF0]">{t("Continue", "متابعة")}</Button>
+            <Button type="button" disabled={!selectedBookId} onClick={() => { const book = books.find((item) => item.id === Number(selectedBookId)); if (book) { setBorrowing(book); setBookPickerOpen(false); setSelectedBookId(""); setBookBarcode(""); } }} className="bg-primary text-primary-foreground">{t("Continue", "متابعة")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -6103,7 +6108,7 @@ function BorrowHistoryPage() {
         {t("Returned", "مُعاد")}
       </span>
     ) : (
-      <span className="rounded-full bg-[#263064]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#263064]">
+      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-foreground">
         {t("Active", "نشط")}
       </span>
     );
@@ -6146,7 +6151,7 @@ function BorrowHistoryPage() {
             <button
               key={option.key}
               onClick={() => setStatus(option.key)}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${status === option.key ? "bg-[#263064] text-[#FCFBF0]" : "text-muted-foreground hover:text-[#263064]"}`}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${status === option.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
               data-testid={`button-borrow-history-${option.key}`}
             >
               {option.label}
@@ -6181,7 +6186,7 @@ function BorrowHistoryPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[860px] grid-cols-[1.4fr_1.5fr_1fr_1fr_1.2fr_104px] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[860px] grid-cols-[1.4fr_1.5fr_1fr_1fr_1.2fr_104px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="borrowerName"
               activeKey={sortKey}
@@ -6237,7 +6242,7 @@ function BorrowHistoryPage() {
               className="grid min-w-[860px] grid-cols-[1.4fr_1.5fr_1fr_1fr_1.2fr_104px] items-center border-b border-border/70 px-5 py-3 text-sm last:border-b-0"
             >
               <div className="text-start">
-                <div className="font-semibold text-[#263064]">
+                <div className="font-semibold text-foreground">
                   {borrow.borrowerName || "—"}
                 </div>
                 <div className="mt-0.5 text-[11px] text-muted-foreground">
@@ -6315,7 +6320,7 @@ function ReportSection({ title, titleAr, columns, data, exportType, t }: {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{title}</div>
-          <h3 className="mt-1 text-lg font-bold text-[#263064]">{titleAr}</h3>
+          <h3 className="mt-1 text-lg font-bold text-foreground">{titleAr}</h3>
         </div>
         <Button variant="outline" size="sm" onClick={handleExcel} className="gap-1.5 text-xs">
           <FileSpreadsheet size={14} />
@@ -6328,7 +6333,7 @@ function ReportSection({ title, titleAr, columns, data, exportType, t }: {
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-[#263064]/5">
+              <tr className="border-b border-border bg-primary/5">
                 {columns.map((col, idx) => (
                   <th
                     key={col.key}
@@ -6348,7 +6353,7 @@ function ReportSection({ title, titleAr, columns, data, exportType, t }: {
                     <td
                       key={col.key}
                       className={`px-4 py-2.5 ${
-                        idx === 0 ? "text-start font-medium text-[#263064]" : "text-center text-muted-foreground"
+                        idx === 0 ? "text-start font-medium text-foreground" : "text-center text-muted-foreground"
                       }`}
                     >
                       {row[col.key] || "—"}
@@ -6530,11 +6535,11 @@ function AnalyticsPage() {
                     <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                       {t("Availability", "التوفر")}
                     </div>
-                    <h2 className="mt-1 text-xl font-bold text-[#263064]">
+                    <h2 className="mt-1 text-xl font-bold text-foreground">
                       {t("Copies on the shelf", "النسخ الموجودة على الرف")}
                     </h2>
                   </div>
-                  <span className="font-mono text-lg font-bold text-[#263064]">
+                  <span className="font-mono text-lg font-bold text-foreground">
                     {available}/{copies}
                   </span>
                 </div>
@@ -6566,7 +6571,7 @@ function AnalyticsPage() {
                   <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                     {t("Monthly borrows", "الإعارات الشهرية")}
                   </div>
-                  <h2 className="mt-1 mb-4 text-lg font-bold text-[#263064]">
+                  <h2 className="mt-1 mb-4 text-lg font-bold text-foreground">
                     {t("Borrowing activity over the year", "نشاط الإعارات على مدار السنة")}
                   </h2>
                   <div className="h-64">
@@ -6585,7 +6590,7 @@ function AnalyticsPage() {
                   <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                     {t("By category", "حسب التصنيف")}
                   </div>
-                  <h2 className="mt-1 mb-4 text-lg font-bold text-[#263064]">
+                  <h2 className="mt-1 mb-4 text-lg font-bold text-foreground">
                     {t("Books per category", "عدد الكتب لكل تصنيف")}
                   </h2>
                   <div className="h-64">
@@ -6733,14 +6738,14 @@ function AnalyticsPage() {
                     <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                       {t("Distribution", "التوزيع")}
                     </div>
-                    <h3 className="mt-1 text-lg font-bold text-[#263064]">
+                    <h3 className="mt-1 text-lg font-bold text-foreground">
                       {t("Borrows per grade", "الإعارات حسب الصف")}
                     </h3>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {t("Share of total borrows by grade level", "نسبة الإعارات من الإجمالي حسب الصف الدراسي")}
                     </p>
                   </div>
-                  <span className="font-mono text-lg font-bold text-[#263064]">
+                  <span className="font-mono text-lg font-bold text-foreground">
                     {totalBorrowCount} {t("borrows", "إعارة")}
                   </span>
                 </div>
@@ -6764,7 +6769,7 @@ function AnalyticsPage() {
                     <div className="mt-6 overflow-x-auto rounded-lg border border-border">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b border-border bg-[#263064]/5">
+                          <tr className="border-b border-border bg-primary/5">
                             <th className="px-4 py-2.5 text-start text-xs font-bold uppercase tracking-wider text-muted-foreground">
                               {t("Grade", "الصف")}
                             </th>
@@ -6786,7 +6791,7 @@ function AnalyticsPage() {
                                 key={i}
                                 className="border-b border-border/50 transition-colors hover:bg-muted/30 last:border-b-0"
                               >
-                                <td className="px-4 py-2.5 font-medium text-[#263064]">{g.name}</td>
+                                <td className="px-4 py-2.5 font-medium text-foreground">{g.name}</td>
                                 <td className="px-4 py-2.5 text-center text-muted-foreground">{g.count}</td>
                                 <td className="px-4 py-2.5 text-center">
                                   <div className="mx-auto flex max-w-[220px] items-center gap-2">
@@ -6796,7 +6801,7 @@ function AnalyticsPage() {
                                         style={{ width: `${percent}%` }}
                                       />
                                     </div>
-                                    <span className="min-w-[48px] text-xs font-semibold text-[#263064]">
+                                    <span className="min-w-[48px] text-xs font-semibold text-foreground">
                                       {percent}%
                                     </span>
                                   </div>
@@ -6954,7 +6959,7 @@ function CategoriesPage() {
                 className={index ? "border-t-2 border-border" : ""}
               >
                 <div
-                  className="flex flex-wrap items-center justify-between gap-3 bg-[#263064]/5 px-5 py-3"
+                  className="flex flex-wrap items-center justify-between gap-3 bg-primary/5 px-5 py-3"
                   data-testid={`row-category-${category.toLowerCase().replaceAll(" ", "-")}`}
                 >
                   <div className="flex items-center gap-3">
@@ -6962,7 +6967,7 @@ function CategoriesPage() {
                       <BookOpen size={17} strokeWidth={1.8} />
                     </div>
                     <div>
-                      <div className="text-sm font-bold uppercase tracking-[.08em] text-[#263064]">
+                      <div className="text-sm font-bold uppercase tracking-[.08em] text-foreground">
                         {category}
                       </div>
                       <div className="ar text-[10px] text-muted-foreground">
@@ -6972,13 +6977,13 @@ function CategoriesPage() {
                   </div>
                   <div className="flex items-center gap-5 text-[11px] text-muted-foreground">
                     <span>
-                      <strong className="font-mono text-[#263064]">
+                      <strong className="font-mono text-foreground">
                         {group.length}
                       </strong>{" "}
                       {t("titles", "عنوان")}
                     </span>
                     <span>
-                      <strong className="font-mono text-[#263064]">
+                      <strong className="font-mono text-foreground">
                         {copies}
                       </strong>{" "}
                       {t("copies", "نسخة")}
@@ -6991,7 +6996,7 @@ function CategoriesPage() {
                     </span>
                   </div>
                 </div>
-                <div className="grid min-w-[720px] grid-cols-[2fr_1.1fr_.8fr_.8fr_1.1fr_88px] items-center border-t border-border bg-[#263064]/5 px-5 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                <div className="grid min-w-[720px] grid-cols-[2fr_1.1fr_.8fr_.8fr_1.1fr_88px] items-center border-t border-border bg-primary/5 px-5 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
                   <span className="text-start">{t("Book", "الكتاب")}</span>
                   <span className="text-start">{t("Author", "المؤلف")}</span>
                   <span className="text-center">{t("Language", "اللغة")}</span>
@@ -7005,7 +7010,7 @@ function CategoriesPage() {
                     className="grid min-w-[720px] grid-cols-[2fr_1.1fr_.8fr_.8fr_1.1fr_88px] items-center border-t border-border/70 px-5 py-2.5 transition-colors hover:bg-secondary/40"
                     data-testid={`row-category-book-${book.id}`}
                   >
-                    <div className="line-clamp-1 text-start text-sm font-medium text-[#263064]">
+                    <div className="line-clamp-1 text-start text-sm font-medium text-foreground">
                       {book.title}
                     </div>
                     <span className="text-start text-xs text-muted-foreground truncate">
@@ -7182,7 +7187,7 @@ function IndexPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[880px] grid-cols-[2fr_1.2fr_1fr_.7fr_.7fr_1.1fr_.7fr] items-center border-b border-border bg-[#263064]/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[880px] grid-cols-[2fr_1.2fr_1fr_.7fr_.7fr_1.1fr_.7fr] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <SortHeader
               columnKey="title"
               activeKey={sortKey}
@@ -7253,7 +7258,7 @@ function IndexPage() {
               className="grid min-w-[880px] grid-cols-[2fr_1.2fr_1fr_.7fr_.7fr_1.1fr_.7fr] items-center border-b border-border/70 px-5 py-2.5 transition-colors hover:bg-secondary/40"
               data-testid={`row-index-book-${book.id}`}
             >
-              <span className="line-clamp-1 text-start text-sm font-medium text-[#263064]">
+              <span className="line-clamp-1 text-start text-sm font-medium text-foreground">
                 {book.title}
               </span>
               <span className="line-clamp-1 text-start text-xs text-muted-foreground">
@@ -7277,7 +7282,7 @@ function IndexPage() {
               >
                 {book.isbn || "—"}
               </span>
-              <span className="justify-self-center text-center font-mono text-xs font-bold text-[#263064]">
+              <span className="justify-self-center text-center font-mono text-xs font-bold text-foreground">
                 {book.availableCopies ?? book.copies}/{book.copies}
               </span>
             </div>
@@ -7304,11 +7309,13 @@ function SettingsPage() {
     query: { queryKey: getGetAcademicYearsQueryKey() },
   });
   const years = Array.isArray(query.data) ? query.data : [];
-  const today = new Date().toISOString().slice(0, 10);
-  const selected = years.find(
-    (year) => today >= year.startDate && today <= year.endDate,
-  )?.id;
-  const setSelected = (_id: number) => undefined;
+  const [selectedId, setSelectedId] = useState<number | undefined>(() => getStoredAcademicYearId());
+  const defaultYear = getDefaultAcademicYear(years);
+  const selected = years.find((year) => year.id === selectedId) ?? defaultYear;
+  const setSelected = (id: number) => {
+    setSelectedId(id);
+    setStoredAcademicYearId(id);
+  };
   const handleExport = async () => {
     setExporting(true);
     setExportError("");
@@ -7354,12 +7361,15 @@ function SettingsPage() {
                   "\u0627\u0644\u0633\u0646\u0648\u0627\u062A\u0020\u0627\u0644\u062F\u0631\u0627\u0633\u064A\u0629",
                 )}
               </div>
-              <h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-[#263064]">
+              <h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-foreground">
                 {t(
                   "Choose your school year",
                   "\u0627\u062E\u062A\u0631\u0020\u0639\u0627\u0645\u0643\u0020\u0627\u0644\u062F\u0631\u0627\u0633\u064A",
                 )}
               </h2>
+              <div className="mt-3 inline-flex items-center rounded-full bg-secondary px-3 py-1 text-sm font-semibold text-secondary-foreground">
+                {selected?.label ?? getDefaultAcademicYear([])?.label ?? "No year selected"}
+              </div>
               <p className="mt-2 text-sm text-muted-foreground">
                 {t(
                   "The selected year stays with this device and shapes your workspace context.",
@@ -7402,7 +7412,7 @@ function SettingsPage() {
           ) : (
             <div className="mt-7 space-y-3">
               {years.map((year) => {
-                const active = year.isCurrent || selected === year.id;
+                const active = selected?.id === year.id;
                 return (
                   <button
                     key={year.id}
@@ -7411,7 +7421,7 @@ function SettingsPage() {
                     data-testid={`button-academic-year-${year.id}`}
                   >
                     <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${active ? "bg-primary text-[#FCFBF0]" : "bg-muted text-muted-foreground"}`}
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
                     >
                       {active ? (
                         <Check size={16} />
@@ -7421,7 +7431,7 @@ function SettingsPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-[#263064]">
+                        <span className="font-semibold text-foreground">
                           {year.label}
                         </span>
                         {year.isCurrent && (
@@ -7448,8 +7458,8 @@ function SettingsPage() {
             </div>
           )}
         </section>
-        <section className="rounded-xl bg-[#263064] p-7 text-[#FCFBF0]">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#DBB46C] text-[#263064]">
+        <section className="rounded-xl bg-primary p-7 text-primary-foreground">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#DBB46C] text-foreground">
             <SlidersHorizontal size={18} />
           </div>
           <h2 className="mt-7 text-2xl font-bold leading-tight tracking-[-.04em]">
@@ -7458,7 +7468,7 @@ function SettingsPage() {
               "\u062A\u0641\u0636\u064A\u0644\u0627\u062A\u0020\u0645\u0633\u0627\u062D\u0629\u0020\u0627\u0644\u0639\u0645\u0644",
             )}
           </h2>
-          <p className="mt-3 text-sm leading-6 text-[#FCFBF0]/70">
+          <p className="mt-3 text-sm leading-6 text-primary-foreground/70">
             {t(
               "A few quiet choices keep the command center feeling like yours.",
               "\u0628\u0636\u0639\u0020\u0627\u062E\u062A\u064A\u0627\u0631\u0627\u062A\u0020\u0647\u0627\u062F\u0626\u0629\u0020\u062A\u062C\u0639\u0644\u0020\u0645\u0631\u0643\u0632\u0020\u0627\u0644\u062A\u062D\u0643\u0645\u0020\u064A\u0634\u0639\u0631\u0643\u0020\u0623\u0646\u0647\u0020\u0645\u0646\u0020\u0646\u0635\u064A\u0628\u0643\u002E",
@@ -7472,7 +7482,7 @@ function SettingsPage() {
                   "\u0644\u063A\u0629\u0020\u0627\u0644\u0648\u0627\u062C\u0647\u0629",
                 )}
               </span>
-              <span className="ar text-xs text-[#FCFBF0]/70">ثنائي اللغة</span>
+              <span className="ar text-xs text-primary-foreground/70">ثنائي اللغة</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm">
@@ -7492,7 +7502,7 @@ function SettingsPage() {
                   "\u0625\u0635\u062F\u0627\u0631\u0020\u0627\u0644\u0645\u0646\u062A\u062C",
                 )}
               </span>
-              <span className="text-[11px] text-[#FCFBF0]/70">
+              <span className="text-[11px] text-primary-foreground/70">
                 {t(
                   "Staff workspace",
                   "\u0645\u0633\u0627\u062D\u0629\u0020\u0639\u0645\u0644\u0020\u0627\u0644\u0645\u0648\u0638\u0641\u064A\u0646",
@@ -7515,7 +7525,7 @@ function SettingsPage() {
                   "\u0627\u0644\u0646\u0633\u062E\u0629\u0020\u0627\u0644\u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629",
                 )}
               </div>
-              <h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-[#263064]">
+              <h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-foreground">
                 {t(
                   "Export database backup",
                   "\u062A\u0635\u062F\u064A\u0631\u0020\u0646\u0633\u062E\u0629\u0020\u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629",
@@ -7655,7 +7665,7 @@ function PasswordSettings() {
       <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
         {t("Security & Credentials", "الأمان وبيانات الدخول")}
       </div>
-      <h2 className="mt-1 text-xl font-bold text-[#263064]">
+      <h2 className="mt-1 text-xl font-bold text-foreground">
         {t("Change username and password", "تغيير اسم المستخدم وكلمة المرور")}
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
@@ -7666,7 +7676,7 @@ function PasswordSettings() {
       </p>
 
       <form onSubmit={submit} className="mt-5 grid max-w-md gap-3.5">
-        <label className="grid gap-1.5 text-xs font-semibold text-[#263064] text-start">
+        <label className="grid gap-1.5 text-xs font-semibold text-foreground text-start">
           <span>{t("Current password", "كلمة المرور الحالية")} *</span>
           <input
             required
@@ -7679,7 +7689,7 @@ function PasswordSettings() {
           />
         </label>
 
-        <label className="grid gap-1.5 text-xs font-semibold text-[#263064] text-start">
+        <label className="grid gap-1.5 text-xs font-semibold text-foreground text-start">
           <span>{t("New username", "اسم المستخدم الجديد")} *</span>
           <input
             required
@@ -7692,7 +7702,7 @@ function PasswordSettings() {
           />
         </label>
 
-        <label className="grid gap-1.5 text-xs font-semibold text-[#263064] text-start">
+        <label className="grid gap-1.5 text-xs font-semibold text-foreground text-start">
           <span>{t("New password", "كلمة المرور الجديدة")} *</span>
           <input
             required
@@ -7706,7 +7716,7 @@ function PasswordSettings() {
           />
         </label>
 
-        <label className="grid gap-1.5 text-xs font-semibold text-[#263064] text-start">
+        <label className="grid gap-1.5 text-xs font-semibold text-foreground text-start">
           <span>{t("Confirm new password", "تأكيد كلمة المرور الجديدة")} *</span>
           <input
             required
@@ -7722,7 +7732,7 @@ function PasswordSettings() {
 
         <Button
           type="submit"
-          className="mt-2 w-fit bg-[#263064] text-[#FCFBF0] hover:bg-[#263064]/90"
+          className="mt-2 w-fit bg-primary text-primary-foreground hover:bg-primary/90"
           data-testid="button-save-credentials"
         >
           {t("Save credentials", "حفظ البيانات الجديدة")}
@@ -7837,7 +7847,7 @@ function AuthGate() {
             </button>
           </div>
 
-          <h1 className="mt-3 text-2xl font-bold text-[#263064]">
+          <h1 className="mt-3 text-2xl font-bold text-foreground">
             {setupRequired
               ? t("Create admin account", "إنشاء حساب المدير")
               : t("Sign in", "تسجيل الدخول")}
@@ -7850,12 +7860,12 @@ function AuthGate() {
                 )
               : t(
                   "Enter your administrator credentials to access the school workspace.",
-                  "أدخل اسم المستخدم وكلمة المرور للمتابعة إلى مساحة الع��ل.",
+                  "أدخل اسم المستخدم وكلمة المرور للمتابعة إلى مساح�� الع��ل.",
                 )}
           </p>
 
           <div className="mt-6 space-y-3.5">
-            <label className="grid gap-1 text-xs font-semibold text-[#263064] text-start">
+            <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
               <span>{t("Username", "اسم المستخدم")}</span>
               <input
                 autoFocus
@@ -7869,7 +7879,7 @@ function AuthGate() {
               />
             </label>
 
-            <label className="grid gap-1 text-xs font-semibold text-[#263064] text-start">
+            <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
               <span>{t("Password", "كلمة المرور")}</span>
               <input
                 required
@@ -7886,7 +7896,7 @@ function AuthGate() {
 
           <Button
             type="submit"
-            className="mt-5 w-full bg-[#263064] text-[#FCFBF0] hover:bg-[#263064]/90 h-11 text-sm font-bold"
+            className="mt-5 w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11 text-sm font-bold"
             data-testid="button-login-submit"
           >
             {setupRequired
