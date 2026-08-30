@@ -263,7 +263,7 @@ function LogoMark({ compact = false }: { compact?: boolean }) {
       data-testid="brand-logo"
     >
       <div
-        className={`flex items-center justify-center overflow-hidden rounded-lg bg-card shadow-[0_0_0_1px_rgba(219,180,108,.45),0_3px_12px_rgba(0,0,0,.28)] ${compact ? "h-14 w-14 shrink-0" : "h-14 w-[176px] max-w-full px-2"}`}
+        className={`flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-[0_0_0_1px_rgba(219,180,108,.45),0_3px_12px_rgba(0,0,0,.28)] ${compact ? "h-14 w-14 shrink-0" : "h-14 w-[176px] max-w-full px-2"}`}
       >
         <img
           src={
@@ -4728,7 +4728,7 @@ function LibraryPage() {
         arabic="المكتبة"
         description={t(
           "A living catalogue for the stories, references and discoveries on every shelf.",
-          "فهرس حيّ للقصص والمراجع والاكتشافات على كل رف.",
+          "فهرس حيّ للقصص والمراجع والاكت��افات على كل رف.",
         )}
         action={
           <div className="flex items-center gap-2">
@@ -5764,7 +5764,7 @@ function BorrowsPage() {
               />
               <span>
                 {scannerAt
-                  ? `${t("Connected", "متصل")} · ${scannerAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  ? `${t("Connected", "متص��")} · ${scannerAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                   : t("Not detected", "غير مكتشف")}
               </span>
             </span>
@@ -7850,7 +7850,7 @@ function AuthGate() {
                 )
               : t(
                   "Enter your administrator credentials to access the school workspace.",
-                  "أدخل اسم المستخدم وكلمة المرور للمتابعة إلى مساحة العمل.",
+                  "أدخل اسم المستخدم وكلمة المرور للمتابعة إلى مساحة الع��ل.",
                 )}
           </p>
 
