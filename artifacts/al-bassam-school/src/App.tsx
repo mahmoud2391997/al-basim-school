@@ -306,7 +306,7 @@ const navItems = [
   {
     href: "/students",
     label: "Students",
-    arabic: "الطلا��",
+    arabic: "الطلاب",
     icon: GraduationCap,
     tabs: [
       { label: "Student records", arabic: "سجلات الطلاب", href: "/students" },
@@ -3165,7 +3165,7 @@ function EmployeeDialog({
   const fields: { key: keyof EmployeeInput; label: string; arabic: string }[] =
     [
       { key: "fullName", label: "Full name", arabic: "الاسم الكامل" },
-      { key: "fullNameArabic", label: "Arabic name", arabic: "ال��سم بالعربية" },
+      { key: "fullNameArabic", label: "Arabic name", arabic: "الاسم بالعربية" },
       {
         key: "employeeNumber",
         label: "Employee number",
@@ -3233,7 +3233,7 @@ function EmployeeDialog({
             ))}
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-foreground">
-                {t("Status", "الحال��")}
+                {t("Status", "الحالة")}
               </span>
               <select
                 value={form.status}
@@ -3253,7 +3253,7 @@ function EmployeeDialog({
             >
               {t(
                 "Could not save — the employee number or national ID may already be in use.",
-                "تعذر الحفظ — قد يكون الرقم الوظيفي أو ��لهوية الوطنية مستخدماً بالفعل.",
+                "تعذر الحفظ — قد يكون الرقم الوظيفي أو الهوية الوطنية مستخدماً بالفعل.",
               )}
             </div>
           )}
@@ -3380,6 +3380,7 @@ function EmployeesPage() {
   const [editing, setEditing] = useState<Employee | undefined>();
   const [toast, setToast] = useState("");
   const [importOpen, setImportOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const { t } = useT();
   const confirm = useConfirm();
   const query = useGetEmployees(
@@ -3450,7 +3451,7 @@ function EmployeesPage() {
         title: t(`Delete ${employee.fullName}?`, `حذف ${employee.fullName}؟`),
         description: t(
           `Delete ${employee.fullName} from the staff directory? This cannot be undone.`,
-          `حذف ${employee.fullName} من سجل ��لموظفين؟ لا يمكن التراجع عن هذا الإجراء.`,
+          `حذف ${employee.fullName} من سجل الموظفين؟ لا يمكن التراجع عن هذا الإجراء.`,
         ),
         confirmLabel: t("Delete", "حذف"),
         destructive: true,
@@ -3468,6 +3469,38 @@ function EmployeesPage() {
           },
         ),
     );
+  };
+  const visibleEmployeeIds = employeePages.pageItems.map((employee) => employee.id);
+  const allVisibleEmployeesSelected = visibleEmployeeIds.length > 0 && visibleEmployeeIds.every((id) => selectedIds.has(id));
+  const toggleEmployeeSelection = (id: number, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAllVisibleEmployees = (checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      visibleEmployeeIds.forEach((id) => checked ? next.add(id) : next.delete(id));
+      return next;
+    });
+  };
+  const removeSelectedEmployees = () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    confirm({
+      title: t(`Delete ${ids.length} selected employees?`, `حذف ${ids.length} من الموظفين المحددين؟`),
+      description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
+      confirmLabel: t("Delete selected", "حذف المحدد"),
+      destructive: true,
+    }, () => {
+      Promise.all(ids.map((id) => new Promise<void>((resolve) => deletion.mutate({ id }, { onSettled: () => resolve() })))).then(() => {
+        setSelectedIds(new Set());
+        queryClient.invalidateQueries({ queryKey: getGetEmployeesQueryKey() });
+        setToast(t(`${ids.length} employee records deleted`, `تم حذف ${ids.length} من سجلات الموظفين`));
+      });
+    });
   };
   return (
     <div className="rise-in" dir={t("ltr", "rtl")}>
@@ -3545,6 +3578,17 @@ function EmployeesPage() {
           />
         </button>
       </div>
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="toolbar-employee-bulk-actions">
+          <span className="text-sm font-semibold text-foreground">{t(`${selectedIds.size} employees selected`, `تم تحديد ${selectedIds.size} موظف`)}</span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحديد")}</Button>
+            <Button variant="destructive" size="sm" onClick={removeSelectedEmployees} disabled={deletion.isPending}>
+              <Trash2 data-icon="inline-start" /> {t("Delete selected", "حذف المحدد")}
+            </Button>
+          </div>
+        </div>
+      )}
       {toast && (
         <div
           className="mb-4 flex items-center gap-2 rounded-lg border border-[#32B77E]/35 bg-[#32B77E]/10 px-4 py-3 text-sm text-[#32B77E] rise-in"
@@ -3602,7 +3646,9 @@ function EmployeesPage() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
           <div className="grid min-w-[900px] grid-cols-[2fr_1fr_1.1fr_1.2fr_1.1fr_.85fr_88px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-            <SortHeader
+            <div className="flex items-center gap-3">
+              <Checkbox checked={allVisibleEmployeesSelected} onCheckedChange={(checked) => toggleAllVisibleEmployees(checked === true)} aria-label={t("Select all visible employees", "تحديد جميع الموظفين الظاهرين")} data-testid="checkbox-select-all-employees" />
+              <SortHeader
               columnKey="fullName"
               activeKey={sortKey}
               activeDir={sortDir}
@@ -3611,6 +3657,7 @@ function EmployeesPage() {
             >
               <span className="truncate">{t("Employee", "الموظف")}</span>
             </SortHeader>
+            </div>
             <SortHeader
               columnKey="employeeNumber"
               activeKey={sortKey}
@@ -3664,6 +3711,8 @@ function EmployeesPage() {
               employee={employee}
               onEdit={edit}
               onDelete={remove}
+              selected={selectedIds.has(employee.id)}
+              onSelect={(checked) => toggleEmployeeSelection(employee.id, checked)}
             />
           ))}
         </div>
@@ -3710,6 +3759,7 @@ function TeachersPage() {
   const [editing, setEditing] = useState<Teacher | undefined>();
   const [toast, setToast] = useState("");
   const [importOpen, setImportOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const { t } = useT();
   const confirm = useConfirm();
   const query = useGetTeachers(
@@ -3797,6 +3847,38 @@ function TeachersPage() {
         ),
     );
   };
+  const visibleTeacherIds = teacherPages.pageItems.map((teacher) => teacher.id);
+  const allVisibleTeachersSelected = visibleTeacherIds.length > 0 && visibleTeacherIds.every((id) => selectedIds.has(id));
+  const toggleTeacherSelection = (id: number, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAllVisibleTeachers = (checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      visibleTeacherIds.forEach((id) => checked ? next.add(id) : next.delete(id));
+      return next;
+    });
+  };
+  const removeSelectedTeachers = () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    confirm({
+      title: t(`Delete ${ids.length} selected teachers?`, `حذف ${ids.length} من المعلمين المحددين؟`),
+      description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
+      confirmLabel: t("Delete selected", "حذف المحدد"),
+      destructive: true,
+    }, () => {
+      Promise.all(ids.map((id) => new Promise<void>((resolve) => deletion.mutate({ id }, { onSettled: () => resolve() })))).then(() => {
+        setSelectedIds(new Set());
+        queryClient.invalidateQueries({ queryKey: getGetTeachersQueryKey() });
+        setToast(t(`${ids.length} teacher records deleted`, `تم حذف ${ids.length} من سجلات المعلمين`));
+      });
+    });
+  };
   return (
     <div className="rise-in" dir={t("ltr", "rtl")}>
       <PageHeading
@@ -3873,6 +3955,17 @@ function TeachersPage() {
           />
         </button>
       </div>
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="toolbar-teacher-bulk-actions">
+          <span className="text-sm font-semibold text-foreground">{t(`${selectedIds.size} teachers selected`, `تم تحديد ${selectedIds.size} معلم`)}</span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحديد")}</Button>
+            <Button variant="destructive" size="sm" onClick={removeSelectedTeachers} disabled={deletion.isPending}>
+              <Trash2 data-icon="inline-start" /> {t("Delete selected", "حذف المحدد")}
+            </Button>
+          </div>
+        </div>
+      )}
       {toast && (
         <div
           className="mb-4 flex items-center gap-2 rounded-lg border border-[#32B77E]/35 bg-[#32B77E]/10 px-4 py-3 text-sm text-[#32B77E] rise-in"
@@ -3930,7 +4023,9 @@ function TeachersPage() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
           <div className="grid min-w-[900px] grid-cols-[2fr_1fr_1.1fr_1.2fr_1.1fr_.85fr_88px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-            <SortHeader
+            <div className="flex items-center gap-3">
+              <Checkbox checked={allVisibleTeachersSelected} onCheckedChange={(checked) => toggleAllVisibleTeachers(checked === true)} aria-label={t("Select all visible teachers", "تحديد جميع المعلمين الظاهرين")} data-testid="checkbox-select-all-teachers" />
+              <SortHeader
               columnKey="fullName"
               activeKey={sortKey}
               activeDir={sortDir}
@@ -3939,6 +4034,7 @@ function TeachersPage() {
             >
               <span className="truncate">{t("Teacher", "المعلم")}</span>
             </SortHeader>
+            </div>
             <SortHeader
               columnKey="employeeCode"
               activeKey={sortKey}
@@ -3992,6 +4088,8 @@ function TeachersPage() {
               teacher={teacher}
               onEdit={edit}
               onDelete={remove}
+              selected={selectedIds.has(teacher.id)}
+              onSelect={(checked) => toggleTeacherSelection(teacher.id, checked)}
             />
           ))}
         </div>
@@ -4568,7 +4666,7 @@ function BorrowDialog({
               data-testid="button-save-borrow"
             >
               {create.isPending
-                ? t("Saving���", "جارٍ الحفظ…")
+                ? t("Saving…", "جارٍ الحفظ…")
                 : t("Record borrow", "تسجيل الاستعارة")}
             </Button>
           </DialogFooter>
@@ -4594,6 +4692,7 @@ function LibraryPage() {
   const [presetBarcode, setPresetBarcode] = useState<string | undefined>();
   const [scannerAt, setScannerAt] = useState<Date | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   useEffect(() => {
     let stamps: number[] = [];
     const onKey = (event: KeyboardEvent) => {
@@ -4793,6 +4892,39 @@ function LibraryPage() {
       setScanning(false);
       setScan("");
     }
+  };
+  const visibleBookIds = bookPages.pageItems.map((book) => book.id);
+  const allVisibleBooksSelected = visibleBookIds.length > 0 && visibleBookIds.every((id) => selectedIds.has(id));
+  const toggleBookSelection = (id: number, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAllVisibleBooks = (checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      visibleBookIds.forEach((id) => checked ? next.add(id) : next.delete(id));
+      return next;
+    });
+  };
+  const removeSelectedBooks = () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    confirm({
+      title: t(`Delete ${ids.length} selected books?`, `حذف ${ids.length} من الكتب المحددة؟`),
+      description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
+      confirmLabel: t("Delete selected", "حذف المحدد"),
+      destructive: true,
+    }, () => {
+      Promise.all(ids.map((id) => new Promise<void>((resolve) => deletion.mutate({ id }, { onSettled: () => resolve() })))).then(() => {
+        setSelectedIds(new Set());
+        queryClient.invalidateQueries({ queryKey: getGetBooksQueryKey() });
+        setScanned(undefined);
+        setToast(t(`${ids.length} books removed from the catalogue`, `تم حذف ${ids.length} من الكتب من الفهرس`));
+      });
+    });
   };
   return (
     <div className="rise-in" dir={t("ltr", "rtl")}>
@@ -5025,9 +5157,20 @@ function LibraryPage() {
           </button>
         </div>
       </div>
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="toolbar-book-bulk-actions">
+          <span className="text-sm font-semibold text-foreground">{t(`${selectedIds.size} books selected`, `تم تحديد ${selectedIds.size} كتاب`)}</span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحديد")}</Button>
+            <Button variant="destructive" size="sm" onClick={removeSelectedBooks} disabled={deletion.isPending}>
+              <Trash2 data-icon="inline-start" /> {t("Delete selected", "حذف المحدد")}
+            </Button>
+          </div>
+        </div>
+      )}
       {toast && (
         <div
-          className="mb-4 flex items-center gap-2 rounded-lg border border-[#32B77E]/35 bg-[#32B77E]/10 px-4 py-3 text-sm text-[#32B77E]"
+          className="mb-4 flex items-center gap-2 rounded-lg border border-[#32B77E]/35 bg-[#32B77E]/10 px-4 py-3 text-sm text-[#32B77E] rise-in"
           data-testid="status-book-action"
         >
           <Check size={16} />
@@ -5089,7 +5232,9 @@ function LibraryPage() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
           <div className="grid min-w-[920px] grid-cols-[2fr_1.1fr_.8fr_1.25fr_.75fr_1.1fr_250px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-            <SortHeader
+            <div className="flex items-center gap-3">
+              <Checkbox checked={allVisibleBooksSelected} onCheckedChange={(checked) => toggleAllVisibleBooks(checked === true)} aria-label={t("Select all visible books", "تحديد جميع الكتب الظاهرة")} data-testid="checkbox-select-all-books" />
+              <SortHeader
               columnKey="title"
               activeKey={sortKey}
               activeDir={sortDir}
@@ -5098,6 +5243,7 @@ function LibraryPage() {
             >
               <span className="truncate">{t("Book", "الكتاب")}</span>
             </SortHeader>
+            </div>
             <SortHeader
               columnKey="author"
               activeKey={sortKey}
@@ -5152,6 +5298,8 @@ function LibraryPage() {
               onEdit={edit}
               onDelete={remove}
               onConditionChange={handleConditionChange}
+              selected={selectedIds.has(book.id)}
+              onSelect={(checked) => toggleBookSelection(book.id, checked)}
             />
           ))}
         </div>
