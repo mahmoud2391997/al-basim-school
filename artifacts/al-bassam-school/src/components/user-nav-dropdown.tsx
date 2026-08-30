@@ -10,6 +10,8 @@ import {
   Check,
   Shield,
   User,
+  Moon,
+  Sun,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,14 +25,18 @@ import {
 interface UserNavDropdownProps {
   t: (en: string, ar: string) => string;
   language: "en" | "ar";
+  theme: "light" | "dark";
   onLanguageChange: (lang: "en" | "ar") => void;
+  onThemeChange: () => void;
   onNavigate: (path: string) => void;
 }
 
 export function UserNavDropdown({
   t,
   language,
+  theme,
   onLanguageChange,
+  onThemeChange,
   onNavigate,
 }: UserNavDropdownProps) {
   const [open, setOpen] = useState(false);
@@ -169,6 +175,42 @@ export function UserNavDropdown({
         >
           <span>English (الإنجليزية)</span>
           {language === "en" && <Check size={14} className="text-primary" />}
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        {/* Appearance / Theme Selection */}
+        <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            {theme === "dark" ? <Moon size={12} /> : <Sun size={12} />}
+            <span>{t("Appearance", "المظهر")}</span>
+          </div>
+        </div>
+
+        <DropdownMenuItem
+          onClick={() => {
+            if (theme === "dark") onThemeChange();
+          }}
+          className={`cursor-pointer justify-between px-3 py-1.5 text-xs ${
+            theme === "light" ? "font-bold text-primary bg-primary/5" : "text-muted-foreground"
+          }`}
+          data-testid="menu-item-theme-light"
+        >
+          <span>{t("Light", "فاتح")}</span>
+          {theme === "light" && <Check size={14} className="text-primary" />}
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onClick={() => {
+            if (theme === "light") onThemeChange();
+          }}
+          className={`cursor-pointer justify-between px-3 py-1.5 text-xs ${
+            theme === "dark" ? "font-bold text-primary bg-primary/5" : "text-muted-foreground"
+          }`}
+          data-testid="menu-item-theme-dark"
+        >
+          <span>{t("Dark", "داكن")}</span>
+          {theme === "dark" && <Check size={14} className="text-primary" />}
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

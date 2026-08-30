@@ -41,6 +41,7 @@ import {
   Library,
   LogOut,
   Menu,
+  Moon,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -49,6 +50,7 @@ import {
   Settings2,
   SlidersHorizontal,
   Sparkles,
+  Sun,
   Trash2,
   Upload,
   UsersRound,
@@ -217,6 +219,43 @@ function LanguageProvider({ children }: { children: ReactNode }) {
   );
 }
 
+type ThemeMode = "light" | "dark";
+interface ThemeValue {
+  theme: ThemeMode;
+  toggleTheme: () => void;
+  setTheme: (theme: ThemeMode) => void;
+}
+const ThemeContext = createContext<ThemeValue>({
+  theme: "light",
+  toggleTheme: () => undefined,
+  setTheme: () => undefined,
+});
+const useTheme = () => useContext(ThemeContext);
+
+function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    if (typeof window === "undefined") return "light";
+    const stored = localStorage.getItem("al-bassam-theme");
+    if (stored === "light" || stored === "dark") return stored;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    root.style.colorScheme = theme;
+    localStorage.setItem("al-bassam-theme", theme);
+  }, [theme]);
+  const toggleTheme = useCallback(
+    () => setTheme((prev) => (prev === "dark" ? "light" : "dark")),
+    [],
+  );
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
 function LogoMark({ compact = false }: { compact?: boolean }) {
   return (
     <div
@@ -224,7 +263,7 @@ function LogoMark({ compact = false }: { compact?: boolean }) {
       data-testid="brand-logo"
     >
       <div
-        className={`flex items-center justify-center overflow-hidden rounded-lg bg-[#FCFBF0] shadow-[0_0_0_1px_rgba(219,180,108,.45),0_3px_12px_rgba(0,0,0,.28)] ${compact ? "h-14 w-14 shrink-0" : "h-14 w-[176px] max-w-full px-2"}`}
+        className={`flex items-center justify-center overflow-hidden rounded-lg bg-card shadow-[0_0_0_1px_rgba(219,180,108,.45),0_3px_12px_rgba(0,0,0,.28)] ${compact ? "h-14 w-14 shrink-0" : "h-14 w-[176px] max-w-full px-2"}`}
       >
         <img
           src={
@@ -312,6 +351,7 @@ function Shell({ children }: { children: ReactNode }) {
       return !value;
     });
   const { lang: language, setLanguage, t } = useT();
+  const { theme, toggleTheme } = useTheme();
   const sidebarWidth = collapsed ? 64 : 208;
   const text = t;
 
@@ -364,7 +404,7 @@ function Shell({ children }: { children: ReactNode }) {
             )}
             <button
               onClick={toggleCollapsed}
-              className="rounded-md bg-white p-1.5 text-[#263064] shadow-[0_0_0_1px_rgba(219,180,108,.45)] transition-colors hover:bg-white/85"
+              className="rounded-md bg-white p-1.5 text-[#263064] shadow-[0_0_0_1px_rgba(219,180,108,.45)] transition-colors hover:bg-white/85 dark:bg-sidebar-accent dark:text-sidebar-accent-foreground dark:hover:bg-sidebar-accent/80"
               data-testid="button-collapse-sidebar"
               aria-label={text(
                 collapsed ? "Open sidebar" : "Collapse sidebar",
@@ -658,6 +698,16 @@ function Shell({ children }: { children: ReactNode }) {
               <Search size={18} />
             </button>
 
+            <button
+              onClick={toggleTheme}
+              className="rounded-lg p-2 text-foreground transition-colors hover:bg-muted"
+              data-testid="button-theme-toggle"
+              aria-label={text("Toggle dark mode", "تبديل الوضع الليلي")}
+              title={text("Toggle dark mode", "تبديل الوضع الليلي")}
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
             {/* Notifications Menu Popover */}
             <NotificationsMenu
               t={text}
@@ -671,7 +721,9 @@ function Shell({ children }: { children: ReactNode }) {
             <UserNavDropdown
               t={text}
               language={language}
+              theme={theme}
               onLanguageChange={setLanguage}
+              onThemeChange={toggleTheme}
               onNavigate={navigate}
             />
           </div>
@@ -7860,16 +7912,18 @@ function App() {
     window.location.protocol === "file:" ? useDesktopLocation : undefined;
   return (
     <LanguageProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <ConfirmProvider>
-            <WouterRouter base={routerBase} hook={routerHook}>
-              <AuthGate />
-            </WouterRouter>
-            <Toaster />
-          </ConfirmProvider>
-        </TooltipProvider>
-      </QueryClientProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <ConfirmProvider>
+              <WouterRouter base={routerBase} hook={routerHook}>
+                <AuthGate />
+              </WouterRouter>
+              <Toaster />
+            </ConfirmProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
     </LanguageProvider>
   );
 }

@@ -325,8 +325,18 @@
   }
 }
 
+/* Dark mode overrides for hardcoded navy text used throughout the UI.
+   The navy (#263064) is only legible on the light theme; in dark mode we
+   fall back to the semantic foreground so headings stay readable. */
+.dark .text-\[\#263064\] {
+  color: hsl(var(--foreground));
+}
+.dark .bg-\[\#FCFBF0\] {
+  background-color: hsl(var(--card));
+}
+
 @layer base {
-  html { background: #FCFBF0; }
+  html { background: hsl(var(--background)); }
   body { min-width: 320px; font-family: var(--app-font-sans); font-size: 16px; line-height: 1.6; }
   button, a, input, select { -webkit-tap-highlight-color: transparent; }
   ::selection { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
