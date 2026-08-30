@@ -1,4 +1,6 @@
 import { useEffect, useState, type ComponentType } from "react";
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 
 import { modules as discoveredModules } from "./.generated/mockup-components";
 
@@ -97,23 +99,36 @@ function getPreviewExamplePath(): string {
 }
 
 function Gallery() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
-      <div className="text-center max-w-md">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-3">
-          Component Preview Server
-        </h1>
-        <p className="text-gray-500 mb-4">
-          This server renders individual components for the workspace canvas.
-        </p>
-        <p className="text-sm text-gray-400">
-          Access component previews at{" "}
-          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-            {getPreviewExamplePath()}
-          </code>
-        </p>
+    <main className="flex min-h-screen items-center justify-center bg-background p-8 text-foreground">
+      <div className="flex w-full max-w-md flex-col items-center gap-6 text-center">
+        <button
+          type="button"
+          onClick={() => setTheme(isDark ? "light" : "dark")}
+          className="inline-flex size-10 items-center justify-center rounded-md border border-border bg-card text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
+        >
+          {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+        </button>
+        <div className="flex flex-col gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Component Preview Server
+          </h1>
+          <p className="leading-6 text-muted-foreground">
+            This server renders individual components for the workspace canvas.
+          </p>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Access component previews at{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-muted-foreground">
+              {getPreviewExamplePath()}
+            </code>
+          </p>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
 
