@@ -140,6 +140,7 @@ import {
   exportToExcel,
 } from "@/utils/import-export";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -305,7 +306,7 @@ const navItems = [
   {
     href: "/students",
     label: "Students",
-    arabic: "الطلاب",
+    arabic: "الطلا��",
     icon: GraduationCap,
     tabs: [
       { label: "Student records", arabic: "سجلات الطلاب", href: "/students" },
@@ -2143,10 +2144,14 @@ function StudentRow({
   student,
   onEdit,
   onDelete,
+  selected,
+  onSelect,
 }: {
   student: Student;
   onEdit: (student: Student) => void;
   onDelete: (student: Student) => void;
+  selected: boolean;
+  onSelect: (checked: boolean) => void;
 }) {
   const { t } = useT();
   const statusLabel =
@@ -2161,6 +2166,12 @@ function StudentRow({
       data-testid={`row-student-${student.id}`}
     >
       <div className="flex items-center gap-3 text-start">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={onSelect}
+          aria-label={t(`Select ${student.fullName}`, `تحديد ${student.fullName}`)}
+          data-testid={`checkbox-student-${student.id}`}
+        />
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#14BAC6]/10 text-xs font-bold text-[#14BAC6]">
           {student.fullName
             .split(" ")
@@ -2252,6 +2263,7 @@ function StudentsPage() {
   const [editing, setEditing] = useState<Student | undefined>();
   const [toast, setToast] = useState("");
   const [importOpen, setImportOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const { t } = useT();
   const confirm = useConfirm();
   const query = useGetStudents(
@@ -2307,6 +2319,38 @@ function StudentsPage() {
     [sorted, filters.values, filterFields],
   );
   const studentPages = usePagination(filtered);
+  const visibleStudentIds = studentPages.pageItems.map((student) => student.id);
+  const allVisibleStudentsSelected = visibleStudentIds.length > 0 && visibleStudentIds.every((id) => selectedIds.has(id));
+  const toggleStudentSelection = (id: number, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAllVisibleStudents = (checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      visibleStudentIds.forEach((id) => checked ? next.add(id) : next.delete(id));
+      return next;
+    });
+  };
+  const removeSelectedStudents = () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    confirm({
+      title: t(`Delete ${ids.length} selected students?`, `حذف ${ids.length} من الطلاب المحددين؟`),
+      description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
+      confirmLabel: t("Delete selected", "حذف المحدد"),
+      destructive: true,
+    }, () => {
+      Promise.all(ids.map((id) => new Promise<void>((resolve) => deletion.mutate({ id }, { onSettled: () => resolve() })))).then(() => {
+        setSelectedIds(new Set());
+        queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
+        setToast(t(`${ids.length} student records deleted`, `تم حذف ${ids.length} من سجلات الطلاب`));
+      });
+    });
+  };
   const openNew = () => {
     setEditing(undefined);
     setDialogOpen(true);
@@ -2404,6 +2448,17 @@ function StudentsPage() {
           t={t}
         />
       </div>
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="toolbar-student-bulk-actions">
+          <span className="text-sm font-semibold text-foreground">{t(`${selectedIds.size} students selected`, `تم تحديد ${selectedIds.size} طالب`)}</span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحديد")}</Button>
+            <Button variant="destructive" size="sm" onClick={removeSelectedStudents} disabled={deletion.isPending}>
+              <Trash2 data-icon="inline-start" /> {t("Delete selected", "حذف المحدد")}
+            </Button>
+          </div>
+        </div>
+      )}
       {toast && (
         <div
           className="mb-4 flex items-center gap-2 rounded-lg border border-[#32B77E]/35 bg-[#32B77E]/10 px-4 py-3 text-sm text-[#32B77E] rise-in"
@@ -2470,7 +2525,9 @@ function StudentsPage() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
           <div className="grid min-w-[1000px] grid-cols-[2fr_.7fr_1.1fr_1.15fr_.9fr_1.25fr_1fr_.8fr_88px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
-            <SortHeader
+            <div className="flex items-center gap-3">
+              <Checkbox checked={allVisibleStudentsSelected} onCheckedChange={(checked) => toggleAllVisibleStudents(checked === true)} aria-label={t("Select all visible students", "تحديد جميع الطلاب الظاهرين")} data-testid="checkbox-select-all-students" />
+              <SortHeader
               columnKey="fullName"
               activeKey={sortKey}
               activeDir={sortDir}
@@ -2479,6 +2536,7 @@ function StudentsPage() {
             >
               <span className="truncate">{t("Student", "الطالب")}</span>
             </SortHeader>
+            </div>
             <SortHeader
               columnKey="gender"
               activeKey={sortKey}
@@ -2550,6 +2608,8 @@ function StudentsPage() {
               student={student}
               onEdit={edit}
               onDelete={remove}
+              selected={selectedIds.has(student.id)}
+              onSelect={(checked) => toggleStudentSelection(student.id, checked)}
             />
           ))}
           <Pagination
@@ -3168,7 +3228,7 @@ function EmployeeDialog({
             ))}
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-foreground">
-                {t("Status", "الحالة")}
+                {t("Status", "الحال��")}
               </span>
               <select
                 value={form.status}
@@ -3380,7 +3440,7 @@ function EmployeesPage() {
         title: t(`Delete ${employee.fullName}?`, `حذف ${employee.fullName}؟`),
         description: t(
           `Delete ${employee.fullName} from the staff directory? This cannot be undone.`,
-          `حذف ${employee.fullName} من سجل الموظفين؟ لا يمكن التراجع عن هذا الإجراء.`,
+          `حذف ${employee.fullName} من سجل ��لموظفين؟ لا يمكن التراجع عن هذا الإجراء.`,
         ),
         confirmLabel: t("Delete", "حذف"),
         destructive: true,
@@ -4498,7 +4558,7 @@ function BorrowDialog({
               data-testid="button-save-borrow"
             >
               {create.isPending
-                ? t("Saving…", "جارٍ الحفظ…")
+                ? t("Saving���", "جارٍ الحفظ…")
                 : t("Record borrow", "تسجيل الاستعارة")}
             </Button>
           </DialogFooter>
