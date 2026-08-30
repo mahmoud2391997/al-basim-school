@@ -88,7 +88,7 @@ export function UserNavDropdown({
         {/* Profile Info */}
         <DropdownMenuLabel className="p-2 font-normal">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DBB46C]/20 text-sm font-bold text-[#263064]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DBB46C]/20 text-sm font-bold text-[#263064] dark:text-[#263064]!">
               LA
             </div>
             <div className="min-w-0 flex-1">

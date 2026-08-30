@@ -305,7 +305,7 @@ const navItems = [
   {
     href: "/students",
     label: "Students",
-    arabic: "الطلاب",
+    arabic: "الطلا��",
     icon: GraduationCap,
     tabs: [
       { label: "Student records", arabic: "سجلات الطلاب", href: "/students" },
@@ -4768,7 +4768,7 @@ function LibraryPage() {
       />
       <form
         onSubmit={handleScan}
-        className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center"
+        className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center dark:border-[#DBB46C]/40 dark:from-card dark:to-[#DBB46C]/10"
         data-testid="form-scan-barcode"
       >
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-[#DBB46C]">
@@ -5260,7 +5260,7 @@ function BookRow({
             )}
             {damagedCopies > 0 && (
               <span
-                className="rounded-full bg-accent/20 px-1.5 py-0.5 normal-case tracking-normal text-accent-foreground"
+                className="rounded-full bg-accent/20 px-1.5 py-0.5 normal-case tracking-normal text-accent-foreground dark:text-[#EC9F42]"
                 data-testid={`badge-book-damaged-${book.id}`}
               >
                 {damagedCopies} {t("damaged", "تالف")}
@@ -5324,7 +5324,7 @@ function BookRow({
           <button
             onClick={() => onConditionChange(book, "damaged")}
             disabled={available <= 0}
-            className="rounded-md border border-accent/40 px-2 py-1 text-[10px] font-semibold text-accent-foreground hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-md border border-accent/40 px-2 py-1 text-[10px] font-semibold text-accent-foreground hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40 dark:text-[#EC9F42] dark:border-accent/50"
             data-testid={`button-damaged-book-${book.id}`}
           >
             {t("Broken", "تالف")}
@@ -5619,7 +5619,7 @@ function ReturnBorrowControls({
         <button
           onClick={() => run("damaged")}
           disabled={pending}
-          className={`rounded-md border border-accent/40 ${extra} font-semibold text-accent-foreground hover:bg-accent/10 disabled:opacity-40`}
+          className={`rounded-md border border-accent/40 ${extra} font-semibold text-accent-foreground hover:bg-accent/10 disabled:opacity-40 dark:text-[#EC9F42] dark:border-accent/50`}
           data-testid={`button-return-borrow-damaged-${borrow.id}`}
           title={t("Return as damaged", "الإعادة ككتاب تالف")}
         >
@@ -5749,7 +5749,7 @@ function BorrowsPage() {
       />
       <form
         onSubmit={handleScan}
-        className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center"
+        className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center dark:border-[#DBB46C]/40 dark:from-card dark:to-[#DBB46C]/10"
         data-testid="form-borrows-scan-barcode"
       >
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-[#DBB46C]">
@@ -6108,7 +6108,7 @@ function BorrowHistoryPage() {
         {t("Returned", "مُعاد")}
       </span>
     ) : (
-      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-foreground">
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-foreground">
         {t("Active", "نشط")}
       </span>
     );
@@ -7458,8 +7458,8 @@ function SettingsPage() {
             </div>
           )}
         </section>
-        <section className="rounded-xl bg-primary p-7 text-primary-foreground">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#DBB46C] text-foreground">
+      <section className="rounded-xl bg-primary p-7 text-primary-foreground">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#DBB46C] text-foreground">
             <SlidersHorizontal size={18} />
           </div>
           <h2 className="mt-7 text-2xl font-bold leading-tight tracking-[-.04em]">
