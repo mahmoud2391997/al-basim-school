@@ -5,14 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { StudentInputGender } from './studentInputGender';
-
 export interface StudentInput {
   /** @minLength 1 */
   fullName: string;
   /** @minLength 1 */
   fullNameArabic: string;
-  gender: StudentInputGender;
   /** @minLength 1 */
   studentNumber: string;
   /** @minLength 1 */

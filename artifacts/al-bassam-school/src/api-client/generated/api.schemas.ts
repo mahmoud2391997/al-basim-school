@@ -37,14 +37,6 @@ export interface DashboardSummary {
   recentActivity: Activity[];
 }
 
-export type StudentGender = typeof StudentGender[keyof typeof StudentGender];
-
-
-export const StudentGender = {
-  male: 'male',
-  female: 'female',
-} as const;
-
 export type StudentStatus = typeof StudentStatus[keyof typeof StudentStatus];
 
 
@@ -58,7 +50,6 @@ export interface Student {
   id: number;
   fullName: string;
   fullNameArabic: string;
-  gender: StudentGender;
   studentNumber: string;
   nationalId: string;
   grade: string;
@@ -69,20 +60,11 @@ export interface Student {
   enrollmentDate: string;
 }
 
-export type StudentInputGender = typeof StudentInputGender[keyof typeof StudentInputGender];
-
-
-export const StudentInputGender = {
-  male: 'male',
-  female: 'female',
-} as const;
-
 export interface StudentInput {
   /** @minLength 1 */
   fullName: string;
   /** @minLength 1 */
   fullNameArabic: string;
-  gender: StudentInputGender;
   /** @minLength 1 */
   studentNumber: string;
   /** @minLength 1 */

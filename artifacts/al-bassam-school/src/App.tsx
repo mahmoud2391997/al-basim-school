@@ -1331,6 +1331,17 @@ function Dashboard() {
   const rawBorrows = Array.isArray(borrowsQuery.data) ? borrowsQuery.data : [];
   const rawBooks = Array.isArray(booksQuery.data) ? booksQuery.data : [];
   const rawStudents = Array.isArray(studentsQuery.data) ? studentsQuery.data : [];
+  const mostBorrowedStudents = useMemo(() => {
+    const counts = new Map<number, { student: (typeof rawStudents)[number]; count: number }>();
+    rawBorrows.forEach((borrow) => {
+      if (borrow.borrowerType !== "student" || borrow.studentId == null) return;
+      const student = rawStudents.find((item) => item.id === borrow.studentId);
+      if (!student) return;
+      const current = counts.get(student.id);
+      counts.set(student.id, { student, count: (current?.count ?? 0) + 1 });
+    });
+    return Array.from(counts.values()).sort((a, b) => b.count - a.count).slice(0, 5);
+  }, [rawBorrows, rawStudents]);
 
   const summaryData = summaryQuery.data ?? fallbackSummary;
   const totalBooks = rawBooks.reduce((sum, b) => sum + Number(b.copies || 0), 0) || Number(summaryData.books ?? 0);
@@ -1546,6 +1557,27 @@ function Dashboard() {
           </div>
         </>
       )}
+
+      <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{t("Student circulation", "حركة الطلاب")}</div>
+            <h2 className="mt-1 text-xl font-bold text-foreground">{t("Most borrowed students", "أكثر الطلاب استعارة")}</h2>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setLocation("/library/analytics")}>{t("View analytics", "عرض التحليلات")}</Button>
+        </div>
+        {mostBorrowedStudents.length ? (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {mostBorrowedStudents.map(({ student, count }, index) => (
+              <div key={student.id} className="rounded-lg border border-border bg-muted/20 p-3">
+                <div className="flex items-center justify-between text-xs font-bold text-primary"><span>#{index + 1}</span><span>{count} {t("loans", "إعارات")}</span></div>
+                <div className="mt-2 truncate text-sm font-semibold text-foreground">{student.fullName}</div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">{student.grade} · {student.className}</div>
+              </div>
+            ))}
+          </div>
+        ) : <div className="mt-4 rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">{t("No student borrowing activity yet.", "لا توجد حركة استعارة للطلاب بعد.")}</div>}
+      </section>
 
       {/* Main Operational Section: Live Stream & Quick Action Center */}
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
@@ -1858,11 +1890,10 @@ function Dashboard() {
   );
 }
 
-type StudentFormValue = Omit<StudentInput, "gender"> & { gender: string; id?: number };
+type StudentFormValue = StudentInput & { id?: number };
 const blankStudent: StudentFormValue = {
   fullName: "",
   fullNameArabic: "",
-  gender: "",
   studentNumber: "",
   nationalId: "",
   grade: "",
@@ -1910,7 +1941,6 @@ function StudentDialog({
     if (
       !form.fullName ||
       !form.fullNameArabic ||
-      !form.gender ||
       !form.studentNumber ||
       !form.nationalId ||
       !form.grade ||
@@ -1920,7 +1950,6 @@ function StudentDialog({
     const data: StudentInput = {
       fullName: form.fullName,
       fullNameArabic: form.fullNameArabic,
-      gender: form.gender as StudentInput["gender"],
       studentNumber: form.studentNumber,
       nationalId: form.nationalId,
       grade: form.grade,
@@ -1961,16 +1990,6 @@ function StudentDialog({
       label: "Arabic name",
       arabic: "الاسم بالعربية",
       placeholder: "مثال: سارة الحربي",
-    },
-    {
-      key: "gender",
-      label: "Gender",
-      arabic: "الجنس",
-      placeholder: "",
-      options: [
-        ["male", "Boy", "ولد"],
-        ["female", "Girl", "بنت"],
-      ],
     },
     {
       key: "studentNumber",
@@ -2236,16 +2255,6 @@ function StudentRow({
         </div>
       </div>
       <span
-        className={`justify-self-center text-center text-xs font-medium ${student.gender === "female" ? "text-[#14BAC6]" : "text-foreground"}`}
-      >
-        {student.gender
-          ? t(
-              student.gender === "male" ? "Male" : "Female",
-              student.gender === "male" ? "ذكر" : "أنثى",
-            )
-          : t("—", "—")}
-      </span>
-      <span
         className="justify-self-center text-center font-mono text-xs text-muted-foreground"
         dir="ltr"
       >
@@ -2331,7 +2340,6 @@ function StudentsPage() {
   const students = Array.isArray(query.data) ? query.data : [];
   const sortColumns: SortColumn<Student>[] = [
     { key: "fullName", accessor: (s) => s.fullName },
-    { key: "gender", accessor: (s) => s.gender },
     { key: "studentNumber", accessor: (s) => s.studentNumber },
     { key: "nationalId", accessor: (s) => s.nationalId },
     { key: "class", accessor: (s) => `${s.grade ?? ""} ${s.className ?? ""}` },
@@ -2345,13 +2353,6 @@ function StudentsPage() {
     "fullName",
   );
   const filterFields: FilterField[] = [
-    {
-      key: "gender",
-      label: "Gender",
-      arabic: "الجنس",
-      options: ["male", "female"],
-      accessor: (s) => s.gender,
-    },
     {
       key: "status",
       label: "Status",
@@ -2584,15 +2585,6 @@ function StudentsPage() {
               <span className="truncate">{t("Student", "الطالب")}</span>
             </SortHeader>
             </div>
-            <SortHeader
-              columnKey="gender"
-              activeKey={sortKey}
-              activeDir={sortDir}
-              onSort={toggleSort}
-              align="center"
-            >
-              {t("Gender", "الجنس")}
-            </SortHeader>
             <SortHeader
               columnKey="studentNumber"
               activeKey={sortKey}
@@ -6724,6 +6716,16 @@ function AnalyticsPage() {
   }, [borrows, students, t]);
 
   const totalBorrowCount = borrowsByGrade.reduce((sum, g) => sum + g.count, 0);
+  const mostBorrowedStudents = useMemo(() => {
+    const studentMap = new Map(students.map((student) => [student.id, student]));
+    const counts = new Map<number, number>();
+    borrows.forEach((borrow) => {
+      if (borrow.borrowerType === "student" && borrow.studentId != null) counts.set(borrow.studentId, (counts.get(borrow.studentId) || 0) + 1);
+    });
+    return Array.from(counts, ([id, count]) => ({ student: studentMap.get(id), count }))
+      .filter((item): item is { student: (typeof students)[number]; count: number } => Boolean(item.student))
+      .sort((a, b) => b.count - a.count);
+  }, [borrows, students]);
 
   return (
     <div className="rise-in">
@@ -6799,6 +6801,11 @@ function AnalyticsPage() {
 
           {reportTab === "overview" && (
             <>
+              <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
+                <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{t("Student ranking", "ترتيب الطلاب")}</div>
+                <h2 className="mt-1 text-xl font-bold text-foreground">{t("Most borrowed students", "أكثر الطلاب استعارة")}</h2>
+                {mostBorrowedStudents.length ? <div className="mt-4 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-border text-xs text-muted-foreground"><th className="px-3 py-2 text-start">{t("Rank", "الترتيب")}</th><th className="px-3 py-2 text-start">{t("Student", "الطالب")}</th><th className="px-3 py-2 text-center">{t("Loans", "الإعارات")}</th></tr></thead><tbody>{mostBorrowedStudents.map(({ student, count }, index) => <tr key={student.id} className="border-b border-border/50"><td className="px-3 py-2 font-bold text-primary">#{index + 1}</td><td className="px-3 py-2 font-medium text-foreground">{student.fullName}</td><td className="px-3 py-2 text-center text-muted-foreground">{count}</td></tr>)}</tbody></table></div> : <div className="mt-4 rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">{t("No student borrowing activity yet.", "لا توجد حركة استعارة للطلاب بعد.")}</div>}
+              </section>
               <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
                 <div className="flex items-center justify-between">
                   <div>
