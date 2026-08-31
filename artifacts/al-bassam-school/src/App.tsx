@@ -778,7 +778,7 @@ function Shell({ children }: { children: ReactNode }) {
           language={language}
           onNavigate={navigate}
         />
-        <div className="px-5 py-7 sm:px-8 lg:px-10">{children}</div>
+        <div key={activeSystem} className="px-5 py-7 sm:px-8 lg:px-10">{children}</div>
       </main>
     </div>
   );
@@ -6218,7 +6218,7 @@ function BorrowsPage() {
               onSort={toggleSort}
               align="center"
             >
-              {t("Due date", "تاريخ الاستحقاق")}
+              {t("Due date", "تاريخ الا��تحقاق")}
             </SortHeader>
             <span className="text-center">{t("Return / status", "الإعادة / الحالة")}</span>
           </div>
