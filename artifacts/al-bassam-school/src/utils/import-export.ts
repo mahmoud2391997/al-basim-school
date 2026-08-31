@@ -37,7 +37,6 @@ const SCHEMAS: Record<EntityType, EntitySchema> = {
     columns: [
       { key: "fullName", header: "Full Name", headerAr: "الاسم الكامل", required: true },
       { key: "fullNameArabic", header: "Arabic Name", headerAr: "الاسم بالعربية", required: true },
-      { key: "gender", header: "Gender", headerAr: "الجنس", required: true },
       { key: "studentNumber", header: "Student No", headerAr: "رقم الطالب", required: true },
       { key: "nationalId", header: "National ID", headerAr: "الهوية الوطنية", required: true },
       { key: "grade", header: "Grade", headerAr: "الصف", required: true },
@@ -133,7 +132,6 @@ export function downloadTemplate(type: EntityType) {
   const example = schema.columns.map((c) => {
     if (c.key === "status") return "active";
     if (c.key === "grade") return "Grade 8";
-    if (c.key === "gender") return "male";
     if (c.key === "language") return "English";
     if (c.type === "number") return "1";
     if (c.type === "date") return "2025-01-01";
@@ -218,10 +216,18 @@ export function exportToExcel(data: Record<string, any>[], type: EntityType) {
   const headers = schema.columns.map((c) => c.header);
   const rows = data.map((row) => schema.columns.map((c) => row[c.key] ?? ""));
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  schema.columns.forEach((_, index) => {
+    const cell = ws[XLSX.utils.encode_cell({ r: 0, c: index })];
+    if (cell) cell.s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "263064" } }, alignment: { horizontal: "center" } };
+    for (let rowIndex = 1; rowIndex <= rows.length; rowIndex++) {
+      const bodyCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: index })];
+      if (bodyCell) bodyCell.s = { font: { color: { rgb: rowIndex % 2 ? "263064" : "1F2937" } } };
+    }
+  });
   ws["!cols"] = schema.columns.map(() => ({ wch: 20 }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, schema.label);
-  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array", cellStyles: true });
   downloadBlob(
     new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
     generateFilename(type, "xlsx"),
@@ -240,7 +246,7 @@ function buildExportTableHTML(schema: EntitySchema, data: Record<string, any>[])
       const cells = schema.columns
         .map((c) => {
           const val = String(row[c.key] ?? "");
-          return `<td style="padding:6px 10px;font-size:10px;border:1px solid #e5e5e5;background:${bg};font-family:Arial,sans-serif;">${val}</td>`;
+          return `<td style="padding:6px 10px;font-size:10px;border:1px solid #e5e5e5;background:${bg};color:${i % 2 === 0 ? "#263064" : "#1F2937"};font-family:Arial,sans-serif;">${val}</td>`;
         })
         .join("");
       return `<tr>${cells}</tr>`;
