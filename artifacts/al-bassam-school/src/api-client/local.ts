@@ -43,7 +43,7 @@ import type {
 export type SchoolSystem = 'boys' | 'girls';
 
 const SYSTEM_KEY = 'al-bassam-active-system';
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
 const LS = {
   students: 'students',
   teachers: 'teachers',
