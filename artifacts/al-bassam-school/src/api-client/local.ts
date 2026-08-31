@@ -1,5 +1,5 @@
 /**
- * localStorage-backed API client for the standalone web version.
+ * In-memory API client for the standalone web version.
  * Exports the exact same interface as the generated api.ts so App.tsx
  * can import from '@workspace/api-client-react' unchanged.
  */
@@ -38,161 +38,34 @@ import type {
   TeacherInput,
 } from './generated/api.schemas';
 
-// ── localStorage helpers ──────────────────────────────────────────────
+// ── In-memory web client ───────────────────────────────────────────────
+// The web app intentionally keeps data only for the current browser session.
+// The desktop app owns durable storage through its native API.
 
 export type SchoolSystem = 'boys' | 'girls';
 
-const SYSTEM_KEY = 'al-bassam-active-system';
-const STORAGE_VERSION = 4;
-const RESET_KEY = 'al-bassam-storage-reset-v4';
 const LS = {
-  students: 'students',
-  teachers: 'teachers',
-  books: 'books',
-  employees: 'employees',
-  borrows: 'borrows',
-  years: 'academic-years',
-  activity: 'activity',
+  students: 'students', teachers: 'teachers', books: 'books', employees: 'employees',
+  borrows: 'borrows', years: 'academic-years', activity: 'activity',
 } as const;
+let activeSystem: SchoolSystem = 'boys';
+const memoryStore: Record<string, unknown[]> = {};
+const counters: Record<string, number> = {};
 
-function getSystem(): SchoolSystem {
-  if (typeof window === 'undefined') return 'boys';
-  return localStorage.getItem(SYSTEM_KEY) === 'girls' ? 'girls' : 'boys';
-}
-
+function getSystem(): SchoolSystem { return activeSystem; }
 export function setActiveSchoolSystem(system: SchoolSystem) {
-  localStorage.setItem(SYSTEM_KEY, system);
-  window.dispatchEvent(new StorageEvent('storage', { key: SYSTEM_KEY, newValue: system }));
+  activeSystem = system;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('school-system-change'));
 }
-
-export function getActiveSchoolSystem(): SchoolSystem {
-  return getSystem();
-}
-
-function storageKey(key: string) {
-  return `al-bassam:v${STORAGE_VERSION}:${getSystem()}:${key}`;
-}
-
-function read<T>(key: string): T[] {
-  try {
-    const raw = localStorage.getItem(storageKey(key));
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function write<T>(key: string, data: T[]) {
-  try {
-    localStorage.setItem(storageKey(key), JSON.stringify(data));
-    window.dispatchEvent(new StorageEvent('storage', { key: storageKey(key), newValue: JSON.stringify(data) }));
-  } catch {
-    // Storage can be unavailable or full; keep the in-memory mutation usable.
-  }
-}
-
+export function getActiveSchoolSystem(): SchoolSystem { return getSystem(); }
+function storageKey(key: string) { return `${getSystem()}:${key}`; }
+function read<T>(key: string): T[] { return [...((memoryStore[storageKey(key)] || []) as T[])]; }
+function write<T>(key: string, data: T[]) { memoryStore[storageKey(key)] = [...data]; }
 function nextId(key: string): number {
-  const counterKey = storageKey(`${key}-next-id`);
-  const current = Math.max(1, Number(localStorage.getItem(counterKey) || '1'));
-  localStorage.setItem(counterKey, String(current + 1));
+  const current = counters[storageKey(key)] || 1;
+  counters[storageKey(key)] = current + 1;
   return current;
 }
-
-// ── Seed data (runs once) ─────────────────────────────────────────────
-
-const SEED_KEY = 'seeded-v3-gender-scoped';
-
-function seedIfEmpty() {
-  if (localStorage.getItem(storageKey(SEED_KEY))) return;
-
-  const years: AcademicYear[] = [
-    { id: 1, label: '2024 / 2025', startDate: '2024-09-01', endDate: '2025-06-30', isCurrent: false },
-    { id: 2, label: '2025 / 2026', startDate: '2025-09-01', endDate: '2026-06-30', isCurrent: true },
-  ];
-  write(LS.years, years);
-  localStorage.setItem(storageKey(`${LS.years}-next-id`), '3');
-
-  const teachers: Teacher[] = [
-    {
-      id: 1, fullName: 'Adel Khamis', fullNameArabic: 'عادل خميس', name: 'Adel', surname: 'Khamis',
-      username: 'adel.khamis', englishName: 'Adel Khamis', employeeCode: 'TCH-001',
-      nationalId: '1012345678', nationality: 'Saudi', gender: 'male', maritalStatus: 'married',
-      religion: 'Islam', phone: '+966501234567', email: 'adel@school.com', address: 'Riyadh',
-      area: 'Al Olaya', country: 'Saudi Arabia', height: 175, weight: 78, branch: 'Main',
-      academicLevel: 'Secondary', subject: 'Mathematics', weeklyClasses: 18, isEmployee: false,
-      status: 'active',
-    },
-    {
-      id: 2, fullName: 'Nora Al-Harbi', fullNameArabic: 'نورة الحربي', name: 'Nora', surname: 'Al-Harbi',
-      username: 'nora.harbi', englishName: 'Nora Al-Harbi', employeeCode: 'TCH-002',
-      nationalId: '1098765432', nationality: 'Saudi', gender: 'female', maritalStatus: 'single',
-      religion: 'Islam', phone: '+966551234567', email: 'nora@school.com', address: 'Jeddah',
-      area: 'Al Andalus', country: 'Saudi Arabia', height: 162, weight: 55, branch: 'Main',
-      academicLevel: 'Intermediate', subject: 'English', weeklyClasses: 20, isEmployee: false,
-      status: 'active',
-    },
-  ];
-  const scopedTeachers = teachers.filter((teacher) =>
-    getSystem() === 'boys' ? teacher.gender === 'male' : teacher.gender === 'female',
-  );
-  write(LS.teachers, scopedTeachers);
-  localStorage.setItem(storageKey(`${LS.teachers}-next-id`), String(scopedTeachers.length + 1));
-
-  const students: Student[] = [
-    { id: 1, fullName: 'Sara Al-Harbi', fullNameArabic: 'سارة الحربي', gender: 'female', studentNumber: 'AB-2024-014', nationalId: '1023456789', grade: 'Grade 8', className: '8A', guardianName: 'Khalid Al-Harbi', guardianPhone: '+966501112233', status: 'active', enrollmentDate: '2024-09-01' },
-    { id: 2, fullName: 'Omar Al-Qahtani', fullNameArabic: 'عمر القحطاني', gender: 'male', studentNumber: 'AB-2024-015', nationalId: '1023456790', grade: 'Grade 7', className: '7B', guardianName: 'Noura Al-Qahtani', guardianPhone: '+966502223344', status: 'active', enrollmentDate: '2024-09-01' },
-    { id: 3, fullName: 'Lina Saeed', fullNameArabic: 'لينا سعيد', gender: 'female', studentNumber: 'AB-2025-003', nationalId: '1055566677', grade: 'Grade 9', className: '9A', guardianName: 'Ahmed Saeed', guardianPhone: '+966503334455', status: 'active', enrollmentDate: '2023-09-01' },
-  ];
-  const scopedStudents = students.filter((student) =>
-    getSystem() === 'boys' ? student.gender === 'male' : student.gender === 'female',
-  );
-  write(LS.students, scopedStudents);
-  localStorage.setItem(storageKey(`${LS.students}-next-id`), String(scopedStudents.length + 1));
-
-  const books: Book[] = [
-    { id: 1, title: 'Complete ICT IGCSE', author: 'Paul Culling', isbn: '9780981775470', category: 'Technology', language: 'English', volume: '1', copies: 8, availableCopies: 5, lostCopies: 0, damagedCopies: 0, dateAdded: '2024-09-15', depositNumber: 'DEP-001', status: 'available', publicationPlace: 'London', publicationDate: '2020', generalNumber: 'GN-001', specialNumber: '', description: '', coverImage: '', shelf: 'B-04' },
-    { id: 2, title: 'Our Planet', author: 'David Attenborough', isbn: '9780521536608', category: 'Science', language: 'English', volume: '', copies: 5, availableCopies: 3, lostCopies: 1, damagedCopies: 1, dateAdded: '2024-10-01', depositNumber: 'DEP-002', status: 'available', publicationPlace: 'Cambridge', publicationDate: '2021', generalNumber: 'GN-002', specialNumber: '', description: '', coverImage: '', shelf: 'A-12' },
-    { id: 3, title: 'The University Murderers', author: 'Richard MacAndrew', isbn: '9780521184954', category: 'Literature', language: 'English', volume: '', copies: 3, availableCopies: 2, lostCopies: 0, damagedCopies: 0, dateAdded: '2024-10-10', depositNumber: 'DEP-003', status: 'available', publicationPlace: 'Cambridge', publicationDate: '2019', generalNumber: 'GN-003', specialNumber: '', description: '', coverImage: '', shelf: 'C-07' },
-  ];
-  write(LS.books, books);
-  localStorage.setItem(storageKey(`${LS.books}-next-id`), '4');
-
-  const employees: Employee[] = [
-    { id: 1, fullName: 'Khalid Al-Otaibi', fullNameArabic: 'خالد العتيبي', employeeNumber: 'EMP-001', nationalId: '1065432109', jobTitle: 'Administrator', phone: '+966561234567', status: 'active' },
-    { id: 2, fullName: 'Fatimah Al-Zahrani', fullNameArabic: 'فاطمة الزهراني', employeeNumber: 'EMP-002', nationalId: '1054321098', jobTitle: 'Librarian', phone: '+966571234567', status: 'active' },
-    { id: 3, fullName: 'Nasser Al-Dosari', fullNameArabic: 'ناصر الدوسري', employeeNumber: 'EMP-003', nationalId: '1043210987', jobTitle: 'Accountant', phone: '+966581234567', status: 'active' },
-  ];
-  write(LS.employees, employees);
-  localStorage.setItem(storageKey(`${LS.employees}-next-id`), '4');
-
-  write(LS.activity, [
-    { id: 1, type: 'student', title: 'New student enrolled', timestamp: new Date().toISOString() },
-    { id: 2, type: 'library', title: 'Book "Our Planet" added', timestamp: new Date(Date.now() - 3600000).toISOString() },
-    { id: 3, type: 'teacher', title: 'Teacher profile updated', timestamp: new Date(Date.now() - 7200000).toISOString() },
-  ] as DashboardSummary['recentActivity']);
-
-  localStorage.setItem(storageKey(SEED_KEY), '1');
-}
-
-// Clear every previous app dataset once before rendering, then seed the new dataset.
-// Keep language, theme, sidebar preferences, and authentication untouched.
-function resetAppDataBeforeRender() {
-  if (typeof window === 'undefined' || localStorage.getItem(RESET_KEY)) return;
-
-  const appPrefixes = ['al-bassam:', 'students', 'teachers', 'books', 'employees', 'borrows', 'academic-years', 'activity'];
-  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-    const key = localStorage.key(index);
-    if (key && appPrefixes.some((prefix) => key === prefix || key.startsWith(prefix))) {
-      localStorage.removeItem(key);
-    }
-  }
-
-  localStorage.setItem(RESET_KEY, '1');
-}
-
-// Reset old datasets before the first render, then seed the new dataset.
-resetAppDataBeforeRender();
-seedIfEmpty();
 
 // ── withQueryKey helper (matches generated api.ts) ────────────────────
 

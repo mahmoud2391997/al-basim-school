@@ -16,12 +16,12 @@ export function getDefaultAcademicYear(years: AcademicYear[], date = new Date())
     years[0];
 }
 
+let selectedAcademicYearId: number | undefined;
+
 export function getStoredAcademicYearId(): number | undefined {
-  if (typeof window === "undefined") return undefined;
-  const value = Number(window.localStorage.getItem(SELECTED_ACADEMIC_YEAR_KEY));
-  return Number.isFinite(value) && value > 0 ? value : undefined;
+  return selectedAcademicYearId;
 }
 
 export function setStoredAcademicYearId(id: number) {
-  if (typeof window !== "undefined") window.localStorage.setItem(SELECTED_ACADEMIC_YEAR_KEY, String(id));
+  selectedAcademicYearId = id;
 }

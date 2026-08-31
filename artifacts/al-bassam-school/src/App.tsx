@@ -219,17 +219,20 @@ const LanguageContext = createContext<Translation>({
   t: (english) => english,
 });
 const useT = () => useContext(LanguageContext);
+let activeLanguage: Language = "ar";
+let authToken = "";
 
 function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>(() =>
-    typeof window !== "undefined" && localStorage.getItem("al-bassam-language") === "en" ? "en" : "ar",
-  );
+  const [language, setLanguageState] = useState<Language>(activeLanguage);
+  const setLanguage = (next: Language) => {
+    activeLanguage = next;
+    setLanguageState(next);
+  };
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
     document.body.dataset.language = language;
     document.body.dir = language === "ar" ? "rtl" : "ltr";
-    localStorage.setItem("al-bassam-language", language);
   }, [language]);
   const t = useCallback(
     (english: string, arabic: string) => (language === "ar" ? arabic : english),
@@ -258,15 +261,12 @@ const useTheme = () => useContext(ThemeContext);
 function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") return "light";
-    const stored = localStorage.getItem("al-bassam-theme");
-    if (stored === "light" || stored === "dark") return stored;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    return "light";
   });
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
     root.style.colorScheme = theme;
-    localStorage.setItem("al-bassam-theme", theme);
   }, [theme]);
   const toggleTheme = useCallback(
     () => setTheme((prev) => (prev === "dark" ? "light" : "dark")),
@@ -365,14 +365,13 @@ function Shell({ children }: { children: ReactNode }) {
   const [activeSystem, setActiveSystem] = useState<SchoolSystem>(() => getActiveSchoolSystem());
   const queryClient = useQueryClient();
   const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem("al-bassam-sidebar-collapsed") === "1",
+    () => false,
   );
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
   );
   const toggleCollapsed = () =>
     setCollapsed((value) => {
-      localStorage.setItem("al-bassam-sidebar-collapsed", value ? "0" : "1");
       return !value;
     });
   const { lang: language, setLanguage, t } = useT();
@@ -579,10 +578,10 @@ function Shell({ children }: { children: ReactNode }) {
               await fetch("/api/auth/logout", {
                 method: "POST",
                 headers: {
-                  Authorization: `Bearer ${localStorage.getItem("school-auth-token") || ""}`,
+                  Authorization: `Bearer ${authToken}`,
                 },
               });
-              localStorage.removeItem("school-auth-token");
+              authToken = "";
               window.location.reload();
             }}
             className={`mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-[#B92327] transition-colors hover:bg-[#B92327]/10 ${collapsed ? "justify-center" : ""}`}
@@ -7898,7 +7897,7 @@ function PasswordSettings() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("school-auth-token") || ""}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({ currentPassword, newUsername, newPassword }),
     });
@@ -8040,19 +8039,19 @@ function AuthGate() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setAuthTokenGetter(() => localStorage.getItem("school-auth-token"));
+    setAuthTokenGetter(() => authToken);
     fetch("/api/auth/status")
       .then((response) => response.json())
       .then(async (status) => {
         setSetupRequired(status.setupRequired);
-        const token = localStorage.getItem("school-auth-token");
+        const token = authToken;
         if (status.setupRequired) return;
         if (!token) return;
         const check = await fetch("/api/dashboard/summary", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (check.ok) setReady(true);
-        else localStorage.removeItem("school-auth-token");
+        else authToken = "";
       })
       .catch(() =>
         setError(
@@ -8088,8 +8087,8 @@ function AuthGate() {
       setPassword("");
       return;
     }
-    localStorage.setItem("school-auth-token", result.token);
-    setAuthTokenGetter(() => localStorage.getItem("school-auth-token"));
+    authToken = result.token;
+    setAuthTokenGetter(() => authToken);
     setReady(true);
   };
 
@@ -8131,7 +8130,7 @@ function AuthGate() {
                 )
               : t(
                   "Enter your administrator credentials to access the school workspace.",
-                  "أدخل اسم المستخدم وكلمة المرور للمتابعة إلى مساحة العمل.",
+                  "أدخل اسم المس��خدم وكلمة المرور للمتابعة إلى مساحة العمل.",
                 )}
           </p>
 
