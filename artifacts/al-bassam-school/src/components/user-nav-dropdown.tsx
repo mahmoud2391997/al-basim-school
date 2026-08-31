@@ -26,6 +26,7 @@ interface UserNavDropdownProps {
   t: (en: string, ar: string) => string;
   language: "en" | "ar";
   theme: "light" | "dark";
+  profilePicture?: string | null;
   onLanguageChange: (lang: "en" | "ar") => void;
   onThemeChange: () => void;
   onNavigate: (path: string) => void;
@@ -35,6 +36,7 @@ export function UserNavDropdown({
   t,
   language,
   theme,
+  profilePicture,
   onLanguageChange,
   onThemeChange,
   onNavigate,
@@ -60,9 +62,17 @@ export function UserNavDropdown({
           data-testid="button-user-menu"
           aria-label={t("User profile & menu", "الملف الشخصي والقائمة")}
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#14BAC6]/15 text-[11px] font-bold text-[#14BAC6] shadow-sm">
-            LA
-          </div>
+          {profilePicture ? (
+            <img
+              src={profilePicture}
+              alt={t("Admin", "المسؤول")}
+              className="h-8 w-8 rounded-full object-cover shadow-sm"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#14BAC6]/15 text-[11px] font-bold text-[#14BAC6] shadow-sm">
+              LA
+            </div>
+          )}
           <div className="hidden text-start sm:block">
             <span className="block text-xs font-semibold text-foreground">
               {t("Library Admin", "أمين المكتبة")}
@@ -84,9 +94,17 @@ export function UserNavDropdown({
         {/* Profile Info */}
         <DropdownMenuLabel className="p-2 font-normal">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DBB46C]/20 text-sm font-bold text-[#263064] dark:text-[#263064]!">
-              LA
-            </div>
+            {profilePicture ? (
+              <img
+                src={profilePicture}
+                alt={t("Admin", "المسؤول")}
+                className="h-10 w-10 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DBB46C]/20 text-sm font-bold text-[#263064] dark:text-[#263064]!">
+                LA
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold text-foreground">
                 {t("Library Admin", "أمين المكتبة")}

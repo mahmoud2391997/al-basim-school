@@ -36,6 +36,7 @@ import {
   Filter,
   FileSpreadsheet,
   GraduationCap,
+  Image,
   Languages,
   LayoutDashboard,
   Library,
@@ -158,6 +159,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConfirmProvider, useConfirm } from "@/hooks/use-confirm";
 import NotFound from "@/pages/not-found";
+import {
+  addSubjectToCatalog,
+  getSubjectCatalog,
+} from "@/lib/subjects";
+import {
+  ProfilePictureProvider,
+  useProfilePicture,
+} from "@/lib/profile-picture";
 
 const queryClient = new QueryClient();
 
@@ -376,6 +385,7 @@ function Shell({ children }: { children: ReactNode }) {
     });
   const { lang: language, setLanguage, t } = useT();
   const { theme, toggleTheme } = useTheme();
+  const { profilePicture } = useProfilePicture();
   const sidebarWidth = collapsed ? 64 : 208;
   const text = t;
 
@@ -767,6 +777,7 @@ function Shell({ children }: { children: ReactNode }) {
               t={text}
               language={language}
               theme={theme}
+              profilePicture={profilePicture}
               onLanguageChange={setLanguage}
               onThemeChange={toggleTheme}
               onNavigate={navigate}
@@ -2830,12 +2841,35 @@ function TeacherDialog({
       );
     }
   }, [open, editing]);
+  const subjectCatalog = useMemo(() => getSubjectCatalog(), []);
+  useEffect(() => {
+    if (!open) return;
+    if (editing && editing.subject) {
+      const inCatalog = subjectCatalog.some(
+        (s) => s.toLowerCase() === editing.subject!.toLowerCase(),
+      );
+      setCustomSubject(inCatalog ? "" : editing.subject);
+    } else {
+      setCustomSubject("");
+    }
+  }, [open, editing, subjectCatalog]);
   const create = useCreateTeacher();
   const update = useUpdateTeacher();
   const queryClient = useQueryClient();
   const isEditing = Boolean(editing);
   const set = (key: string, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
+  const [customSubject, setCustomSubject] = useState("");
+  const customSubjectActive =
+    String(form.subject ?? "") === "__custom__" ||
+    (Boolean(form.subject) &&
+      !subjectCatalog.some(
+        (s) => s.toLowerCase() === String(form.subject).toLowerCase(),
+      ) &&
+      String(form.subject) !== "");
+  const resolvedSubject = customSubjectActive
+    ? customSubject || ""
+    : String(form.subject ?? "");
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (
@@ -2844,6 +2878,13 @@ function TeacherDialog({
       !String(form.employeeCode ?? "").trim()
     )
       return;
+    const subject = resolvedSubject;
+    if (customSubjectActive) {
+      const trimmed = customSubject.trim();
+      if (trimmed) {
+        addSubjectToCatalog(trimmed);
+      }
+    }
     const text = (key: keyof TeacherInput) => {
       const v = String(form[key] ?? "").trim();
       return v ? { [key]: v } : {};
@@ -2873,7 +2914,7 @@ function TeacherDialog({
       ...num("weight"),
       ...text("branch"),
       ...text("academicLevel"),
-      ...text("subject"),
+      ...(subject.trim() ? { subject: subject.trim() } : {}),
       ...num("weeklyClasses"),
       isEmployee:
         form.isEmployee !== undefined
@@ -2962,20 +3003,61 @@ function TeacherDialog({
                         )}
                       </span>
                       {field.options ? (
-                        <select
-                          value={String(form[field.key] ?? "")}
-                          onChange={(event) =>
-                            set(field.key, event.target.value)
-                          }
-                          className={`${inputCls} cursor-pointer appearance-none`}
-                          data-testid={`input-teacher-${field.key}`}
-                        >
-                          {field.options.map(([value, label, ar]) => (
-                            <option key={value} value={value}>
-                              {t(label, ar)}
-                            </option>
-                          ))}
-                        </select>
+                        field.key === "subject" ? (
+                          <>
+                            <select
+                              value={
+                                customSubjectActive
+                                  ? "__custom__"
+                                  : String(form[field.key] ?? "")
+                              }
+                              onChange={(event) => {
+                                set("subject", event.target.value);
+                              }}
+                              className={`${inputCls} cursor-pointer appearance-none`}
+                              data-testid={`input-teacher-${field.key}`}
+                            >
+                              {subjectCatalog.map((subject) => (
+                                <option key={subject} value={subject}>
+                                  {subject}
+                                </option>
+                              ))}
+                              <option value="__custom__">
+                                {t("Custom subject…", "مادة مخصصة…")}
+                              </option>
+                            </select>
+                            {customSubjectActive && (
+                              <input
+                                type="text"
+                                value={customSubject}
+                                onChange={(event) =>
+                                  setCustomSubject(event.target.value)
+                                }
+                                placeholder={t(
+                                  "Type a new subject",
+                                  "اكتب مادة جديدة",
+                                )}
+                                className={`${inputCls} mt-2`}
+                                data-testid="input-teacher-subject-custom"
+                              />
+                            )}
+                          </>
+                        ) : (
+                          <select
+                            value={String(form[field.key] ?? "")}
+                            onChange={(event) =>
+                              set(field.key, event.target.value)
+                            }
+                            className={`${inputCls} cursor-pointer appearance-none`}
+                            data-testid={`input-teacher-${field.key}`}
+                          >
+                            {field.options.map(([value, label, ar]) => (
+                              <option key={value} value={value}>
+                                {t(label, ar)}
+                              </option>
+                            ))}
+                          </select>
+                        )
                       ) : (
                         <input
                           required={
@@ -4181,6 +4263,7 @@ function BookDialog({
   onSaved,
   presetBarcode,
   categories,
+  activeBorrowedCopies = 0,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -4188,6 +4271,7 @@ function BookDialog({
   onSaved: (message: string) => void;
   presetBarcode?: string;
   categories: string[];
+  activeBorrowedCopies?: number;
 }) {
   const today = () => new Date().toISOString().slice(0, 10);
   const blankBook: BookFormValue = {
@@ -4220,6 +4304,16 @@ function BookDialog({
   const isEditing = Boolean(editing);
   const set = (key: string, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
+  const currentCopies = Number(form.copies ?? editing?.copies ?? 1);
+  const minTotalCopies = activeBorrowedCopies;
+  const lostCopies = editing?.lostCopies ?? 0;
+  const damagedCopies = editing?.damagedCopies ?? 0;
+  const previewAvailable = Math.max(
+    currentCopies - activeBorrowedCopies - lostCopies - damagedCopies,
+    0,
+  );
+  const copiesBelowFloor =
+    isEditing && Number.isFinite(currentCopies) && currentCopies < minTotalCopies;
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (
@@ -4228,6 +4322,7 @@ function BookDialog({
         !String(form.customCategory ?? "").trim())
     )
       return;
+    if (isEditing && currentCopies < minTotalCopies) return;
     const text = (key: keyof BookInput & string) => {
       const v = String(form[key] ?? "").trim();
       return v ? { [key]: v } : {};
@@ -4475,6 +4570,59 @@ function BookDialog({
                     </label>
                   ))}
                 </div>
+                {section.title === "Copies & status" && isEditing && (
+                  <div className="mt-4 rounded-lg border border-border bg-card/60 p-4">
+                    <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                      {t("Copies distribution", "توزيع النسخ")}
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {t("Total copies", "إجمالي النسخ")}
+                        </div>
+                        <div className="mt-0.5 font-mono text-lg font-bold text-foreground">
+                          {currentCopies}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {t("Active borrows", "الإعارات النشطة")}
+                        </div>
+                        <div className="mt-0.5 font-mono text-lg font-bold text-[#DBB46C]">
+                          {activeBorrowedCopies}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {t("Lost + Damaged", "مفقود + تالف")}
+                        </div>
+                        <div className="mt-0.5 font-mono text-lg font-bold text-destructive">
+                          {lostCopies + damagedCopies}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {t("Available", "متاح")}
+                        </div>
+                        <div className="mt-0.5 font-mono text-lg font-bold text-[#32B77E]">
+                          {previewAvailable}
+                        </div>
+                      </div>
+                    </div>
+                    {copiesBelowFloor && (
+                      <p
+                        className="mt-3 flex items-center gap-2 text-sm font-medium text-destructive"
+                        data-testid="error-book-copies"
+                      >
+                        <AlertTriangle size={15} />
+                        {t(
+                          `Total copies cannot be below the ${minTotalCopies} copies currently on loan.`,
+                          `لا يمكن أن يقل إجمالي النسخ عن ${minTotalCopies} نسخة معارة حالياً.`,
+                        )}
+                      </p>
+                    )}
+                  </div>
+                )}
               </fieldset>
             ))}
           </div>
@@ -4500,7 +4648,7 @@ function BookDialog({
             </Button>
             <Button
               type="submit"
-              disabled={pending}
+              disabled={pending || copiesBelowFloor}
               className="bg-primary text-primary-foreground hover:bg-primary/85"
               data-testid="button-save-book"
             >
@@ -5361,6 +5509,9 @@ function LibraryPage() {
         onSaved={setToast}
         presetBarcode={presetBarcode}
         categories={categories as string[]}
+        activeBorrowedCopies={
+          editing ? borrows.filter((b) => b.bookId === editing.id).length : 0
+        }
       />
       {(() => {
         if (!borrows.length) return null;
@@ -6668,28 +6819,64 @@ function AnalyticsPage() {
     ? Math.round((borrowedCopies / copies) * 1000) / 10
     : 0;
   const activeBorrows = borrows.filter((b) => !b.returnedAt);
-  const [reportTab, setReportTab] = useState<"overview" | "borrows" | "books" | "grade">("overview");
-
-  const categoryDistribution = useMemo(() => {
-    const map = new Map<string, number>();
-    books.forEach((book) => {
-      const cat = book.category || "Other";
-      map.set(cat, (map.get(cat) || 0) + book.copies);
+  const [reportTab, setReportTab] = useState<"overview" | "borrowing" | "books">("overview");
+  const [gradeFilter, setGradeFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const categoriesList = useMemo(
+    () =>
+      Array.from(new Set(books.map((b) => b.category).filter(Boolean))).sort(),
+    [books],
+  );
+  const gradeList = useMemo(
+    () =>
+      Array.from(new Set(students.map((s) => s.grade).filter(Boolean))).sort(),
+    [students],
+  );
+  const bookById = useMemo(
+    () => new Map(books.map((book) => [book.id, book])),
+    [books],
+  );
+  const studentById = useMemo(
+    () => new Map(students.map((student) => [student.id, student])),
+    [students],
+  );
+  const filteredBorrows = useMemo(() => {
+    return borrows.filter((b) => {
+      if (categoryFilter !== "all") {
+        const cat = bookById.get(b.bookId)?.category;
+        if (cat !== categoryFilter) return false;
+      }
+      if (gradeFilter !== "all") {
+        const grade =
+          b.borrowerType === "student" && b.studentId != null
+            ? studentById.get(b.studentId)?.grade
+            : undefined;
+        if (grade !== gradeFilter) return false;
+      }
+      return true;
     });
-    return Array.from(map.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [books]);
+  }, [borrows, categoryFilter, gradeFilter, bookById, studentById]);
 
   const monthlyBorrows = useMemo(() => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const counts = new Array(12).fill(0);
-    borrows.forEach((b) => {
+    filteredBorrows.forEach((b) => {
       const d = new Date(b.borrowedAt);
       if (!isNaN(d.getTime())) counts[d.getMonth()]++;
     });
     return months.map((m, i) => ({ name: m, count: counts[i] }));
-  }, [borrows]);
+  }, [filteredBorrows]);
+
+  const categoryBorrows = useMemo(() => {
+    const map = new Map<string, number>();
+    filteredBorrows.forEach((b) => {
+      const cat = bookById.get(b.bookId)?.category || t("Other", "أخرى");
+      map.set(cat, (map.get(cat) || 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredBorrows, bookById, t]);
 
   const uniqueTitles = useMemo(() => {
     return new Set(books.map((b) => b.title?.trim().toLowerCase()).filter(Boolean)).size;
@@ -6701,7 +6888,7 @@ function AnalyticsPage() {
       if (s.id != null) studentByGrade.set(s.id, s.grade);
     });
     const map = new Map<string, number>();
-    borrows.forEach((b) => {
+    filteredBorrows.forEach((b) => {
       let grade: string;
       if (b.borrowerType === "student" && b.studentId != null && studentByGrade.has(b.studentId)) {
         grade = studentByGrade.get(b.studentId)!;
@@ -6713,19 +6900,19 @@ function AnalyticsPage() {
     return Array.from(map.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
-  }, [borrows, students, t]);
+  }, [filteredBorrows, students, t]);
 
-  const totalBorrowCount = borrowsByGrade.reduce((sum, g) => sum + g.count, 0);
+  const totalBorrowCount = filteredBorrows.length;
   const mostBorrowedStudents = useMemo(() => {
     const studentMap = new Map(students.map((student) => [student.id, student]));
     const counts = new Map<number, number>();
-    borrows.forEach((borrow) => {
+    filteredBorrows.forEach((borrow) => {
       if (borrow.borrowerType === "student" && borrow.studentId != null) counts.set(borrow.studentId, (counts.get(borrow.studentId) || 0) + 1);
     });
     return Array.from(counts, ([id, count]) => ({ student: studentMap.get(id), count }))
       .filter((item): item is { student: (typeof students)[number]; count: number } => Boolean(item.student))
       .sort((a, b) => b.count - a.count);
-  }, [borrows, students]);
+  }, [filteredBorrows, students]);
 
   return (
     <div className="rise-in">
@@ -6778,7 +6965,7 @@ function AnalyticsPage() {
           </div>
 
           <div className="mt-6 flex gap-2 border-b border-border pb-px">
-            {(["overview", "borrows", "books", "grade"] as const).map((tab) => (
+            {(["overview", "borrowing", "books"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setReportTab(tab)}
@@ -6790,22 +6977,15 @@ function AnalyticsPage() {
               >
                 {tab === "overview"
                   ? t("Overview", "نظرة عامة")
-                  : tab === "borrows"
-                    ? t("Borrow reports", "تقارير الإعارات")
-                    : tab === "books"
-                      ? t("Book reports", "تقارير الكتب")
-                      : t("Borrows per grade", "الإعارات حسب الصف")}
+                  : tab === "borrowing"
+                    ? t("Borrowing analytics", "تحليلات الاستعارة")
+                    : t("Book reports", "تقارير الكتب")}
               </button>
             ))}
           </div>
 
           {reportTab === "overview" && (
             <>
-              <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
-                <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{t("Student ranking", "ترتيب الطلاب")}</div>
-                <h2 className="mt-1 text-xl font-bold text-foreground">{t("Most borrowed students", "أكثر الطلاب استعارة")}</h2>
-                {mostBorrowedStudents.length ? <div className="mt-4 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-border text-xs text-muted-foreground"><th className="px-3 py-2 text-start">{t("Rank", "الترتيب")}</th><th className="px-3 py-2 text-start">{t("Student", "الطالب")}</th><th className="px-3 py-2 text-center">{t("Loans", "الإعارات")}</th></tr></thead><tbody>{mostBorrowedStudents.map(({ student, count }, index) => <tr key={student.id} className="border-b border-border/50"><td className="px-3 py-2 font-bold text-primary">#{index + 1}</td><td className="px-3 py-2 font-medium text-foreground">{student.fullName}</td><td className="px-3 py-2 text-center text-muted-foreground">{count}</td></tr>)}</tbody></table></div> : <div className="mt-4 rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">{t("No student borrowing activity yet.", "لا توجد حركة استعارة للطلاب بعد.")}</div>}
-              </section>
               <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
                 <div className="flex items-center justify-between">
                   <div>
@@ -6843,7 +7023,121 @@ function AnalyticsPage() {
                   </span>
                 </div>
               </section>
-              <div className="mt-6 grid gap-6 xl:grid-cols-2">
+            </>
+          )}
+
+          {reportTab === "borrowing" && (
+            <div className="mt-6 space-y-6">
+              <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                      {t("Borrowing analytics", "تحليلات الاستعارة")}
+                    </div>
+                    <h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-foreground">
+                      {t("Filters", "عوامل التصفية")}
+                    </h2>
+                  </div>
+                  {filteredBorrows.length > 0 && categoriesList.length > 0 && (
+                    <select
+                      value={categoryFilter}
+                      onChange={(event) => setCategoryFilter(event.target.value)}
+                      className="h-9 cursor-pointer appearance-none rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                      data-testid="select-analytics-category"
+                    >
+                      <option value="all">
+                        {t("All categories", "كل التصنيفات")}
+                      </option>
+                      {categoriesList.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {gradeList.length > 0 && (
+                    <select
+                      value={gradeFilter}
+                      onChange={(event) => setGradeFilter(event.target.value)}
+                      className="h-9 cursor-pointer appearance-none rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                      data-testid="select-analytics-grade"
+                    >
+                      <option value="all">{t("All grades", "كل الصفوف")}</option>
+                      {gradeList.map((grade) => (
+                        <option key={grade} value={grade}>
+                          {grade}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {(gradeFilter !== "all" || categoryFilter !== "all") && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setGradeFilter("all");
+                        setCategoryFilter("all");
+                      }}
+                      data-testid="button-analytics-reset"
+                    >
+                      <X size={14} />
+                      {t("Reset filters", "إعادة تعيين التصفية")}
+                    </Button>
+                  )}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {filteredBorrows.length} {t("borrow records shown", "سجل إعارة معروض")}
+                </p>
+              </section>
+
+              <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                      {t("Student ranking", "ترتيب الطلاب")}
+                    </div>
+                    <h2 className="mt-1 text-xl font-bold text-foreground">
+                      {t("Most borrowed students", "أكثر الطلاب استعارة")}
+                    </h2>
+                  </div>
+                  <span className="font-mono text-lg font-bold text-foreground">
+                    {mostBorrowedStudents.length} {t("students", "طالب")}
+                  </span>
+                </div>
+                {mostBorrowedStudents.length ? (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-xs text-muted-foreground">
+                          <th className="px-3 py-2 text-start">{t("Rank", "الترتيب")}</th>
+                          <th className="px-3 py-2 text-start">{t("Student", "الطالب")}</th>
+                          <th className="px-3 py-2 text-center">{t("Loans", "الإعارات")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mostBorrowedStudents.map(({ student, count }, index) => (
+                          <tr key={student.id} className="border-b border-border/50">
+                            <td className="px-3 py-2 font-bold text-primary">#{index + 1}</td>
+                            <td className="px-3 py-2 font-medium text-foreground">{student.fullName}</td>
+                            <td className="px-3 py-2 text-center text-muted-foreground">{count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon={GraduationCap}
+                    title={t("No student borrowing activity yet.", "لا توجد حركة استعارة للطلاب بعد.")}
+                    detail={t(
+                      "Once students borrow books, you'll see the top borrowers ranked here. Try widening your filters.",
+                      "بمجرد استعارة الطلاب للكتب، ستظهر أكثر الطلاب استعارةً هنا. جرّب توسيع عوامل التصفية.",
+                    )}
+                  />
+                )}
+              </section>
+
+              <div className="grid gap-6 xl:grid-cols-2">
                 <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
                   <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                     {t("Monthly borrows", "الإعارات الشهرية")}
@@ -6851,79 +7145,170 @@ function AnalyticsPage() {
                   <h2 className="mt-1 mb-4 text-lg font-bold text-foreground">
                     {t("Borrowing activity over the year", "نشاط الإعارات على مدار السنة")}
                   </h2>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsBarChart data={monthlyBorrows}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <RechartsTooltip />
-                        <Bar dataKey="count" fill="#263064" radius={[4, 4, 0, 0]} />
-                      </RechartsBarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  {filteredBorrows.length ? (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsBarChart data={monthlyBorrows}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} />
+                          <RechartsTooltip />
+                          <Bar dataKey="count" fill="#263064" radius={[4, 4, 0, 0]} />
+                        </RechartsBarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="py-10 text-center text-sm text-muted-foreground">
+                      {t("No borrows to chart within the current filters.", "لا توجد إعارات لعرضها ضمن عوامل التصفية الحالية.")}
+                    </p>
+                  )}
                 </section>
                 <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
                   <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
                     {t("By category", "حسب التصنيف")}
                   </div>
                   <h2 className="mt-1 mb-4 text-lg font-bold text-foreground">
-                    {t("Books per category", "عدد الكتب لكل تصنيف")}
+                    {t("Borrows per category", "الإعارات حسب التصنيف")}
                   </h2>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsBarChart data={categoryDistribution}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <RechartsTooltip />
-                        <Bar dataKey="count" fill="#DBB46C" radius={[4, 4, 0, 0]} />
-                      </RechartsBarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  {categoryBorrows.length ? (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsBarChart data={categoryBorrows}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} />
+                          <RechartsTooltip />
+                          <Bar dataKey="count" fill="#DBB46C" radius={[4, 4, 0, 0]} />
+                        </RechartsBarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="py-10 text-center text-sm text-muted-foreground">
+                      {t("No borrows to chart within the current filters.", "لا توجد إعارات لعرضها ضمن عوامل التصفية الحالية.")}
+                    </p>
+                  )}
                 </section>
               </div>
-            </>
-          )}
 
-          {reportTab === "borrows" && (
-            <div className="mt-6 space-y-6">
-              <ReportSection
-                title={t("Active borrows", "الإعارات النشطة")}
-                titleAr="الإعارات النشطة"
-                columns={[
-                  { key: "borrowerName", header: t("Borrower", "المُعار") },
-                  { key: "bookTitle", header: t("Book", "الكتاب") },
-                  { key: "borrowedAt", header: t("Borrowed", "تاريخ الإعارة") },
-                  { key: "dueDate", header: t("Due", "الاسترجاع") },
-                ]}
-                data={activeBorrows.map((b) => ({
-                  borrowerName: b.borrowerName || "—",
-                  bookTitle: b.bookTitle || "—",
-                  borrowedAt: b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString("en-GB") : "—",
-                  dueDate: b.dueDate ? new Date(b.dueDate).toLocaleDateString("en-GB") : "—",
-                }))}
-                exportType="borrows"
-                t={t}
-              />
-              <ReportSection
-                title={t("Returned borrows", "الإعارات المُرجعة")}
-                titleAr="الإعارات المُرجعة"
-                columns={[
-                  { key: "borrowerName", header: t("Borrower", "المُعار") },
-                  { key: "bookTitle", header: t("Book", "الكتاب") },
-                  { key: "borrowedAt", header: t("Borrowed", "تاريخ الإعارة") },
-                  { key: "returnDate", header: t("Returned", "تاريخ الإرجاع") },
-                ]}
-                data={borrows.filter((b) => b.returnedAt).map((b) => ({
-                  borrowerName: b.borrowerName || "—",
-                  bookTitle: b.bookTitle || "—",
-                  borrowedAt: b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString("en-GB") : "—",
-                  returnDate: b.returnedAt ? new Date(b.returnedAt).toLocaleDateString("en-GB") : "—",
-                }))}
-                exportType="borrows"
-                t={t}
-              />
+              <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                      {t("Distribution", "التوزيع")}
+                    </div>
+                    <h3 className="mt-1 text-lg font-bold text-foreground">
+                      {t("Borrows per grade", "الإعارات حسب الصف")}
+                    </h3>
+                  </div>
+                  <span className="font-mono text-lg font-bold text-foreground">
+                    {totalBorrowCount} {t("borrows", "إعارة")}
+                  </span>
+                </div>
+                {borrowsByGrade.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    {t("No records found for the current filters.", "لا توجد سجلات ضمن عوامل التصفية الحالية.")}
+                  </p>
+                ) : (
+                  <>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsBarChart data={borrowsByGrade}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
+                          <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                          <RechartsTooltip />
+                          <Bar dataKey="count" fill="#263064" radius={[4, 4, 0, 0]} />
+                        </RechartsBarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-6 overflow-x-auto rounded-lg border border-border">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border bg-primary/5">
+                            <th className="px-4 py-2.5 text-start text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              {t("Grade", "الصف")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              {t("Borrows", "الإعارات")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              {t("Percentage", "النسبة")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {borrowsByGrade.map((g, i) => {
+                            const percent = totalBorrowCount
+                              ? Math.round((g.count / totalBorrowCount) * 1000) / 10
+                              : 0;
+                            return (
+                              <tr
+                                key={i}
+                                className="border-b border-border/50 transition-colors hover:bg-muted/30 last:border-b-0"
+                              >
+                                <td className="px-4 py-2.5 font-medium text-foreground">{g.name}</td>
+                                <td className="px-4 py-2.5 text-center text-muted-foreground">{g.count}</td>
+                                <td className="px-4 py-2.5 text-center">
+                                  <div className="mx-auto flex max-w-[220px] items-center gap-2">
+                                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                                      <div
+                                        className="h-full rounded-full bg-primary"
+                                        style={{ width: `${percent}%` }}
+                                      />
+                                    </div>
+                                    <span className="min-w-[48px] text-xs font-semibold text-foreground">
+                                      {percent}%
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </section>
+
+              <div className="space-y-6">
+                <ReportSection
+                  title={t("Active borrows", "الإعارات النشطة")}
+                  titleAr="الإعارات النشطة"
+                  columns={[
+                    { key: "borrowerName", header: t("Borrower", "المُعار") },
+                    { key: "bookTitle", header: t("Book", "الكتاب") },
+                    { key: "borrowedAt", header: t("Borrowed", "تاريخ الإعارة") },
+                    { key: "dueDate", header: t("Due", "الاسترجاع") },
+                  ]}
+                  data={filteredBorrows.filter((b) => !b.returnedAt).map((b) => ({
+                    borrowerName: b.borrowerName || "—",
+                    bookTitle: b.bookTitle || "—",
+                    borrowedAt: b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString("en-GB") : "—",
+                    dueDate: b.dueDate ? new Date(b.dueDate).toLocaleDateString("en-GB") : "—",
+                  }))}
+                  exportType="borrows"
+                  t={t}
+                />
+                <ReportSection
+                  title={t("Returned borrows", "الإعارات المُرجعة")}
+                  titleAr="الإعارات المُرجعة"
+                  columns={[
+                    { key: "borrowerName", header: t("Borrower", "المُعار") },
+                    { key: "bookTitle", header: t("Book", "الكتاب") },
+                    { key: "borrowedAt", header: t("Borrowed", "تاريخ الإعارة") },
+                    { key: "returnDate", header: t("Returned", "تاريخ الإرجاع") },
+                  ]}
+                  data={filteredBorrows.filter((b) => b.returnedAt).map((b) => ({
+                    borrowerName: b.borrowerName || "—",
+                    bookTitle: b.bookTitle || "—",
+                    borrowedAt: b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString("en-GB") : "—",
+                    returnDate: b.returnedAt ? new Date(b.returnedAt).toLocaleDateString("en-GB") : "—",
+                  }))}
+                  exportType="borrows"
+                  t={t}
+                />
+              </div>
             </div>
           )}
 
@@ -7007,93 +7392,6 @@ function AnalyticsPage() {
             </div>
           )}
 
-          {reportTab === "grade" && (
-            <div className="mt-6 space-y-6">
-              <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-                      {t("Distribution", "التوزيع")}
-                    </div>
-                    <h3 className="mt-1 text-lg font-bold text-foreground">
-                      {t("Borrows per grade", "الإعارات حسب الصف")}
-                    </h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t("Share of total borrows by grade level", "نسبة الإعارات من الإجمالي حسب الصف الدراسي")}
-                    </p>
-                  </div>
-                  <span className="font-mono text-lg font-bold text-foreground">
-                    {totalBorrowCount} {t("borrows", "إعارة")}
-                  </span>
-                </div>
-                {borrowsByGrade.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-muted-foreground">
-                    {t("No records found.", "لا توجد سجلا��.")}
-                  </p>
-                ) : (
-                  <>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RechartsBarChart data={borrowsByGrade}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                          <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
-                          <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                          <RechartsTooltip />
-                          <Bar dataKey="count" fill="#263064" radius={[4, 4, 0, 0]} />
-                        </RechartsBarChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="mt-6 overflow-x-auto rounded-lg border border-border">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border bg-primary/5">
-                            <th className="px-4 py-2.5 text-start text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              {t("Grade", "الصف")}
-                            </th>
-                            <th className="px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              {t("Borrows", "الإعارات")}
-                            </th>
-                            <th className="px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              {t("Percentage", "النسبة")}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {borrowsByGrade.map((g, i) => {
-                            const percent = totalBorrowCount
-                              ? Math.round((g.count / totalBorrowCount) * 1000) / 10
-                              : 0;
-                            return (
-                              <tr
-                                key={i}
-                                className="border-b border-border/50 transition-colors hover:bg-muted/30 last:border-b-0"
-                              >
-                                <td className="px-4 py-2.5 font-medium text-foreground">{g.name}</td>
-                                <td className="px-4 py-2.5 text-center text-muted-foreground">{g.count}</td>
-                                <td className="px-4 py-2.5 text-center">
-                                  <div className="mx-auto flex max-w-[220px] items-center gap-2">
-                                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                                      <div
-                                        className="h-full rounded-full bg-primary"
-                                        style={{ width: `${percent}%` }}
-                                      />
-                                    </div>
-                                    <span className="min-w-[48px] text-xs font-semibold text-foreground">
-                                      {percent}%
-                                    </span>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
-              </section>
-            </div>
-          )}
         </>
       )}
     </div>
@@ -7582,6 +7880,71 @@ function SettingsPage() {
   const { t } = useT();
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
+  const {
+    profilePicture,
+    isDesktop,
+    setProfilePicture,
+    clearProfilePicture,
+  } = useProfilePicture();
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const [savingPicture, setSavingPicture] = useState(false);
+  const [profilePictureError, setProfilePictureError] = useState("");
+  const handleProfilePictureChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setProfilePictureError("");
+    setSavingPicture(true);
+    try {
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      if (String(dataUrl).length > 4 * 1024 * 1024) {
+        setProfilePictureError(
+          t(
+            "The image is too large. Please choose a smaller image (under 4 MB).",
+            "الصورة كبيرة جداً. يرجى اختيار صورة أصغر (أقل من 4 ميجابايت).",
+          ),
+        );
+      } else {
+        const ok = await setProfilePicture(dataUrl);
+        if (!ok) {
+          setProfilePictureError(
+            t(
+              "Could not save the profile picture.",
+              "تعذر حفظ صورة الملف الشخصي.",
+            ),
+          );
+        }
+      }
+    } catch {
+      setProfilePictureError(
+        t(
+          "Could not read that image file.",
+          "تعذر قراءة ملف الصورة.",
+        ),
+      );
+    } finally {
+      setSavingPicture(false);
+      if (avatarInput.current) avatarInput.current.value = "";
+    }
+  };
+  const handleClearPicture = async () => {
+    setProfilePictureError("");
+    const ok = await clearProfilePicture();
+    if (!ok) {
+      setProfilePictureError(
+        t(
+          "Could not clear the profile picture.",
+          "تعذر إزالة صورة الملف الشخصي.",
+        ),
+      );
+    }
+  };
   const query = useGetAcademicYears({
     query: { queryKey: getGetAcademicYearsQueryKey() },
   });
@@ -7789,6 +8152,93 @@ function SettingsPage() {
           </div>
         </section>
       </div>
+      <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-primary">
+              <Image size={18} />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                {t("Profile picture", "صورة الملف الشخصي")}
+              </div>
+              <h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-foreground">
+                {t("Administrator avatar", "صورة المسؤول")}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                {isDesktop
+                  ? t(
+                      "Stored on this device so it persists across app restarts.",
+                      "تُحفظ على هذا الجهاز لتستمر بين جلسات التطبيق.",
+                    )
+                  : t(
+                      "This web session keeps the picture for the current session only.",
+                      "هذه الجلسة تحتفظ بالصورة للجلسة الحالية فقط.",
+                    )}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-6 flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border border-border bg-secondary">
+            {profilePicture ? (
+              <img
+                src={profilePicture}
+                alt={t("Admin avatar", "صورة المسؤول")}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-muted-foreground">
+                LA
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              ref={avatarInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              data-testid="input-profile-picture"
+              onChange={handleProfilePictureChange}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => avatarInput.current?.click()}
+              disabled={savingPicture}
+              data-testid="button-upload-profile-picture"
+            >
+              {savingPicture ? (
+                <RefreshCw size={16} className="animate-spin" />
+              ) : (
+                <Upload size={16} />
+              )}
+              {savingPicture
+                ? t("Saving…", "جاري الحفظ…")
+                : t("Upload picture", "رفع صورة")}
+            </Button>
+            {profilePicture && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleClearPicture}
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                data-testid="button-clear-profile-picture"
+              >
+                <Trash2 size={16} />
+                {t("Remove", "إزالة")}
+              </Button>
+            )}
+          </div>
+        </div>
+        {profilePictureError && (
+          <p className="mt-4 flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle size={15} />
+            {profilePictureError}
+          </p>
+        )}
+      </section>
       <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-4">
@@ -8200,6 +8650,7 @@ function App() {
   return (
     <LanguageProvider>
       <ThemeProvider>
+        <ProfilePictureProvider>
 <QueryClientProvider client={queryClient}>
   <LocalStoreSync />
   <TooltipProvider>
@@ -8211,6 +8662,7 @@ function App() {
             </ConfirmProvider>
           </TooltipProvider>
         </QueryClientProvider>
+        </ProfilePictureProvider>
       </ThemeProvider>
     </LanguageProvider>
   );

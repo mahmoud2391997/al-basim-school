@@ -2,7 +2,6 @@ const { app, BrowserWindow, shell, dialog, ipcMain } = require("electron");
 const fs = require('node:fs');
 const path = require("node:path");
 const { startLocalApi } = require("./local-api.cjs");
-
 let localApi;
 let mainWindow;
 let quitting = false;
@@ -94,6 +93,34 @@ ipcMain.handle('restore-database', async () => {
   app.relaunch();
   app.exit(0);
   return { canceled: false };
+});
+
+const profilePicturePath = () =>
+  path.join(app.getPath('userData'), 'admin-profile-picture.txt');
+
+ipcMain.handle('save-profile-picture', async (_event, dataUrl) => {
+  try {
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+      return { ok: false, error: 'invalid-data' };
+    }
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(profilePicturePath(), dataUrl, 'utf8');
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('load-profile-picture', async () => {
+  try {
+    const filePath = profilePicturePath();
+    if (!fs.existsSync(filePath)) return { ok: true, dataUrl: null };
+    const dataUrl = fs.readFileSync(filePath, 'utf8');
+    if (!String(dataUrl).startsWith('data:')) return { ok: true, dataUrl: null };
+    return { ok: true, dataUrl };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
 });
 
 app.whenReady().then(async () => {

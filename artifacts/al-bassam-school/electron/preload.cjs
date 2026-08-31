@@ -13,4 +13,6 @@ contextBridge.exposeInMainWorld("alBassamDesktop", {
   appVersion: getArgument('app-version'),
   backup: () => ipcRenderer.invoke('backup-database'),
   restore: () => ipcRenderer.invoke('restore-database'),
+  saveProfilePicture: (dataUrl) => ipcRenderer.invoke('save-profile-picture', dataUrl),
+  loadProfilePicture: () => ipcRenderer.invoke('load-profile-picture'),
 });
