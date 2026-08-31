@@ -1,4 +1,4 @@
-const KEY = 'al-bassam-school-demo-v4';
+const KEY = 'al-bassam-school-demo-v5';
 
 type Row = Record<string, any> & { id: number };
 type Store = Record<string, Row[]>;
@@ -92,9 +92,10 @@ function generateSeedData(): Store {
   const students: Row[] = [];
   const studentIdCounter = { value: 1 };
   for (let g = 0; g < grades.length; g++) {
-    const studentsPerGrade = between(90, 110);
-    for (let s = 0; s < studentsPerGrade; s++) {
-      const isFemale = rand() > 0.5;
+      const studentsPerGrade = 100;
+      for (let s = 0; s < studentsPerGrade; s++) {
+        // Keep the demo directory exactly balanced: 50 boys and 50 girls per grade.
+        const isFemale = s % 2 === 1;
       const firstName = isFemale ? pick(saudiFirstFemale) : pick(saudiFirstMale);
       const lastName = isFemale ? pick(saudiLastFemale) : pick(saudiLastMale);
       const id = studentIdCounter.value++;

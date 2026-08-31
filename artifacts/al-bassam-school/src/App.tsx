@@ -1163,11 +1163,19 @@ function TableFilterBar({
             <option value="">
               {t(field.label, field.arabic)}
             </option>
-            {field.options.map((option) => (
-              <option key={option} value={option}>
-                {t(option, option)}
-              </option>
-            ))}
+            {field.options.map((option) => {
+              const displayLabel = field.key === "gender"
+                ? option === "male" ? "Boy" : "Girl"
+                : option;
+              const displayArabic = field.key === "gender"
+                ? option === "male" ? "ولد" : "بنت"
+                : option;
+              return (
+                <option key={option} value={option}>
+                  {t(displayLabel, displayArabic)}
+                </option>
+              );
+            })}
           </select>
         </div>
       ))}
@@ -1958,8 +1966,8 @@ function StudentDialog({
       arabic: "الجنس",
       placeholder: "",
       options: [
-        ["male", "Male", "ذكر"],
-        ["female", "Female", "أنثى"],
+        ["male", "Boy", "ولد"],
+        ["female", "Girl", "بنت"],
       ],
     },
     {
