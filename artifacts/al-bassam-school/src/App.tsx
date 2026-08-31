@@ -363,6 +363,7 @@ function Shell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeSystem, setActiveSystem] = useState<SchoolSystem>(() => getActiveSchoolSystem());
+  const queryClient = useQueryClient();
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("al-bassam-sidebar-collapsed") === "1",
   );
@@ -383,6 +384,8 @@ function Shell({ children }: { children: ReactNode }) {
     if (nextSystem === activeSystem) return;
     setActiveSystem(nextSystem);
     setActiveSchoolSystem(nextSystem);
+    queryClient.clear();
+    void queryClient.refetchQueries({ type: "active" });
   };
 
   useEffect(() => {
