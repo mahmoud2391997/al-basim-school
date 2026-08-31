@@ -99,7 +99,7 @@ function nextId(key: string): number {
 
 // ── Seed data (runs once) ─────────────────────────────────────────────
 
-const SEED_KEY = 'seeded';
+const SEED_KEY = 'seeded-v3-gender-scoped';
 
 function seedIfEmpty() {
   if (localStorage.getItem(storageKey(SEED_KEY))) return;
@@ -131,16 +131,22 @@ function seedIfEmpty() {
       status: 'active',
     },
   ];
-  write(LS.teachers, teachers);
-  localStorage.setItem(storageKey(`${LS.teachers}-next-id`), '3');
+  const scopedTeachers = teachers.filter((teacher) =>
+    getSystem() === 'boys' ? teacher.gender === 'male' : teacher.gender === 'female',
+  );
+  write(LS.teachers, scopedTeachers);
+  localStorage.setItem(storageKey(`${LS.teachers}-next-id`), String(scopedTeachers.length + 1));
 
   const students: Student[] = [
     { id: 1, fullName: 'Sara Al-Harbi', fullNameArabic: 'سارة الحربي', gender: 'female', studentNumber: 'AB-2024-014', nationalId: '1023456789', grade: 'Grade 8', className: '8A', guardianName: 'Khalid Al-Harbi', guardianPhone: '+966501112233', status: 'active', enrollmentDate: '2024-09-01' },
     { id: 2, fullName: 'Omar Al-Qahtani', fullNameArabic: 'عمر القحطاني', gender: 'male', studentNumber: 'AB-2024-015', nationalId: '1023456790', grade: 'Grade 7', className: '7B', guardianName: 'Noura Al-Qahtani', guardianPhone: '+966502223344', status: 'active', enrollmentDate: '2024-09-01' },
     { id: 3, fullName: 'Lina Saeed', fullNameArabic: 'لينا سعيد', gender: 'female', studentNumber: 'AB-2025-003', nationalId: '1055566677', grade: 'Grade 9', className: '9A', guardianName: 'Ahmed Saeed', guardianPhone: '+966503334455', status: 'active', enrollmentDate: '2023-09-01' },
   ];
-  write(LS.students, students);
-  localStorage.setItem(storageKey(`${LS.students}-next-id`), '4');
+  const scopedStudents = students.filter((student) =>
+    getSystem() === 'boys' ? student.gender === 'male' : student.gender === 'female',
+  );
+  write(LS.students, scopedStudents);
+  localStorage.setItem(storageKey(`${LS.students}-next-id`), String(scopedStudents.length + 1));
 
   const books: Book[] = [
     { id: 1, title: 'Complete ICT IGCSE', author: 'Paul Culling', isbn: '9780981775470', category: 'Technology', language: 'English', volume: '1', copies: 8, availableCopies: 5, lostCopies: 0, damagedCopies: 0, dateAdded: '2024-09-15', depositNumber: 'DEP-001', status: 'available', publicationPlace: 'London', publicationDate: '2020', generalNumber: 'GN-001', specialNumber: '', description: '', coverImage: '', shelf: 'B-04' },
