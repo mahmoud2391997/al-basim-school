@@ -43,7 +43,8 @@ import type {
 export type SchoolSystem = 'boys' | 'girls';
 
 const SYSTEM_KEY = 'al-bassam-active-system';
-const STORAGE_VERSION = 3;
+const STORAGE_VERSION = 4;
+const RESET_KEY = 'al-bassam-storage-reset-v4';
 const LS = {
   students: 'students',
   teachers: 'teachers',
@@ -173,7 +174,24 @@ function seedIfEmpty() {
   localStorage.setItem(storageKey(SEED_KEY), '1');
 }
 
-// Run seed immediately on module load
+// Clear every previous app dataset once before rendering, then seed the new dataset.
+// Keep language, theme, sidebar preferences, and authentication untouched.
+function resetAppDataBeforeRender() {
+  if (typeof window === 'undefined' || localStorage.getItem(RESET_KEY)) return;
+
+  const appPrefixes = ['al-bassam:', 'students', 'teachers', 'books', 'employees', 'borrows', 'academic-years', 'activity'];
+  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+    const key = localStorage.key(index);
+    if (key && appPrefixes.some((prefix) => key === prefix || key.startsWith(prefix))) {
+      localStorage.removeItem(key);
+    }
+  }
+
+  localStorage.setItem(RESET_KEY, '1');
+}
+
+// Reset old datasets before the first render, then seed the new dataset.
+resetAppDataBeforeRender();
 seedIfEmpty();
 
 // ── withQueryKey helper (matches generated api.ts) ────────────────────
