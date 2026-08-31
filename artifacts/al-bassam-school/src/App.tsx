@@ -178,6 +178,18 @@ function useDesktopLocation() {
   return [location, navigate] as [string, (path: string, ...args: any[]) => any];
 }
 
+function LocalStoreSync() {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const refresh = () => {
+      queryClient.invalidateQueries();
+    };
+    window.addEventListener("storage", refresh);
+    return () => window.removeEventListener("storage", refresh);
+  }, [queryClient]);
+  return null;
+}
+
 const fallbackSummary = {
   students: 0,
   teachers: 0,
@@ -4863,7 +4875,7 @@ function LibraryPage() {
                 t(
                   `Copy marked as ${action}`,
                   action === "lost"
-                    ? "تم وضع علامة على نسخة كمفقودة"
+                    ? "تم وضع علامة ��لى نسخة كمفقودة"
                     : action === "damaged"
                       ? "تم وضع علامة على نسخة كتالفة"
                       : action === "fixed"
@@ -6974,7 +6986,7 @@ function AnalyticsPage() {
                 </div>
                 {borrowsByGrade.length === 0 ? (
                   <p className="py-6 text-center text-sm text-muted-foreground">
-                    {t("No records found.", "لا توجد سجلات.")}
+                    {t("No records found.", "لا توجد سجلا��.")}
                   </p>
                 ) : (
                   <>
@@ -8146,8 +8158,9 @@ function App() {
   return (
     <LanguageProvider>
       <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
+<QueryClientProvider client={queryClient}>
+  <LocalStoreSync />
+  <TooltipProvider>
             <ConfirmProvider>
               <WouterRouter base={routerBase} hook={routerHook}>
                 <AuthGate />

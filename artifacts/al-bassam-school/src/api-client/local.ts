@@ -40,19 +40,41 @@ import type {
 
 // ── localStorage helpers ──────────────────────────────────────────────
 
+export type SchoolSystem = 'boys' | 'girls';
+
+const SYSTEM_KEY = 'al-bassam-active-system';
+const STORAGE_VERSION = 2;
 const LS = {
-  students: 'al-bassam-students',
-  teachers: 'al-bassam-teachers',
-  books: 'al-bassam-books',
-  employees: 'al-bassam-employees',
-  borrows: 'al-bassam-borrows',
-  years: 'al-bassam-academic-years',
-  activity: 'al-bassam-activity',
+  students: 'students',
+  teachers: 'teachers',
+  books: 'books',
+  employees: 'employees',
+  borrows: 'borrows',
+  years: 'academic-years',
+  activity: 'activity',
 } as const;
+
+function getSystem(): SchoolSystem {
+  if (typeof window === 'undefined') return 'boys';
+  return localStorage.getItem(SYSTEM_KEY) === 'girls' ? 'girls' : 'boys';
+}
+
+export function setActiveSchoolSystem(system: SchoolSystem) {
+  localStorage.setItem(SYSTEM_KEY, system);
+  window.dispatchEvent(new StorageEvent('storage', { key: SYSTEM_KEY, newValue: system }));
+}
+
+export function getActiveSchoolSystem(): SchoolSystem {
+  return getSystem();
+}
+
+function storageKey(key: string) {
+  return `al-bassam:v${STORAGE_VERSION}:${getSystem()}:${key}`;
+}
 
 function read<T>(key: string): T[] {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(storageKey(key));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -60,29 +82,34 @@ function read<T>(key: string): T[] {
 }
 
 function write<T>(key: string, data: T[]) {
-  localStorage.setItem(key, JSON.stringify(data));
+  try {
+    localStorage.setItem(storageKey(key), JSON.stringify(data));
+    window.dispatchEvent(new StorageEvent('storage', { key: storageKey(key), newValue: JSON.stringify(data) }));
+  } catch {
+    // Storage can be unavailable or full; keep the in-memory mutation usable.
+  }
 }
 
 function nextId(key: string): number {
-  const counterKey = key + '-next-id';
-  const current = Number(localStorage.getItem(counterKey) || '1');
+  const counterKey = storageKey(`${key}-next-id`);
+  const current = Math.max(1, Number(localStorage.getItem(counterKey) || '1'));
   localStorage.setItem(counterKey, String(current + 1));
   return current;
 }
 
 // ── Seed data (runs once) ─────────────────────────────────────────────
 
-const SEED_KEY = 'al-bassam-seeded';
+const SEED_KEY = 'seeded';
 
 function seedIfEmpty() {
-  if (localStorage.getItem(SEED_KEY)) return;
+  if (localStorage.getItem(storageKey(SEED_KEY))) return;
 
   const years: AcademicYear[] = [
     { id: 1, label: '2024 / 2025', startDate: '2024-09-01', endDate: '2025-06-30', isCurrent: false },
     { id: 2, label: '2025 / 2026', startDate: '2025-09-01', endDate: '2026-06-30', isCurrent: true },
   ];
   write(LS.years, years);
-  localStorage.setItem('al-bassam-academic-years-next-id', '3');
+  localStorage.setItem(storageKey(`${LS.years}-next-id`), '3');
 
   const teachers: Teacher[] = [
     {
@@ -105,7 +132,7 @@ function seedIfEmpty() {
     },
   ];
   write(LS.teachers, teachers);
-  localStorage.setItem('al-bassam-teachers-next-id', '3');
+  localStorage.setItem(storageKey(`${LS.teachers}-next-id`), '3');
 
   const students: Student[] = [
     { id: 1, fullName: 'Sara Al-Harbi', fullNameArabic: 'سارة الحربي', gender: 'female', studentNumber: 'AB-2024-014', nationalId: '1023456789', grade: 'Grade 8', className: '8A', guardianName: 'Khalid Al-Harbi', guardianPhone: '+966501112233', status: 'active', enrollmentDate: '2024-09-01' },
@@ -113,7 +140,7 @@ function seedIfEmpty() {
     { id: 3, fullName: 'Lina Saeed', fullNameArabic: 'لينا سعيد', gender: 'female', studentNumber: 'AB-2025-003', nationalId: '1055566677', grade: 'Grade 9', className: '9A', guardianName: 'Ahmed Saeed', guardianPhone: '+966503334455', status: 'active', enrollmentDate: '2023-09-01' },
   ];
   write(LS.students, students);
-  localStorage.setItem('al-bassam-students-next-id', '4');
+  localStorage.setItem(storageKey(`${LS.students}-next-id`), '4');
 
   const books: Book[] = [
     { id: 1, title: 'Complete ICT IGCSE', author: 'Paul Culling', isbn: '9780981775470', category: 'Technology', language: 'English', volume: '1', copies: 8, availableCopies: 5, lostCopies: 0, damagedCopies: 0, dateAdded: '2024-09-15', depositNumber: 'DEP-001', status: 'available', publicationPlace: 'London', publicationDate: '2020', generalNumber: 'GN-001', specialNumber: '', description: '', coverImage: '', shelf: 'B-04' },
@@ -121,7 +148,7 @@ function seedIfEmpty() {
     { id: 3, title: 'The University Murderers', author: 'Richard MacAndrew', isbn: '9780521184954', category: 'Literature', language: 'English', volume: '', copies: 3, availableCopies: 2, lostCopies: 0, damagedCopies: 0, dateAdded: '2024-10-10', depositNumber: 'DEP-003', status: 'available', publicationPlace: 'Cambridge', publicationDate: '2019', generalNumber: 'GN-003', specialNumber: '', description: '', coverImage: '', shelf: 'C-07' },
   ];
   write(LS.books, books);
-  localStorage.setItem('al-bassam-books-next-id', '4');
+  localStorage.setItem(storageKey(`${LS.books}-next-id`), '4');
 
   const employees: Employee[] = [
     { id: 1, fullName: 'Khalid Al-Otaibi', fullNameArabic: 'خالد العتيبي', employeeNumber: 'EMP-001', nationalId: '1065432109', jobTitle: 'Administrator', phone: '+966561234567', status: 'active' },
@@ -129,7 +156,7 @@ function seedIfEmpty() {
     { id: 3, fullName: 'Nasser Al-Dosari', fullNameArabic: 'ناصر الدوسري', employeeNumber: 'EMP-003', nationalId: '1043210987', jobTitle: 'Accountant', phone: '+966581234567', status: 'active' },
   ];
   write(LS.employees, employees);
-  localStorage.setItem('al-bassam-employees-next-id', '4');
+  localStorage.setItem(storageKey(`${LS.employees}-next-id`), '4');
 
   write(LS.activity, [
     { id: 1, type: 'student', title: 'New student enrolled', timestamp: new Date().toISOString() },
@@ -137,7 +164,7 @@ function seedIfEmpty() {
     { id: 3, type: 'teacher', title: 'Teacher profile updated', timestamp: new Date(Date.now() - 7200000).toISOString() },
   ] as DashboardSummary['recentActivity']);
 
-  localStorage.setItem(SEED_KEY, '1');
+  localStorage.setItem(storageKey(SEED_KEY), '1');
 }
 
 // Run seed immediately on module load
@@ -543,7 +570,24 @@ const updateBookFn = (_opts?: any) =>
       const items = read<Book>(LS.books);
       const idx = items.findIndex((b) => b.id === id);
       if (idx === -1) throw new Error('Book not found');
-      items[idx] = { ...items[idx], ...data } as Book;
+      const current = items[idx];
+      const activeBorrowedCopies = read<Borrow>(LS.borrows).filter(
+        (borrow) => borrow.bookId === id && !borrow.returnedAt,
+      ).length;
+      const nextCopies = data.copies === undefined ? current.copies : Number(data.copies);
+      if (!Number.isInteger(nextCopies) || nextCopies < 1) {
+        throw new Error('Total copies must be a positive whole number');
+      }
+      if (nextCopies < activeBorrowedCopies) {
+        throw new Error('Total copies cannot be less than active borrowed copies');
+      }
+      items[idx] = {
+        ...current,
+        ...data,
+        copies: nextCopies,
+        availableCopies: nextCopies - activeBorrowedCopies - (current.lostCopies ?? 0) - (current.damagedCopies ?? 0),
+      } as Book;
+      if (items[idx].availableCopies < 0) throw new Error('Total copies cannot be less than unavailable copies');
       write(LS.books, items);
       return items[idx];
     },
@@ -571,6 +615,9 @@ const createBorrowFn = (_opts?: any) =>
       const id = nextId(LS.borrows);
       const books = read<Book>(LS.books);
       const book = books.find((b) => b.id === data.bookId);
+      if (!book) throw new Error('Book not found');
+      const availableCopies = book.availableCopies ?? book.copies;
+      if (availableCopies < 1) throw new Error('No copies are available for borrowing');
       let borrowerName = '';
       if (data.borrowerType === 'student') {
         const students = read<Student>(LS.students);
@@ -598,6 +645,9 @@ const createBorrowFn = (_opts?: any) =>
         returnedAt: undefined,
       };
       items.push(borrow);
+      book.availableCopies = Math.max(0, availableCopies - 1);
+      book.status = 'available';
+      write(LS.books, books);
       write(LS.borrows, items);
       return borrow;
     },
