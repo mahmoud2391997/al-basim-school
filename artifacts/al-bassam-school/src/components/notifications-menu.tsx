@@ -47,25 +47,10 @@ export function NotificationsMenu({
     "all" | "overdue" | "dueSoon" | "returned"
   >("all");
 
-  const [readIds, setReadIds] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem("al-bassam-read-notifications");
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
   const saveReadIds = (newSet: Set<string>) => {
     setReadIds(newSet);
-    try {
-      localStorage.setItem(
-        "al-bassam-read-notifications",
-        JSON.stringify(Array.from(newSet)),
-      );
-    } catch {
-      // ignore
-    }
   };
 
   const markAllAsRead = () => {

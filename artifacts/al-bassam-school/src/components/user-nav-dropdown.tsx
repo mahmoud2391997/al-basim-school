@@ -45,14 +45,10 @@ export function UserNavDropdown({
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("school-auth-token") || ""}`,
-        },
       });
     } catch {
       // ignore
     }
-    localStorage.removeItem("school-auth-token");
     window.location.reload();
   };
 
