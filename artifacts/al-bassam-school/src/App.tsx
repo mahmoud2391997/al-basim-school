@@ -117,6 +117,11 @@ import {
 } from "@workspace/api-client-react";
 import { getBooks } from "@workspace/api-client-react";
 import {
+  getActiveSchoolSystem,
+  setActiveSchoolSystem,
+  type SchoolSystem,
+} from "./api-client/local";
+import {
   getAcademicYears,
   getBorrows,
   getEmployees,
@@ -357,6 +362,7 @@ function Shell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [activeSystem, setActiveSystem] = useState<SchoolSystem>(() => getActiveSchoolSystem());
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("al-bassam-sidebar-collapsed") === "1",
   );
@@ -372,6 +378,12 @@ function Shell({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const sidebarWidth = collapsed ? 64 : 208;
   const text = t;
+
+  const switchSystem = (nextSystem: SchoolSystem) => {
+    if (nextSystem === activeSystem) return;
+    setActiveSystem(nextSystem);
+    setActiveSchoolSystem(nextSystem);
+  };
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -670,6 +682,19 @@ function Shell({ children }: { children: ReactNode }) {
             </span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
+            <label className="flex items-center gap-2 rounded-lg border border-border bg-card px-2 py-1 text-[10px] font-semibold text-muted-foreground" dir="ltr">
+              <span className="hidden sm:inline">{text("School", "المدرسة")}</span>
+              <select
+                value={activeSystem}
+                onChange={(event) => switchSystem(event.target.value as SchoolSystem)}
+                className="bg-transparent text-foreground outline-none"
+                aria-label={text("Active school system", "النظام المدرسي النشط")}
+                data-testid="select-school-system"
+              >
+                <option value="boys">{text("Boys School", "مدرسة البنين")}</option>
+                <option value="girls">{text("Girls School", "مدرسة البنات")}</option>
+              </select>
+            </label>
             <div
               className="flex items-center rounded-lg border border-border bg-card p-0.5 text-[10px] font-semibold"
               dir="ltr"
@@ -1355,7 +1380,7 @@ function Dashboard() {
         category: "borrows",
         title: isReturned
           ? `${t("Book Returned", "إرجاع كتاب")}: "${b.bookTitle || t("Book", "الكتاب")}"`
-          : `${t("Book Loaned", "إعارة كتاب")}: "${b.bookTitle || t("Book", "الكتاب")}"`,
+          : `${t("Book Loaned", "إعارة كتا��")}: "${b.bookTitle || t("Book", "الكتاب")}"`,
         subtitle: `${t("Borrower", "المستعير")}: ${b.borrowerName || "—"} · ${isReturned ? t("Returned", "تم الإرجاع") : `${t("Due", "الاستحقاق")}: ${formatDate(b.dueDate ? String(b.dueDate) : undefined)}`}`,
         badge: isReturned
           ? (b.condition === "damaged" ? t("Damaged", "تالف") : b.condition === "lost" ? t("Lost", "مفقود") : t("Returned", "مُرجع"))
@@ -3253,7 +3278,7 @@ function EmployeeDialog({
                 className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary"
                 data-testid="input-employee-status"
               >
-                <option value="active">{t("Active", "نشط")}</option>
+                <option value="active">{t("Active", "��شط")}</option>
                 <option value="inactive">{t("Inactive", "غير نشط")}</option>
               </select>
             </label>

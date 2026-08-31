@@ -187,18 +187,18 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 
 // ── Query key functions ───────────────────────────────────────────────
 
-export const getGetAcademicYearsQueryKey = () => ['/api/academic-years'] as const;
-export const getGetDashboardSummaryQueryKey = () => ['/api/dashboard/summary'] as const;
+export const getGetAcademicYearsQueryKey = () => ['/api/academic-years', getSystem()] as const;
+export const getGetDashboardSummaryQueryKey = () => ['/api/dashboard/summary', getSystem()] as const;
 export const getGetStudentsQueryKey = (params?: GetStudentsParams) =>
-  ['/api/students', ...(params ? [params] : [])] as const;
+  ['/api/students', getSystem(), ...(params ? [params] : [])] as const;
 export const getGetTeachersQueryKey = (params?: GetTeachersParams) =>
-  ['/api/teachers', ...(params ? [params] : [])] as const;
+  ['/api/teachers', getSystem(), ...(params ? [params] : [])] as const;
 export const getGetBooksQueryKey = (params?: GetBooksParams) =>
-  ['/api/library/books', ...(params ? [params] : [])] as const;
+  ['/api/library/books', getSystem(), ...(params ? [params] : [])] as const;
 export const getGetEmployeesQueryKey = (params?: GetEmployeesParams) =>
-  ['/api/employees', ...(params ? [params] : [])] as const;
+  ['/api/employees', getSystem(), ...(params ? [params] : [])] as const;
 export const getGetBorrowsQueryKey = (params?: GetBorrowsParams) =>
-  ['/api/library/borrows', ...(params ? [params] : [])] as const;
+  ['/api/library/borrows', getSystem(), ...(params ? [params] : [])] as const;
 
 // ── Query hooks ───────────────────────────────────────────────────────
 
@@ -308,6 +308,8 @@ export function useGetBooks<TData = Book[], TError = Error>(
           (b) =>
             b.title.toLowerCase().includes(q) ||
             b.author.toLowerCase().includes(q) ||
+            b.category.toLowerCase().includes(q) ||
+            b.description.toLowerCase().includes(q) ||
             b.isbn.toLowerCase().includes(q),
         );
       }
