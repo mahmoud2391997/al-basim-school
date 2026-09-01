@@ -750,10 +750,19 @@ export const setAuthTokenGetter = () => {};
 
 // ── Demo data seeding ──────────────────────────────────────────────────
 
-const demoYears: AcademicYear[] = [
-  { id: 1, label: '2025-2026', startDate: '2025-08-25', endDate: '2026-06-20', isCurrent: true },
-  { id: 2, label: '2024-2025', startDate: '2024-08-25', endDate: '2025-06-20', isCurrent: false },
-];
+/**
+ * Academic year boundaries for the demo data are generated relative to the
+ * current date so the seeded demo borrows always fall inside the "current"
+ * academic year and the student ranking reflects them correctly.
+ */
+function buildDemoYears(date = new Date()): AcademicYear[] {
+  const isAfterSeptember = date.getMonth() >= 8;
+  const current = isAfterSeptember ? date.getFullYear() : date.getFullYear() - 1;
+  return [
+    { id: 1, label: `${current}-${current + 1}`, startDate: `${current}-08-20`, endDate: `${current + 1}-06-20`, isCurrent: true },
+    { id: 2, label: `${current - 1}-${current}`, startDate: `${current - 1}-08-20`, endDate: `${current}-06-20`, isCurrent: false },
+  ];
+}
 
 const demoBooks: Book[] = [
   {
@@ -854,12 +863,25 @@ const demoEmployees: Employee[] = [
   { id: 3, fullName: 'Hassan Mohammed Al-Ghamdi', fullNameArabic: 'حسن محمد الغامدي', employeeNumber: 'EMP-003', nationalId: '1042200113', jobTitle: 'Librarian', phone: '0552223333', status: 'active' },
 ];
 
-const demoBorrows: Borrow[] = [
-  { id: 1, bookId: 1, studentId: 1, borrowerType: 'student', borrowerId: 1, borrowedAt: '2026-08-20T08:30:00.000Z', dueDate: '2026-09-03', returnedAt: undefined, bookTitle: 'مختارات من القرآن الكريم', bookBarcode: '978-603-123456-1', borrowerName: 'Ahmed Mohammed Al-Sayed' },
-  { id: 2, bookId: 3, studentId: 2, borrowerType: 'student', borrowerId: 2, borrowedAt: '2026-08-21T09:00:00.000Z', dueDate: '2026-09-04', returnedAt: undefined, bookTitle: 'رياض الأطفال', bookBarcode: '978-603-123456-3', borrowerName: 'Omar Khaled Ibrahim' },
-  { id: 3, bookId: 5, studentId: 5, borrowerType: 'student', borrowerId: 5, borrowedAt: '2026-08-24T10:15:00.000Z', dueDate: '2026-09-07', returnedAt: undefined, bookTitle: 'Math Made Easy', bookBarcode: '978-603-123456-5', borrowerName: 'Abdulrahman Saleh Mahmoud' },
-  { id: 4, bookId: 2, studentId: 2, borrowerType: 'student', borrowerId: 2, borrowedAt: '2026-08-10T08:00:00.000Z', dueDate: '2026-08-24', returnedAt: '2026-08-22T14:00:00.000Z', bookTitle: 'The Prophet', bookBarcode: '978-603-123456-2', borrowerName: 'Omar Khaled Ibrahim', condition: 'good' },
-];
+/**
+ * Demo borrows are dated relative to the current date so they always fall
+ * inside the current academic year and appear in the student ranking.
+ */
+function buildDemoBorrows(date = new Date()): Borrow[] {
+  const addDays = (days: number) =>
+    new Date(date.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+  const isoDate = (ts: string) => ts.slice(0, 10);
+  const b1 = addDays(9);
+  const b2 = addDays(8);
+  const b3 = addDays(5);
+  const b4 = addDays(20);
+  return [
+    { id: 1, bookId: 1, studentId: 1, borrowerType: 'student', borrowerId: 1, borrowedAt: b1, dueDate: isoDate(new Date(date.getTime() + 12 * 24 * 60 * 60 * 1000).toISOString()), returnedAt: undefined, bookTitle: 'مختارات من القرآن الكريم', bookBarcode: '978-603-123456-1', borrowerName: 'Ahmed Mohammed Al-Sayed' },
+    { id: 2, bookId: 3, studentId: 2, borrowerType: 'student', borrowerId: 2, borrowedAt: b2, dueDate: isoDate(new Date(date.getTime() + 13 * 24 * 60 * 60 * 1000).toISOString()), returnedAt: undefined, bookTitle: 'رياض الأطفال', bookBarcode: '978-603-123456-3', borrowerName: 'Omar Khaled Ibrahim' },
+    { id: 3, bookId: 5, studentId: 5, borrowerType: 'student', borrowerId: 5, borrowedAt: b3, dueDate: isoDate(new Date(date.getTime() + 16 * 24 * 60 * 60 * 1000).toISOString()), returnedAt: undefined, bookTitle: 'Math Made Easy', bookBarcode: '978-603-123456-5', borrowerName: 'Abdulrahman Saleh Mahmoud' },
+    { id: 4, bookId: 2, studentId: 2, borrowerType: 'student', borrowerId: 2, borrowedAt: b4, dueDate: isoDate(new Date(date.getTime() + 4 * 24 * 60 * 60 * 1000).toISOString()), returnedAt: b2, bookTitle: 'The Prophet', bookBarcode: '978-603-123456-2', borrowerName: 'Omar Khaled Ibrahim', condition: 'good' },
+  ];
+}
 
 /**
  * Populate the web store with a realistic set of demo records for both
@@ -867,8 +889,10 @@ const demoBorrows: Borrow[] = [
  * safe to call on every boot without overwriting user data.
  */
 export function seedDemoData(): void {
-  seedCollection('boys', 'years', demoYears);
-  seedCollection('girls', 'years', demoYears);
+  const years = buildDemoYears();
+  const borrows = buildDemoBorrows();
+  seedCollection('boys', 'years', years);
+  seedCollection('girls', 'years', years);
   seedCollection('boys', 'books', demoBooks);
   seedCollection('girls', 'books', demoBooks);
   seedCollection('boys', 'students', demoStudentsBoys);
@@ -877,6 +901,6 @@ export function seedDemoData(): void {
   seedCollection('girls', 'teachers', demoTeachers);
   seedCollection('boys', 'employees', demoEmployees);
   seedCollection('girls', 'employees', demoEmployees);
-  seedCollection('boys', 'borrows', demoBorrows);
-  seedCollection('girls', 'borrows', demoBorrows);
+  seedCollection('boys', 'borrows', borrows);
+  seedCollection('girls', 'borrows', borrows);
 }

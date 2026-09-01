@@ -6487,23 +6487,30 @@ function BorrowHistoryPage() {
       startTs = new Date(`${year.startDate}T00:00:00`).getTime();
       endTs = new Date(`${year.endDate}T23:59:59`).getTime();
     }
-    const inYear = (ts: string | null | undefined) =>
-      ts ? !Number.isNaN(new Date(ts).getTime()) && new Date(ts).getTime() >= startTs && new Date(ts).getTime() <= endTs : false;
+    // A borrow counts toward this year when it falls within the current
+    // academic-year window, or when it falls outside every known year window
+    // (so slightly out-of-sync dates are never dropped from the ranking).
+    const windows = years.map((y) => ({
+      start: new Date(`${y.startDate}T00:00:00`).getTime(),
+      end: new Date(`${y.endDate}T23:59:59`).getTime(),
+    }));
+    const inCurrentYear = (ts: string | null | undefined) => {
+      if (!ts || Number.isNaN(new Date(ts).getTime())) return false;
+      const time = new Date(ts).getTime();
+      if (time >= startTs && time <= endTs) return true;
+      const inAnyWindow = windows.some(
+        (w) => time >= w.start && time <= w.end,
+      );
+      return !inAnyWindow;
+    };
     const rows = students.map((student) => {
-      const count = year
-        ? studentBorrows.filter(
-            (b) =>
-              inYear(b.borrowedAt) &&
-              (b.studentId != null
-                ? b.studentId === student.id
-                : b.borrowerId === student.id),
-          ).length
-        : studentBorrows.filter(
-            (b) =>
-              b.studentId != null
-                ? b.studentId === student.id
-                : b.borrowerId === student.id,
-          ).length;
+      const count = studentBorrows.filter(
+        (b) =>
+          inCurrentYear(b.borrowedAt) &&
+          (b.studentId != null
+            ? b.studentId === student.id
+            : b.borrowerId === student.id),
+      ).length;
       return { student, count };
     });
     rows.sort((a, b) => b.count - a.count);
