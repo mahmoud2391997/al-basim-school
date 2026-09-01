@@ -2263,7 +2263,7 @@ function StudentRow({
     }[student.status] ?? student.status;
   return (
     <div
-      className={`group grid min-w-[1180px] grid-cols-[minmax(280px,2fr)_minmax(120px,.85fr)_minmax(150px,1.1fr)_minmax(120px,1fr)_minmax(170px,1.25fr)_minmax(140px,1fr)_minmax(110px,.8fr)_88px] items-center gap-4 border-b border-border/70 px-5 py-4 transition-colors hover:bg-secondary/40 ${focused ? "bg-primary/15 ring-2 ring-inset ring-primary/50" : ""}`}
+      className={`group grid min-w-[1180px] grid-cols-[minmax(280px,2fr)_minmax(120px,.85fr)_minmax(150px,1.1fr)_minmax(120px,1fr)_minmax(170px,1.25fr)_minmax(140px,1fr)_minmax(110px,.8fr)_88px] items-center gap-4 border-b border-border/70 px-5 py-4 transition-colors hover:bg-secondary/40 ${focused ? "bg-primary/25 ring-4 ring-inset ring-primary/80 shadow-[0_0_0_4px_hsl(var(--primary)/.28)]" : ""}`}
       data-testid={`row-student-${student.id}`}
       data-focused={focused ? "true" : undefined}
     >
@@ -5928,7 +5928,7 @@ function DistributionPage() {
                 onSort={toggleSort}
                 align="start"
               >
-                {t("Grade", "المرحلة")}
+                {t("Grade", "ال��رحلة")}
               </SortHeader>
               <SortHeader
                 columnKey="klass"
@@ -7370,7 +7370,7 @@ function AnalyticsPage() {
                     </div>
                   ) : (
                     <p className="py-10 text-center text-sm text-muted-foreground">
-                      {t("No borrows to chart within the current filters.", "لا توجد إعارات لعرضها ضمن عوامل التصفية الحا��ية.")}
+                      {t("No borrows to chart within the current filters.", "لا توجد إعارات لعرضها ضمن ��وامل التصفية الحا��ية.")}
                     </p>
                   )}
                 </section>
