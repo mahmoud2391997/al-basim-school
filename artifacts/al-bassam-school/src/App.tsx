@@ -121,7 +121,6 @@ import {
 import { getBooks } from "@workspace/api-client-react";
 import {
   getActiveSchoolSystem,
-  resetDemoData,
   seedDemoData,
   setActiveSchoolSystem,
   type SchoolSystem,
@@ -1552,7 +1551,7 @@ function Dashboard() {
               value={totalEmployees.toLocaleString()}
               icon={Briefcase}
               tone="sky"
-              note={t("Administrative & staff members", "أعضاء الكادر الإداري")}
+              note={t("Administrative & staff members", "أعض��ء الكادر الإداري")}
             />
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -2246,12 +2245,14 @@ function StudentRow({
   onDelete,
   selected,
   onSelect,
+  focused,
 }: {
   student: Student;
   onEdit: (student: Student) => void;
   onDelete: (student: Student) => void;
   selected: boolean;
   onSelect: (checked: boolean) => void;
+  focused: boolean;
 }) {
   const { t } = useT();
   const statusLabel =
@@ -2262,8 +2263,9 @@ function StudentRow({
     }[student.status] ?? student.status;
   return (
     <div
-      className="group grid min-w-[1000px] grid-cols-[2fr_.7fr_1.1fr_1.15fr_.9fr_1.25fr_1fr_.8fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
+      className={`group grid min-w-[1180px] grid-cols-[minmax(280px,2fr)_minmax(120px,.85fr)_minmax(150px,1.1fr)_minmax(120px,1fr)_minmax(170px,1.25fr)_minmax(140px,1fr)_minmax(110px,.8fr)_88px] items-center gap-4 border-b border-border/70 px-5 py-4 transition-colors hover:bg-secondary/40 ${focused ? "bg-primary/15 ring-2 ring-inset ring-primary/50" : ""}`}
       data-testid={`row-student-${student.id}`}
+      data-focused={focused ? "true" : undefined}
     >
       <div className="flex items-center gap-3 text-start">
         <Checkbox
@@ -2348,7 +2350,9 @@ function StudentRow({
 }
 
 function StudentsPage() {
+  const [location] = useLocation();
   const [search, setSearch] = useState("");
+  const [focusedStudentId, setFocusedStudentId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Student | undefined>();
   const [toast, setToast] = useState("");
@@ -2401,6 +2405,29 @@ function StudentsPage() {
     [sorted, filters.values, filterFields],
   );
   const studentPages = usePagination(filtered);
+
+  useEffect(() => {
+    const focusValue = new URLSearchParams(location.split("?")[1] ?? "").get("focus");
+    const requestedId = focusValue ? Number(focusValue) : NaN;
+    if (!Number.isInteger(requestedId) || !students.length) return;
+    const targetIndex = filtered.findIndex((student) => student.id === requestedId);
+    if (targetIndex < 0) {
+      setSearch("");
+      filters.resetFilter();
+      return;
+    }
+    const targetPage = Math.floor(targetIndex / studentPages.pageSize) + 1;
+    if (studentPages.page !== targetPage) {
+      studentPages.setPage(targetPage);
+      return;
+    }
+    setFocusedStudentId(requestedId);
+    const row = document.querySelector(`[data-testid="row-student-${requestedId}"]`);
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timeout = window.setTimeout(() => setFocusedStudentId(null), 750);
+    return () => window.clearTimeout(timeout);
+  }, [location, students, filtered, studentPages.page, studentPages.pageSize]);
+
   const visibleStudentIds = studentPages.pageItems.map((student) => student.id);
   const allVisibleStudentsSelected = visibleStudentIds.length > 0 && visibleStudentIds.every((id) => selectedIds.has(id));
   const toggleStudentSelection = (id: number, checked: boolean) => {
@@ -2606,7 +2633,7 @@ function StudentsPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[1000px] grid-cols-[2fr_.7fr_1.1fr_1.15fr_.9fr_1.25fr_1fr_.8fr_88px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[1180px] grid-cols-[minmax(280px,2fr)_minmax(120px,.85fr)_minmax(150px,1.1fr)_minmax(120px,1fr)_minmax(170px,1.25fr)_minmax(140px,1fr)_minmax(110px,.8fr)_88px] items-center gap-4 border-b border-border bg-primary/5 px-5 py-4 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <div className="flex items-center gap-3">
               <Checkbox checked={allVisibleStudentsSelected} onCheckedChange={(checked) => toggleAllVisibleStudents(checked === true)} aria-label={t("Select all visible students", "تحديد جميع الطلاب الظاهرين")} data-testid="checkbox-select-all-students" />
               <SortHeader
@@ -2682,6 +2709,7 @@ function StudentsPage() {
               onEdit={edit}
               onDelete={remove}
               selected={selectedIds.has(student.id)}
+              focused={focusedStudentId === student.id}
               onSelect={(checked) => toggleStudentSelection(student.id, checked)}
             />
           ))}
@@ -4013,7 +4041,7 @@ function TeachersPage() {
     confirm({
       title: t(`Delete ${ids.length} selected teachers?`, `حذف ${ids.length} من المعلمين المحددين؟`),
       description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
-      confirmLabel: t("Delete selected", "حذف المحدد"),
+      confirmLabel: t("Delete selected", "حذف ا��محدد"),
       destructive: true,
     }, () => {
       Promise.all(ids.map((id) => new Promise<void>((resolve) => deletion.mutate({ id }, { onSettled: () => resolve() })))).then(() => {
@@ -5057,7 +5085,7 @@ function LibraryPage() {
         description: t(
           `Are you sure you want to ${action === "fixed" || action === "found" ? "restore" : "mark"} “${book.title}”?`,
           action === "fixed" || action === "found"
-            ? `هل تريد استعادة "${book.title}"؟`
+            ? `هل تريد استعا��ة "${book.title}"؟`
             : `هل تريد وضع علامة على "${book.title}"؟`,
         ),
         confirmLabel: t("Yes", "نعم"),
@@ -5797,7 +5825,7 @@ function DistributionPage() {
     const map = new Map<string, Map<string, number>>();
     for (const student of students) {
       const grade = student.grade || "Unassigned";
-      const klass = student.className || "—";
+      const klass = student.className || "���";
       if (!map.has(grade)) map.set(grade, new Map());
       map.get(grade)!.set(klass, (map.get(grade)!.get(klass) ?? 0) + 1);
     }
@@ -6795,7 +6823,7 @@ function BorrowHistoryPage() {
             <p className="text-xs text-muted-foreground">
               {t(
                 "All students ranked by books borrowed this academic year, highest to lowest.",
-                "جميع الطلاب مرتبون حسب عدد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
+                "جميع الطلاب مرتبون حسب ��دد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
               )}
             </p>
           </div>
@@ -7289,7 +7317,7 @@ function AnalyticsPage() {
                     title={t("No student borrowing activity yet.", "لا توجد حركة استعارة للطلاب بعد.")}
                     detail={t(
                       "Once students borrow books, you'll see the top borrowers ranked here. Try widening your filters.",
-                      "بمجرد استعارة الطلاب للكتب، ستظهر أكثر الطلاب استعارةً هنا. جرّب توسيع عوامل التصفية.",
+                      "بمجرد استعارة الطلاب للكتب، ستظهر أك��ر الطلاب استعارةً هنا. جرّب توسيع عوامل التصفية.",
                     )}
                   />
                 )}
@@ -7342,7 +7370,7 @@ function AnalyticsPage() {
                     </div>
                   ) : (
                     <p className="py-10 text-center text-sm text-muted-foreground">
-                      {t("No borrows to chart within the current filters.", "لا توجد إعارات لعرضها ضمن عوامل التصفية الحالية.")}
+                      {t("No borrows to chart within the current filters.", "لا توجد إعارات لعرضها ضمن عوامل التصفية الحا��ية.")}
                     </p>
                   )}
                 </section>
@@ -7630,7 +7658,7 @@ function CategoriesPage() {
             className="rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none"
             data-testid="select-category-sort"
           >
-            <option value="count">{t("Sort by count", "حسب العدد")}</option>
+            <option value="count">{t("Sort by count", "��سب العدد")}</option>
             <option value="name">{t("Sort by name", "حسب الاسم")}</option>
           </select>
           <button
@@ -7704,7 +7732,7 @@ function CategoriesPage() {
                         {category}
                       </div>
                       <div className="ar text-[10px] text-muted-foreground">
-                        التصنيف
+                        الت��نيف
                       </div>
                     </div>
                   </div>
@@ -8485,20 +8513,6 @@ function PasswordSettings() {
   const [confirmation, setConfirmation] = useState("");
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
-  const [resetMessage, setResetMessage] = useState("");
-  const [resetSuccess, setResetSuccess] = useState(false);
-
-  const handleResetDemo = () => {
-    resetDemoData();
-    setResetSuccess(true);
-    setResetMessage(
-      t(
-        "Demo data reset. It will be re-seeded on your next login.",
-        "تمت إعادة تعيين البيانات التجريبية. سيتم إعادة إنشائها عند تسجيل دخولك التالي.",
-      ),
-    );
-  };
-
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setMessage("");
@@ -8681,41 +8695,6 @@ function PasswordSettings() {
         )}
       </form>
 
-      {!window.alBassamDesktop &&
-        (import.meta.env.VITE_FRONTEND_ONLY === "true" ||
-          !import.meta.env.VITE_API_URL) && (
-          <div className="mt-8 border-t border-border pt-6">
-            <h3 className="text-sm font-bold text-foreground">
-              {t("Demo data", "البيانات التجريبية")}
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t(
-                "Clear the current data and restore the demo records on next sign-in.",
-                "مسح البيانات الحالية واستعادة السجلات التجريبية عند تسجيل الدخول التالي.",
-              )}
-            </p>
-            <div className="mt-3 flex flex-col items-start gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleResetDemo}
-                className="gap-1.5 text-xs"
-                data-testid="button-reset-demo-data"
-              >
-                <RefreshCw size={14} />
-                {t("Reset demo data", "إعادة تعيين البيانات التجريبية")}
-              </Button>
-              {resetMessage && (
-                <p
-                  className={`text-xs font-medium ${resetSuccess ? "text-[#32B77E]" : "text-destructive"}`}
-                >
-                  {resetMessage}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
     </section>
   );
 }
@@ -8840,7 +8819,7 @@ function AuthGate() {
           {/* Header & Language Toggle */}
           <div className="flex items-center justify-between">
             <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-              {t("Al-Bassam School", "مدارس البسام الأهلية")}
+              {t("Al-Bassam School", "م��ارس البسام الأهلية")}
             </div>
             <button
               type="button"
