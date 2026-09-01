@@ -53,6 +53,7 @@ import {
   Sparkles,
   Sun,
   Trash2,
+  Trophy,
   Upload,
   UsersRound,
   X,
@@ -77,6 +78,7 @@ import {
   type Book,
   type BookInput,
   type Borrow,
+  type AcademicYear,
   type BorrowCondition,
   type DashboardSummary,
   type Employee,
@@ -6463,6 +6465,53 @@ function BorrowHistoryPage() {
     { query: { queryKey: getGetBorrowsQueryKey({}) } },
   );
   const borrows = (Array.isArray(query.data) ? query.data : []) as Borrow[];
+  const studentsQuery = useGetStudents(undefined, {
+    query: { queryKey: getGetStudentsQueryKey(undefined) },
+  });
+  const yearsQuery = useGetAcademicYears({
+    query: { queryKey: getGetAcademicYearsQueryKey() },
+  });
+  const ranking = useMemo(() => {
+    const students = (Array.isArray(studentsQuery.data) ? studentsQuery.data : []) as Student[];
+    if (!students.length) return [];
+    const allBorrows = (Array.isArray(query.data) ? query.data : []) as Borrow[];
+    const studentBorrows = allBorrows.filter(
+      (b) => b.borrowerType === "student",
+    );
+    const years = (Array.isArray(yearsQuery.data) ? yearsQuery.data : []) as AcademicYear[];
+    const year = getDefaultAcademicYear(years);
+    let startTs = Number.NEGATIVE_INFINITY;
+    let endTs = Number.POSITIVE_INFINITY;
+    if (year) {
+      startTs = new Date(`${year.startDate}T00:00:00`).getTime();
+      endTs = new Date(`${year.endDate}T23:59:59`).getTime();
+    }
+    const inYear = (ts: string | null | undefined) =>
+      ts ? !Number.isNaN(new Date(ts).getTime()) && new Date(ts).getTime() >= startTs && new Date(ts).getTime() <= endTs : false;
+    const rows = students.map((student) => {
+      const count = year
+        ? studentBorrows.filter(
+            (b) =>
+              inYear(b.borrowedAt) &&
+              (b.studentId != null
+                ? b.studentId === student.id
+                : b.borrowerId === student.id),
+          ).length
+        : studentBorrows.filter(
+            (b) =>
+              b.studentId != null
+                ? b.studentId === student.id
+                : b.borrowerId === student.id,
+          ).length;
+      return { student, count };
+    });
+    rows.sort((a, b) => b.count - a.count);
+    return rows.map((row, index) => ({
+      ...row,
+      rank: index + 1,
+    }));
+  }, [studentsQuery.data, query.data, yearsQuery.data]);
+
   const sortColumns: SortColumn<Borrow>[] = [
     { key: "borrowerName", accessor: (b) => b.borrowerName },
     { key: "bookTitle", accessor: (b) => b.bookTitle },
@@ -6725,6 +6774,87 @@ function BorrowHistoryPage() {
           onPageSizeChange={pages.setPageSize}
         />
       )}
+
+      <section className="mt-8 rounded-xl border border-border bg-card p-6 soft-shadow">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Trophy size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-foreground">
+              {t("Student ranking", "ترتيب الطلاب")}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {t(
+                "All students ranked by books borrowed this academic year, highest to lowest.",
+                "جميع الطلاب مرتبون حسب عدد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
+              )}
+            </p>
+          </div>
+        </div>
+        {ranking.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            {t("No students found.", "لا يوجد طلاب.")}
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-primary/5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-2.5 text-start">#</th>
+                  <th className="px-4 py-2.5 text-start">{t("Student", "الطالب")}</th>
+                  <th className="px-4 py-2.5 text-center">{t("Class", "الفصل")}</th>
+                  <th className="px-4 py-2.5 text-center">{t("Books borrowed", "الكتب المستعارة")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranking.map(({ student, count, rank }) => (
+                  <tr
+                    key={student.id}
+                    className="border-b border-border/50 transition-colors hover:bg-muted/30 last:border-b-0"
+                  >
+                    <td className="px-4 py-2.5">
+                      <span
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                          rank === 1
+                            ? "bg-[#EC9F42]/15 text-[#EC9F42]"
+                            : rank === 2
+                              ? "bg-slate-200/60 text-slate-600"
+                              : rank === 3
+                                ? "bg-[#B3792E]/20 text-[#8A5A1D]"
+                                : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {rank}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 font-medium text-foreground">
+                      {student.fullName}
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {student.fullNameArabic}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-center text-muted-foreground">
+                      {student.grade}{student.className ? ` · ${student.className}` : ""}
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span
+                        className={`inline-flex min-w-8 justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                          count > 0
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
