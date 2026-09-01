@@ -121,6 +121,7 @@ import {
 import { getBooks } from "@workspace/api-client-react";
 import {
   getActiveSchoolSystem,
+  resetDemoData,
   seedDemoData,
   setActiveSchoolSystem,
   type SchoolSystem,
@@ -8477,6 +8478,19 @@ function PasswordSettings() {
   const [confirmation, setConfirmation] = useState("");
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  const handleResetDemo = () => {
+    resetDemoData();
+    setResetSuccess(true);
+    setResetMessage(
+      t(
+        "Demo data reset. It will be re-seeded on your next login.",
+        "تمت إعادة تعيين البيانات التجريبية. سيتم إعادة إنشائها عند تسجيل دخولك التالي.",
+      ),
+    );
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -8659,6 +8673,42 @@ function PasswordSettings() {
           </p>
         )}
       </form>
+
+      {!window.alBassamDesktop &&
+        (import.meta.env.VITE_FRONTEND_ONLY === "true" ||
+          !import.meta.env.VITE_API_URL) && (
+          <div className="mt-8 border-t border-border pt-6">
+            <h3 className="text-sm font-bold text-foreground">
+              {t("Demo data", "البيانات التجريبية")}
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t(
+                "Clear the current data and restore the demo records on next sign-in.",
+                "مسح البيانات الحالية واستعادة السجلات التجريبية عند تسجيل الدخول التالي.",
+              )}
+            </p>
+            <div className="mt-3 flex flex-col items-start gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleResetDemo}
+                className="gap-1.5 text-xs"
+                data-testid="button-reset-demo-data"
+              >
+                <RefreshCw size={14} />
+                {t("Reset demo data", "إعادة تعيين البيانات التجريبية")}
+              </Button>
+              {resetMessage && (
+                <p
+                  className={`text-xs font-medium ${resetSuccess ? "text-[#32B77E]" : "text-destructive"}`}
+                >
+                  {resetMessage}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
     </section>
   );
 }

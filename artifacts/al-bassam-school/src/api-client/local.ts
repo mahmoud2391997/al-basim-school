@@ -93,6 +93,24 @@ function seedCollection<T>(system: SchoolSystem, key: keyof typeof LS, records: 
   window.localStorage.setItem(storageKey, JSON.stringify(records));
 }
 
+/**
+ * Remove all web demo data for every school system and clear the "seeded"
+ * flag so the demo data is re-persisted on the next login. User-created data
+ * in the web store is also cleared, since it lives in the same collections.
+ */
+export function resetDemoData(): void {
+  const collections = Object.values(LS);
+  (["boys", "girls"] as SchoolSystem[]).forEach((system) => {
+    collections.forEach((collection) => {
+      window.localStorage.removeItem(`${STORE_PREFIX}${system}:${collection}`);
+    });
+  });
+  window.localStorage.removeItem("al-bassam:web-seeded");
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("school-data-change"));
+  }
+}
+
 // ── withQueryKey helper (matches generated api.ts) ────────────────────
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
