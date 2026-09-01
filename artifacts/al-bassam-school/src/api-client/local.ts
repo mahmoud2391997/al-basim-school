@@ -47,8 +47,20 @@ export type SchoolSystem = 'boys' | 'girls';
 
 const LS = {
   students: 'students', teachers: 'teachers', books: 'books', employees: 'employees',
-  borrows: 'borrows', years: 'academic-years', activity: 'activity',
+  borrows: 'borrows', years: 'academic-years', activity: 'activity', classes: 'classes',
 } as const;
+
+export function getSavedClassNames(): string[] {
+  return read<string>(LS.classes).filter(Boolean).sort((a, b) => a.localeCompare(b));
+}
+
+export function saveClassName(name: string): string[] {
+  const normalized = name.trim();
+  if (!normalized) return getSavedClassNames();
+  const classes = Array.from(new Set([...getSavedClassNames(), normalized]));
+  write(LS.classes, classes);
+  return classes.sort((a, b) => a.localeCompare(b));
+}
 const STORE_PREFIX = 'al-bassam:web:';
 let activeSystem: SchoolSystem = 'boys';
 
@@ -172,7 +184,7 @@ export function useGetDashboardSummary<TData = DashboardSummary, TError = Error>
         availableBooks: books.reduce((sum, b) => sum + (b.availableCopies ?? b.copies ?? 0), 0),
         borrowedBooks: books.reduce((sum, b) => sum + ((b.copies || 0) - (b.availableCopies ?? b.copies ?? 0)), 0),
         employees: read<Employee>(LS.employees).filter((e) => e.status === 'active').length,
-        attendanceRate: 94,
+        attendanceRate: 0,
         recentActivity: activity.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 10),
       };
     },
@@ -747,160 +759,3 @@ export const useHealthCheck = (opts?: any) =>
 
 export const setBaseUrl = () => {};
 export const setAuthTokenGetter = () => {};
-
-// ── Demo data seeding ──────────────────────────────────────────────────
-
-/**
- * Academic year boundaries for the demo data are generated relative to the
- * current date so the seeded demo borrows always fall inside the "current"
- * academic year and the student ranking reflects them correctly.
- */
-function buildDemoYears(date = new Date()): AcademicYear[] {
-  const isAfterSeptember = date.getMonth() >= 8;
-  const current = isAfterSeptember ? date.getFullYear() : date.getFullYear() - 1;
-  return [
-    { id: 1, label: `${current}-${current + 1}`, startDate: `${current}-08-20`, endDate: `${current + 1}-06-20`, isCurrent: true },
-    { id: 2, label: `${current - 1}-${current}`, startDate: `${current - 1}-08-20`, endDate: `${current}-06-20`, isCurrent: false },
-  ];
-}
-
-const demoBooks: Book[] = [
-  {
-    id: 1, title: 'مختارات من القرآن الكريم', author: 'Anonymous', isbn: '978-603-123456-1', category: 'Religion', language: 'Arabic',
-    volume: '1', copies: 5, availableCopies: 4, dateAdded: '2025-09-01', depositNumber: 'D-1001', status: 'available',
-    publicationPlace: 'Riyadh', publicationDate: '2020', generalNumber: 'G-001', specialNumber: 'S-001',
-    description: 'أشهر السور والأجزاء المقررة على الطلاب', coverImage: '', shelf: 'A1', lostCopies: 0, damagedCopies: 1,
-  },
-  {
-    id: 2, title: 'The Prophet', author: 'Kahlil Gibran', isbn: '978-603-123456-2', category: 'Literature', language: 'English',
-    volume: '1', copies: 3, availableCopies: 3, dateAdded: '2025-09-02', depositNumber: 'D-1002', status: 'available',
-    publicationPlace: 'New York', publicationDate: '1923', generalNumber: 'G-002', specialNumber: 'S-002',
-    description: 'مجموعة قصص شعرية فلسفية', coverImage: '', shelf: 'B2', lostCopies: 0, damagedCopies: 0,
-  },
-  {
-    id: 3, title: 'رياض الأطفال', author: 'Muhammad Ali', isbn: '978-603-123456-3', category: 'Education', language: 'Arabic',
-    volume: '1', copies: 8, availableCopies: 6, dateAdded: '2025-09-03', depositNumber: 'D-1003', status: 'available',
-    publicationPlace: 'Cairo', publicationDate: '2019', generalNumber: 'G-003', specialNumber: 'S-003',
-    description: 'دليل تعليمي لمناهج رياض الأطفال', coverImage: '', shelf: 'C3', lostCopies: 1, damagedCopies: 1,
-  },
-  {
-    id: 4, title: 'Chemistry Fundamentals', author: 'Ahmad Hassan', isbn: '978-603-123456-4', category: 'Science', language: 'English',
-    volume: '2', copies: 4, availableCopies: 4, dateAdded: '2025-09-04', depositNumber: 'D-1004', status: 'available',
-    publicationPlace: 'London', publicationDate: '2021', generalNumber: 'G-004', specialNumber: 'S-004',
-    description: 'أساسيات الكيمياء العامة', coverImage: '', shelf: 'D4', lostCopies: 0, damagedCopies: 0,
-  },
-  {
-    id: 5, title: 'Math Made Easy', author: 'Sara Ali', isbn: '978-603-123456-5', category: 'Mathematics', language: 'English',
-    volume: '3', copies: 6, availableCopies: 5, dateAdded: '2025-09-05', depositNumber: 'D-1005', status: 'available',
-    publicationPlace: 'Dubai', publicationDate: '2022', generalNumber: 'G-005', specialNumber: 'S-005',
-    description: 'الرياضيات المبسطة للمرحلة المتوسطة', coverImage: '', shelf: 'E5', lostCopies: 0, damagedCopies: 1,
-  },
-  {
-    id: 6, title: 'المدخل إلى الفيزياء', author: 'خالد عبدالله', isbn: '978-603-123456-6', category: 'Science', language: 'Arabic',
-    volume: '1', copies: 7, availableCopies: 7, dateAdded: '2025-09-06', depositNumber: 'D-1006', status: 'available',
-    publicationPlace: 'Riyadh', publicationDate: '2023', generalNumber: 'G-006', specialNumber: 'S-006',
-    description: 'مدخل مبسط إلى مبادئ الفيزياء', coverImage: '', shelf: 'D4', lostCopies: 0, damagedCopies: 0,
-  },
-  {
-    id: 7, title: 'Oxford English Grammar', author: 'John Eastwood', isbn: '978-603-123456-7', category: 'Language', language: 'English',
-    volume: '1', copies: 10, availableCopies: 9, dateAdded: '2025-09-07', depositNumber: 'D-1007', status: 'available',
-    publicationPlace: 'Oxford', publicationDate: '2015', generalNumber: 'G-007', specialNumber: 'S-007',
-    description: 'قواعد اللغة الإنجليزية الأساسية', coverImage: '', shelf: 'B2', lostCopies: 0, damagedCopies: 1,
-  },
-];
-
-const demoStudentsBoys: Student[] = [
-  { id: 1, fullName: 'Ahmed Mohammed Al-Sayed', fullNameArabic: 'أحمد محمد السيد', studentNumber: 'S-2025-001', nationalId: '1052047810', grade: 'Grade 6', className: '6A', guardianName: 'Mohammed Al-Sayed', guardianPhone: '0550000001', status: 'active', enrollmentDate: '2025-08-25' },
-  { id: 2, fullName: 'Omar Khaled Ibrahim', fullNameArabic: 'عمر خالد إبراهيم', studentNumber: 'S-2025-002', nationalId: '1052047820', grade: 'Grade 6', className: '6B', guardianName: 'Khaled Ibrahim', guardianPhone: '0550000002', status: 'active', enrollmentDate: '2025-08-25' },
-  { id: 3, fullName: 'Yousef Abdullah Nasser', fullNameArabic: 'يوسف عبدالله ناصر', studentNumber: 'S-2025-003', nationalId: '1052047830', grade: 'Grade 7', className: '7A', guardianName: 'Abdullah Nasser', guardianPhone: '0550000003', status: 'active', enrollmentDate: '2025-08-25' },
-  { id: 4, fullName: 'Fahad Ali Hassan', fullNameArabic: 'فهد علي حسن', studentNumber: 'S-2025-004', nationalId: '1052047840', grade: 'Grade 7', className: '7B', guardianName: 'Ali Hassan', guardianPhone: '0550000004', status: 'active', enrollmentDate: '2025-08-26' },
-  { id: 5, fullName: 'Abdulrahman Saleh Mahmoud', fullNameArabic: 'عبدالرحمن صالح محمود', studentNumber: 'S-2025-005', nationalId: '1052047850', grade: 'Grade 8', className: '8A', guardianName: 'Saleh Mahmoud', guardianPhone: '0550000005', status: 'active', enrollmentDate: '2025-08-26' },
-  { id: 6, fullName: 'Naif Sultan Ali', fullNameArabic: 'نايف سلطان علي', studentNumber: 'S-2025-006', nationalId: '1052047860', grade: 'Grade 8', className: '8B', guardianName: 'Sultan Ali', guardianPhone: '0550000006', status: 'active', enrollmentDate: '2025-08-27' },
-  { id: 7, fullName: 'Turki Abdullah Saleh', fullNameArabic: 'تركي عبدالله صالح', studentNumber: 'S-2025-007', nationalId: '1052047870', grade: 'Grade 5', className: '5A', guardianName: 'Abdullah Saleh', guardianPhone: '0550000007', status: 'active', enrollmentDate: '2025-08-27' },
-  { id: 8, fullName: 'Saad Mohammed Fahad', fullNameArabic: 'سعد محمد فهد', studentNumber: 'S-2025-008', nationalId: '1052047880', grade: 'Grade 5', className: '5B', guardianName: 'Mohammed Fahad', guardianPhone: '0550000008', status: 'active', enrollmentDate: '2025-08-28' },
-];
-
-const demoStudentsGirls: Student[] = [
-  { id: 1, fullName: 'Sara Ahmed Mansour', fullNameArabic: 'سارة أحمد منصور', studentNumber: 'G-2025-001', nationalId: '2105847810', grade: 'Grade 6', className: '6A', guardianName: 'Ahmed Mansour', guardianPhone: '0550000021', status: 'active', enrollmentDate: '2025-08-25' },
-  { id: 2, fullName: 'Lina Khaled Omar', fullNameArabic: 'لينا خالد عمر', studentNumber: 'G-2025-002', nationalId: '2105847820', grade: 'Grade 7', className: '7A', guardianName: 'Khaled Omar', guardianPhone: '0550000022', status: 'active', enrollmentDate: '2025-08-25' },
-  { id: 3, fullName: 'Noura Abdullah Ibrahim', fullNameArabic: 'نورة عبدالله إبراهيم', studentNumber: 'G-2025-003', nationalId: '2105847830', grade: 'Grade 8', className: '8A', guardianName: 'Abdullah Ibrahim', guardianPhone: '0550000023', status: 'active', enrollmentDate: '2025-08-26' },
-];
-
-const demoTeachers: Teacher[] = [
-  {
-    id: 1, fullName: 'Mohammed Abdullah Al-Harbi', fullNameArabic: 'محمد عبدالله الحربي', name: 'Mohammed', surname: 'Al-Harbi',
-    username: 'm.harbi', englishName: 'Mohammed Alharbi', employeeCode: 'T-001', nationalId: '1034500011', nationality: 'Saudi',
-    gender: 'male', maritalStatus: 'married', religion: 'Islam', phone: '0551112221', email: 'm.harbi@albassam.edu.sa',
-    address: 'Riyadh - Olaya', area: 'االعليا', country: 'Saudi Arabia', height: 175, weight: 78, branch: 'Boys',
-    academicLevel: 'Secondary', subject: 'Mathematics', weeklyClasses: 18, isEmployee: false, status: 'active',
-  },
-  {
-    id: 2, fullName: 'Abdullah Saleh Al-Otaibi', fullNameArabic: 'عبدالله صالح العتيبي', name: 'Abdullah', surname: 'Al-Otaibi',
-    username: 'a.otaibi', englishName: 'Abdullah Alotaibi', employeeCode: 'T-002', nationalId: '1034500012', nationality: 'Saudi',
-    gender: 'male', maritalStatus: 'single', religion: 'Islam', phone: '0551112222', email: 'a.otaibi@albassam.edu.sa',
-    address: 'Riyadh - King Fahd', area: 'شارع الملك فهد', country: 'Saudi Arabia', height: 180, weight: 82, branch: 'Boys',
-    academicLevel: 'Primary', subject: 'Science', weeklyClasses: 20, isEmployee: false, status: 'active',
-  },
-  {
-    id: 3, fullName: 'Fatima Ali Al-Zahrani', fullNameArabic: 'فاطمة علي الزهراني', name: 'Fatima', surname: 'Al-Zahrani',
-    username: 'f.zahrani', englishName: 'Fatima Alzahrani', employeeCode: 'T-003', nationalId: '2104500013', nationality: 'Saudi',
-    gender: 'female', maritalStatus: 'married', religion: 'Islam', phone: '0551112223', email: 'f.zahrani@albassam.edu.sa',
-    address: 'Riyadh - Nuzha', area: 'النزهة', country: 'Saudi Arabia', height: 160, weight: 55, branch: 'Girls',
-    academicLevel: 'Intermediate', subject: 'Arabic', weeklyClasses: 18, isEmployee: false, status: 'active',
-  },
-  {
-    id: 4, fullName: 'Nasser Abdullah Al-Qahtani', fullNameArabic: 'ناصر عبدالله القحطاني', name: 'Nasser', surname: 'Al-Qahtani',
-    username: 'n.qahtani', englishName: 'Nasser Alqahtani', employeeCode: 'T-004', nationalId: '1034500014', nationality: 'Saudi',
-    gender: 'male', maritalStatus: 'married', religion: 'Islam', phone: '0551112224', email: 'n.qahtani@albassam.edu.sa',
-    address: 'Riyadh - Malaz', area: 'الملز', country: 'Saudi Arabia', height: 172, weight: 74, branch: 'Boys',
-    academicLevel: 'Secondary', subject: 'English', weeklyClasses: 18, isEmployee: false, status: 'active',
-  },
-];
-
-const demoEmployees: Employee[] = [
-  { id: 1, fullName: 'Khaled Saad Al-Dosari', fullNameArabic: 'خالد سعد الدوسري', employeeNumber: 'EMP-001', nationalId: '1042200111', jobTitle: 'School Secretary', phone: '0552223331', status: 'active' },
-  { id: 2, fullName: 'Mansour Ibrahim Al-Shammari', fullNameArabic: 'منصور إبراهيم الشمري', employeeNumber: 'EMP-002', nationalId: '1042200112', jobTitle: 'Accountant', phone: '0552223332', status: 'active' },
-  { id: 3, fullName: 'Hassan Mohammed Al-Ghamdi', fullNameArabic: 'حسن محمد الغامدي', employeeNumber: 'EMP-003', nationalId: '1042200113', jobTitle: 'Librarian', phone: '0552223333', status: 'active' },
-];
-
-/**
- * Demo borrows are dated relative to the current date so they always fall
- * inside the current academic year and appear in the student ranking.
- */
-function buildDemoBorrows(date = new Date()): Borrow[] {
-  const addDays = (days: number) =>
-    new Date(date.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
-  const isoDate = (ts: string) => ts.slice(0, 10);
-  const b1 = addDays(9);
-  const b2 = addDays(8);
-  const b3 = addDays(5);
-  const b4 = addDays(20);
-  return [
-    { id: 1, bookId: 1, studentId: 1, borrowerType: 'student', borrowerId: 1, borrowedAt: b1, dueDate: isoDate(new Date(date.getTime() + 12 * 24 * 60 * 60 * 1000).toISOString()), returnedAt: undefined, bookTitle: 'مختارات من القرآن الكريم', bookBarcode: '978-603-123456-1', borrowerName: 'Ahmed Mohammed Al-Sayed' },
-    { id: 2, bookId: 3, studentId: 2, borrowerType: 'student', borrowerId: 2, borrowedAt: b2, dueDate: isoDate(new Date(date.getTime() + 13 * 24 * 60 * 60 * 1000).toISOString()), returnedAt: undefined, bookTitle: 'رياض الأطفال', bookBarcode: '978-603-123456-3', borrowerName: 'Omar Khaled Ibrahim' },
-    { id: 3, bookId: 5, studentId: 5, borrowerType: 'student', borrowerId: 5, borrowedAt: b3, dueDate: isoDate(new Date(date.getTime() + 16 * 24 * 60 * 60 * 1000).toISOString()), returnedAt: undefined, bookTitle: 'Math Made Easy', bookBarcode: '978-603-123456-5', borrowerName: 'Abdulrahman Saleh Mahmoud' },
-    { id: 4, bookId: 2, studentId: 2, borrowerType: 'student', borrowerId: 2, borrowedAt: b4, dueDate: isoDate(new Date(date.getTime() + 4 * 24 * 60 * 60 * 1000).toISOString()), returnedAt: b2, bookTitle: 'The Prophet', bookBarcode: '978-603-123456-2', borrowerName: 'Omar Khaled Ibrahim', condition: 'good' },
-  ];
-}
-
-/**
- * Populate the web store with a realistic set of demo records for both
- * school systems. Only writes to collections that are still empty so it is
- * safe to call on every boot without overwriting user data.
- */
-export function seedDemoData(): void {
-  const years = buildDemoYears();
-  const borrows = buildDemoBorrows();
-  seedCollection('boys', 'years', years);
-  seedCollection('girls', 'years', years);
-  seedCollection('boys', 'books', demoBooks);
-  seedCollection('girls', 'books', demoBooks);
-  seedCollection('boys', 'students', demoStudentsBoys);
-  seedCollection('girls', 'students', demoStudentsGirls);
-  seedCollection('boys', 'teachers', demoTeachers);
-  seedCollection('girls', 'teachers', demoTeachers);
-  seedCollection('boys', 'employees', demoEmployees);
-  seedCollection('girls', 'employees', demoEmployees);
-  seedCollection('boys', 'borrows', borrows);
-  seedCollection('girls', 'borrows', borrows);
-}

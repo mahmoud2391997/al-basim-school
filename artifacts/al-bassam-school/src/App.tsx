@@ -122,7 +122,8 @@ import {
 import { getBooks } from "@workspace/api-client-react";
 import {
   getActiveSchoolSystem,
-  seedDemoData,
+  getSavedClassNames,
+  saveClassName,
   setActiveSchoolSystem,
   type SchoolSystem,
 } from "./api-client/local";
@@ -131,9 +132,7 @@ import {
   createSession,
   ensureCredentials,
   isAuthenticated,
-  isSeeded,
   logout as webLogout,
-  markSeeded,
   verifyLogin,
 } from "@/lib/web-auth";
 import {
@@ -2008,7 +2007,19 @@ function StudentDialog({
   const studentsQuery = useGetStudents({}, { query: { queryKey: getGetStudentsQueryKey() } });
   const existingStudents = Array.isArray(studentsQuery.data) ? studentsQuery.data : [];
   const uniqueGrades = Array.from(new Set(existingStudents.map((s) => s.grade).filter(Boolean)));
-  const uniqueClasses = Array.from(new Set(existingStudents.map((s) => s.className).filter(Boolean)));
+  const [savedClasses, setSavedClasses] = useState<string[]>([]);
+  const [newClassName, setNewClassName] = useState("");
+  useEffect(() => {
+    if (open) setSavedClasses(Array.from(new Set([...getSavedClassNames(), ...existingStudents.map((s) => s.className).filter(Boolean)])));
+  }, [open, existingStudents.length]);
+  const uniqueClasses = Array.from(new Set([...savedClasses, ...existingStudents.map((s) => s.className).filter(Boolean)]));
+  const addClass = () => {
+    const classes = saveClassName(newClassName);
+    if (!newClassName.trim()) return;
+    setSavedClasses(classes);
+    setForm((current) => ({ ...current, className: newClassName.trim() }));
+    setNewClassName("");
+  };
   const isEditing = Boolean(editing);
   const set = (key: keyof StudentFormValue, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -2203,6 +2214,10 @@ function StudentDialog({
                         <option key={className} value={className}>{className}</option>
                       ))}
                     </select>
+                    <div className="mt-2 flex gap-2">
+                      <input value={newClassName} onChange={(event) => setNewClassName(event.target.value)} placeholder={t("Enter a new class", "أدخل فصلاً جديداً")} className="h-9 min-w-0 flex-1 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary" data-testid="input-new-class-name" />
+                      <Button type="button" variant="outline" size="sm" onClick={addClass} disabled={!newClassName.trim()}>{t("Save class", "حفظ الفصل")}</Button>
+                    </div>
                   </label>
                 );
               }
@@ -8856,10 +8871,6 @@ function AuthGate() {
         );
       }
       createSession();
-      if (!isSeeded()) {
-        seedDemoData();
-        markSeeded();
-      }
       setPassword("");
       setReady(true);
       return;
