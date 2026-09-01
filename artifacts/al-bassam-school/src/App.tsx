@@ -123,6 +123,7 @@ import { getBooks } from "@workspace/api-client-react";
 import {
   getSavedClassNames,
   saveClassName,
+  seedDemoData,
 } from "./api-client/local";
 import {
   changeCredentials,
@@ -631,9 +632,8 @@ function Shell({ children }: { children: ReactNode }) {
           <button
             onClick={async () => {
               if (
-                !window.alBassamDesktop &&
-                (import.meta.env.VITE_FRONTEND_ONLY === "true" ||
-                  !import.meta.env.VITE_API_URL)
+                import.meta.env.VITE_FRONTEND_ONLY === "true" ||
+                !import.meta.env.VITE_API_URL
               ) {
                 webLogout();
                 window.location.reload();
@@ -8616,9 +8616,8 @@ function PasswordSettings() {
     }
 
     if (
-      !window.alBassamDesktop &&
-      (import.meta.env.VITE_FRONTEND_ONLY === "true" ||
-        !import.meta.env.VITE_API_URL)
+      import.meta.env.VITE_FRONTEND_ONLY === "true" ||
+      !import.meta.env.VITE_API_URL
     ) {
       const result = await changeCredentials(
         currentPassword,
@@ -8797,9 +8796,8 @@ function AuthGate() {
   const [error, setError] = useState("");
 
   const frontendOnly =
-    !window.alBassamDesktop &&
-    (import.meta.env.VITE_FRONTEND_ONLY === "true" ||
-      !import.meta.env.VITE_API_URL);
+    import.meta.env.VITE_FRONTEND_ONLY === "true" ||
+    !import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     if (frontendOnly) {
@@ -8807,7 +8805,10 @@ function AuthGate() {
       (async () => {
         await ensureCredentials();
         if (cancelled) return;
-        if (isAuthenticated()) setReady(true);
+        if (isAuthenticated()) {
+          seedDemoData();
+          setReady(true);
+        }
       })();
       return () => {
         cancelled = true;
@@ -8853,6 +8854,7 @@ function AuthGate() {
       }
       createSession();
       setPassword("");
+      seedDemoData();
       setReady(true);
       return;
     }

@@ -45,9 +45,8 @@ export function UserNavDropdown({
 
   const handleLogout = async () => {
     if (
-      !window.alBassamDesktop &&
-      (import.meta.env.VITE_FRONTEND_ONLY === "true" ||
-        !import.meta.env.VITE_API_URL)
+      import.meta.env.VITE_FRONTEND_ONLY === "true" ||
+      !import.meta.env.VITE_API_URL
     ) {
       window.localStorage.removeItem("al-bassam:web-session");
       window.location.reload();
