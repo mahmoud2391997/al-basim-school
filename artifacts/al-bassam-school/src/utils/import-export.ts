@@ -265,6 +265,32 @@ function buildExportTableHTML(schema: EntitySchema, data: Record<string, any>[])
   </body></html>`;
 }
 
+export async function exportTableToPDF(
+  data: Record<string, any>[],
+  columns: { key: string; header: string; headerAr?: string }[],
+  title: string,
+  titleAr = "",
+) {
+  const schema: EntitySchema = { label: title, labelAr: titleAr, columns: columns.map((column) => ({ key: column.key, header: column.header, headerAr: column.headerAr ?? "", required: false })) };
+  const container = document.createElement("div");
+  container.style.cssText = "position:fixed;left:-9999px;top:0;width:1200px;background:#fff;padding:32px;font-family:Arial,sans-serif;";
+  container.innerHTML = buildExportTableHTML(schema, data);
+  document.body.appendChild(container);
+  try {
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, logging: false, backgroundColor: "#ffffff" });
+    const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const imgWidth = 297;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const pageHeight = 210;
+    const imgData = canvas.toDataURL("image/png");
+    for (let yOffset = 0; yOffset < imgHeight; yOffset += pageHeight) {
+      if (yOffset > 0) pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, -yOffset, imgWidth, imgHeight);
+    }
+    pdf.save(`${title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "table"}.pdf`);
+  } finally { document.body.removeChild(container); }
+}
+
 export async function exportToPDF(data: Record<string, any>[], type: EntityType) {
   const schema = SCHEMAS[type];
   const container = document.createElement("div");

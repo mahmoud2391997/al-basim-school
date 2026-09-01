@@ -157,6 +157,8 @@ import {
   downloadTemplate,
   exportDatabase,
   exportToExcel,
+  exportToPDF,
+  exportTableToPDF,
 } from "@/utils/import-export";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -6339,7 +6341,7 @@ function BorrowsPage() {
         </div>
         {scanning && (
           <span className="text-xs text-muted-foreground">
-            {t("Looking up…", "جارٍ البحث…")}
+            {t("Looking up…", "جارٍ الب��ث…")}
           </span>
         )}
       </form>
@@ -7000,14 +7002,13 @@ function ReportSection({ title, titleAr, columns, data, exportType, t }: {
   t: (en: string, ar: string) => string;
 }) {
   const reportPages = usePagination(data, 16);
-  const handleExcel = () => {
-    const rows = data.map((row) => {
-      const obj: Record<string, string> = {};
-      columns.forEach((c) => { obj[c.header] = row[c.key] || "—"; });
-      return obj;
-    });
-    exportToExcel(rows, exportType);
-  };
+  const exportRows = () => data.map((row) => {
+    const obj: Record<string, string> = {};
+    columns.forEach((c) => { obj[c.header] = row[c.key] || "—"; });
+    return obj;
+  });
+  const handleExcel = () => exportToExcel(exportRows(), exportType);
+  const handlePDF = () => exportToPDF(exportRows(), exportType);
   return (
     <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
       <div className="mb-4 flex items-center justify-between">
@@ -7015,10 +7016,16 @@ function ReportSection({ title, titleAr, columns, data, exportType, t }: {
           <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{title}</div>
           <h3 className="mt-1 text-lg font-bold text-foreground">{titleAr}</h3>
         </div>
-        <Button variant="outline" size="sm" onClick={handleExcel} className="gap-1.5 text-xs">
-          <FileSpreadsheet size={14} />
-          {t("Export Excel", "تصدير Excel")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExcel} className="gap-1.5 text-xs">
+            <FileSpreadsheet size={14} />
+            {t("Export Excel", "تصدير Excel")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handlePDF} className="gap-1.5 text-xs" data-testid={`button-export-${exportType}-pdf-report`}>
+            <Download size={14} />
+            {t("Export PDF", "تصدير PDF")}
+          </Button>
+        </div>
       </div>
       {data.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">{t("No records found.", "لا توجد سجلات.")}</p>
@@ -7387,9 +7394,12 @@ function AnalyticsPage() {
                       {t("Most borrowed students", "أكثر الطلاب استعارة")}
                     </h2>
                   </div>
-                  <span className="font-mono text-lg font-bold text-foreground">
-                    {mostBorrowedStudents.length} {t("students", "طالب")}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => exportTableToPDF(mostBorrowedStudents.map(({ student, count }, index) => ({ rank: index + 1, student: student.fullName, class: `${student.grade}${student.className ? ` · ${student.className}` : ""}`, borrows: count })), [{ key: "rank", header: "Rank", headerAr: "الترتيب" }, { key: "student", header: "Student", headerAr: "الطالب" }, { key: "class", header: "Class", headerAr: "الفصل" }, { key: "borrows", header: "Books borrowed", headerAr: "الكتب المستعارة" }], "Student ranking", "ترتيب الطلاب")}>
+                      <Download size={14} /> {t("Export PDF", "تصدير PDF")}
+                    </Button>
+                    <span className="font-mono text-lg font-bold text-foreground">{mostBorrowedStudents.length} {t("students", "طالب")}</span>
+                  </div>
                 </div>
                 {mostBorrowedStudents.length ? (
                   <div className="mt-4 overflow-x-auto">
@@ -7487,9 +7497,12 @@ function AnalyticsPage() {
                       {t("Borrows per grade", "الإعارات حسب الصف")}
                     </h3>
                   </div>
-                  <span className="font-mono text-lg font-bold text-foreground">
-                    {totalBorrowCount} {t("borrows", "إعارة")}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => exportTableToPDF(borrowsByGrade.map((g) => ({ grade: g.name, borrows: g.count, percentage: totalBorrowCount ? `${Math.round((g.count / totalBorrowCount) * 1000) / 10}%` : "0%" })), [{ key: "grade", header: "Grade", headerAr: "الصف" }, { key: "borrows", header: "Borrows", headerAr: "الإعارات" }, { key: "percentage", header: "Percentage", headerAr: "النسبة" }], "Borrows per grade", "الإعارات حسب الصف")}>
+                      <Download size={14} /> {t("Export PDF", "تصدير PDF")}
+                    </Button>
+                    <span className="font-mono text-lg font-bold text-foreground">{totalBorrowCount} {t("borrows", "إعارة")}</span>
+                  </div>
                 </div>
                 {borrowsByGrade.length === 0 ? (
                   <p className="py-6 text-center text-sm text-muted-foreground">
