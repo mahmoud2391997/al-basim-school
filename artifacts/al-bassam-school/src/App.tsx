@@ -1435,7 +1435,7 @@ function Dashboard() {
         category: "borrows",
         title: isReturned
           ? `${t("Book Returned", "إرجاع كتاب")}: "${b.bookTitle || t("Book", "الكتاب")}"`
-          : `${t("Book Loaned", "إعارة كتا��")}: "${b.bookTitle || t("Book", "الكتاب")}"`,
+          : `${t("Book Loaned", "إعارة كتاب")}: "${b.bookTitle || t("Book", "الكتاب")}"`,
         subtitle: `${t("Borrower", "المستعير")}: ${b.borrowerName || "—"} · ${isReturned ? t("Returned", "تم الإرجاع") : `${t("Due", "الاستحقاق")}: ${formatDate(b.dueDate ? String(b.dueDate) : undefined)}`}`,
         badge: isReturned
           ? (b.condition === "damaged" ? t("Damaged", "تالف") : b.condition === "lost" ? t("Lost", "مفقود") : t("Returned", "مُرجع"))
@@ -1552,7 +1552,7 @@ function Dashboard() {
               value={totalEmployees.toLocaleString()}
               icon={Briefcase}
               tone="sky"
-              note={t("Administrative & staff members", "أعض��ء الكادر الإداري")}
+              note={t("Administrative & staff members", "أعضء الكادر الإداري")}
             />
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -3392,7 +3392,7 @@ function EmployeeDialog({
                 <DialogDescription className="mt-1">
                   {t(
                     "Keep the staff directory accurate and easy to find.",
-                    "حافظ على دقة سجل الموظفين وسهولة الوصول إليه.",
+                    "حافظ على دقة سجل الموظفين وسهولة الوصل إليه.",
                   )}
                 </DialogDescription>
               </div>
@@ -3436,7 +3436,7 @@ function EmployeeDialog({
                 className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary"
                 data-testid="input-employee-status"
               >
-                <option value="active">{t("Active", "��شط")}</option>
+                <option value="active">{t("Active", "شط")}</option>
                 <option value="inactive">{t("Inactive", "غير نشط")}</option>
               </select>
             </label>
@@ -4064,7 +4064,7 @@ function TeachersPage() {
     confirm({
       title: t(`Delete ${ids.length} selected teachers?`, `حذف ${ids.length} من المعلمين المحددين؟`),
       description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
-      confirmLabel: t("Delete selected", "حذف ا��محدد"),
+      confirmLabel: t("Delete selected", "حذف امحدد"),
       destructive: true,
     }, () => {
       Promise.all(ids.map((id) => new Promise<void>((resolve) => deletion.mutate({ id }, { onSettled: () => resolve() })))).then(() => {
@@ -5108,7 +5108,7 @@ function LibraryPage() {
         description: t(
           `Are you sure you want to ${action === "fixed" || action === "found" ? "restore" : "mark"} “${book.title}”?`,
           action === "fixed" || action === "found"
-            ? `هل تريد استعا��ة "${book.title}"؟`
+            ? `هل تريد استعاة "${book.title}"؟`
             : `هل تريد وضع علامة على "${book.title}"؟`,
         ),
         confirmLabel: t("Yes", "نعم"),
@@ -5124,7 +5124,7 @@ function LibraryPage() {
                 t(
                   `Copy marked as ${action}`,
                   action === "lost"
-                    ? "تم وضع علامة ��لى نسخة كمفقودة"
+                    ? "تم وضع علامة لى نسخة كمفقودة"
                     : action === "damaged"
                       ? "تم وضع علامة على نسخة كتالفة"
                       : action === "fixed"
@@ -5848,7 +5848,7 @@ function DistributionPage() {
     const map = new Map<string, Map<string, number>>();
     for (const student of students) {
       const grade = student.grade || "Unassigned";
-      const klass = student.className || "���";
+      const klass = student.className || "";
       if (!map.has(grade)) map.set(grade, new Map());
       map.get(grade)!.set(klass, (map.get(grade)!.get(klass) ?? 0) + 1);
     }
@@ -5951,7 +5951,7 @@ function DistributionPage() {
                 onSort={toggleSort}
                 align="start"
               >
-                {t("Grade", "ال��رحلة")}
+                {t("Grade", "الرحلة")}
               </SortHeader>
               <SortHeader
                 columnKey="klass"
@@ -6437,7 +6437,7 @@ function BorrowsPage() {
               onSort={toggleSort}
               align="center"
             >
-              {t("Due date", "تاريخ الا��تحقاق")}
+              {t("Due date", "تاريخ الاتحقاق")}
             </SortHeader>
             <span className="text-center">{t("Return / status", "الإعادة / الحالة")}</span>
           </div>
@@ -6846,7 +6846,7 @@ function BorrowHistoryPage() {
             <p className="text-xs text-muted-foreground">
               {t(
                 "All students ranked by books borrowed this academic year, highest to lowest.",
-                "جميع الطلاب مرتبون حسب ��دد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
+                "جميع الطلاب مرتبون حسب دد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
               )}
             </p>
           </div>
@@ -7340,7 +7340,7 @@ function AnalyticsPage() {
                     title={t("No student borrowing activity yet.", "لا توجد حركة استعارة للطلاب بعد.")}
                     detail={t(
                       "Once students borrow books, you'll see the top borrowers ranked here. Try widening your filters.",
-                      "بمجرد استعارة الطلاب للكتب، ستظهر أك��ر الطلاب استعارةً هنا. جرّب توسيع عوامل التصفية.",
+                      "بمجرد استعارة الطلاب للكتب، ستظهر أكر الطلاب استعارةً هنا. جرّب توسيع عوامل التصفية.",
                     )}
                   />
                 )}
@@ -7393,7 +7393,7 @@ function AnalyticsPage() {
                     </div>
                   ) : (
                     <p className="py-10 text-center text-sm text-muted-foreground">
-                      {t("No borrows to chart within the current filters.", "لا توجد إعارات لعرضها ضم�� ��وامل التصفية الحا��ية.")}
+                      {t("No borrows to chart within the current filters.", "لا توجد إعارات لعرضها ضم وامل التصفية الحاية.")}
                     </p>
                   )}
                 </section>
@@ -7681,7 +7681,7 @@ function CategoriesPage() {
             className="rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none"
             data-testid="select-category-sort"
           >
-            <option value="count">{t("Sort by count", "��سب العدد")}</option>
+            <option value="count">{t("Sort by count", "سب العدد")}</option>
             <option value="name">{t("Sort by name", "حسب الاسم")}</option>
           </select>
           <button
@@ -7755,7 +7755,7 @@ function CategoriesPage() {
                         {category}
                       </div>
                       <div className="ar text-[10px] text-muted-foreground">
-                        الت��نيف
+                        التنيف
                       </div>
                     </div>
                   </div>
@@ -8842,7 +8842,7 @@ function AuthGate() {
           {/* Header & Language Toggle */}
           <div className="flex items-center justify-between">
             <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-              {t("Al-Bassam School", "م��ارس البسام الأهلية")}
+              {t("Al-Bassam School", "مارس البسام الأهلية")}
             </div>
             <button
               type="button"
@@ -8867,7 +8867,7 @@ function AuthGate() {
                 )
               : t(
                   "Enter your administrator credentials to access the school workspace.",
-                  "أدخل اسم المس��خدم وكلمة المرور للمتابعة إلى مساحة العمل.",
+                  "أدخل اسم المسخدم وكلمة المرور للمتابعة إلى مساحة العمل.",
                 )}
           </p>
 
