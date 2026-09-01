@@ -225,8 +225,8 @@ export function GlobalSearchDialog({
     onNavigate(path);
   };
 
-  const handleStudentSelect = (studentId: number) => {
-    handleSelect(`/students?focus=${encodeURIComponent(studentId)}&at=${Date.now()}`);
+  const handleRecordSelect = (path: string, recordId: number) => {
+    handleSelect(`${path}?focus=${encodeURIComponent(recordId)}&at=${Date.now()}`);
   };
 
   const hasAnyResults = searchResults.totalCount > 0;
@@ -412,7 +412,7 @@ export function GlobalSearchDialog({
                         return (
                           <button
                             key={book.id}
-                            onClick={() => handleSelect("/library")}
+                            onClick={() => handleRecordSelect("/library", book.id)}
                             className="flex w-full items-center justify-between rounded-lg p-2.5 text-start transition-colors hover:bg-muted/60"
                             data-testid={`search-item-book-${book.id}`}
                           >
@@ -468,7 +468,7 @@ export function GlobalSearchDialog({
                       {searchResults.students.slice(0, 6).map((student) => (
                         <button
                           key={student.id}
-                          onClick={() => handleStudentSelect(student.id)}
+                          onClick={() => handleRecordSelect("/students", student.id)}
                           className="flex w-full items-center justify-between rounded-lg p-2.5 text-start transition-colors hover:bg-muted/60"
                           data-testid={`search-item-student-${student.id}`}
                         >
@@ -512,8 +512,9 @@ export function GlobalSearchDialog({
                         <button
                           key={borrow.id}
                           onClick={() =>
-                            handleSelect(
+                            handleRecordSelect(
                               borrow.returnedAt ? "/library/history" : "/library/borrows",
+                              borrow.id,
                             )
                           }
                           className="flex w-full items-center justify-between rounded-lg p-2.5 text-start transition-colors hover:bg-muted/60"
@@ -566,7 +567,7 @@ export function GlobalSearchDialog({
                       {searchResults.teachers.slice(0, 6).map((teacher) => (
                         <button
                           key={teacher.id}
-                          onClick={() => handleSelect("/teachers")}
+                          onClick={() => handleRecordSelect("/teachers", teacher.id)}
                           className="flex w-full items-center justify-between rounded-lg p-2.5 text-start transition-colors hover:bg-muted/60"
                           data-testid={`search-item-teacher-${teacher.id}`}
                         >
@@ -606,7 +607,7 @@ export function GlobalSearchDialog({
                       {searchResults.employees.slice(0, 6).map((emp) => (
                         <button
                           key={emp.id}
-                          onClick={() => handleSelect("/employees")}
+                          onClick={() => handleRecordSelect("/employees", emp.id)}
                           className="flex w-full items-center justify-between rounded-lg p-2.5 text-start transition-colors hover:bg-muted/60"
                           data-testid={`search-item-employee-${emp.id}`}
                         >
