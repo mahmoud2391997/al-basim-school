@@ -73,6 +73,7 @@ import {
   Router as WouterRouter,
   Switch,
   useLocation,
+  useSearch,
 } from "wouter";
 import {
   type Book,
@@ -2350,9 +2351,11 @@ function StudentRow({
 }
 
 function StudentsPage() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
+  const urlSearch = useSearch();
   const [search, setSearch] = useState("");
   const [focusedStudentId, setFocusedStudentId] = useState<number | null>(null);
+  const focusTimerRef = useRef<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Student | undefined>();
   const [toast, setToast] = useState("");
@@ -2407,7 +2410,9 @@ function StudentsPage() {
   const studentPages = usePagination(filtered);
 
   useEffect(() => {
-    const focusValue = new URLSearchParams(location.split("?")[1] ?? "").get("focus");
+    const base = location.split("?")[0];
+    const querySource = urlSearch || (location.includes("?") ? location.slice(location.indexOf("?")) : "");
+    const focusValue = new URLSearchParams(querySource).get("focus");
     const requestedId = focusValue ? Number(focusValue) : NaN;
     if (!Number.isInteger(requestedId) || !students.length) return;
     const targetIndex = filtered.findIndex((student) => student.id === requestedId);
@@ -2421,6 +2426,11 @@ function StudentsPage() {
       studentPages.setPage(targetPage);
       return;
     }
+    const queryParams = new URLSearchParams(querySource);
+    queryParams.delete("focus");
+    queryParams.delete("at");
+    const cleanQuery = queryParams.toString();
+    navigate(cleanQuery ? `${base}?${cleanQuery}` : base, { replace: true });
     setSelectedIds((current) => {
       const next = new Set(current);
       next.add(requestedId);
@@ -2429,9 +2439,17 @@ function StudentsPage() {
     setFocusedStudentId(requestedId);
     const row = document.querySelector(`[data-testid="row-student-${requestedId}"]`);
     row?.scrollIntoView({ behavior: "smooth", block: "center" });
-    const timeout = window.setTimeout(() => setFocusedStudentId(null), 750);
-    return () => window.clearTimeout(timeout);
-  }, [location, students, filtered, studentPages.page, studentPages.pageSize]);
+    if (focusTimerRef.current != null) window.clearTimeout(focusTimerRef.current);
+    focusTimerRef.current = window.setTimeout(() => setFocusedStudentId(null), 2000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location, urlSearch, students, filtered, studentPages.page, studentPages.pageSize, navigate]);
+
+  useEffect(
+    () => () => {
+      if (focusTimerRef.current != null) window.clearTimeout(focusTimerRef.current);
+    },
+    [],
+  );
 
   const visibleStudentIds = studentPages.pageItems.map((student) => student.id);
   const allVisibleStudentsSelected = visibleStudentIds.length > 0 && visibleStudentIds.every((id) => selectedIds.has(id));

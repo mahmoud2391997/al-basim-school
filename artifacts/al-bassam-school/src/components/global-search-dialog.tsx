@@ -226,7 +226,7 @@ export function GlobalSearchDialog({
   };
 
   const handleStudentSelect = (studentId: number) => {
-    handleSelect(`/students?focus=${encodeURIComponent(studentId)}`);
+    handleSelect(`/students?focus=${encodeURIComponent(studentId)}&at=${Date.now()}`);
   };
 
   const hasAnyResults = searchResults.totalCount > 0;
