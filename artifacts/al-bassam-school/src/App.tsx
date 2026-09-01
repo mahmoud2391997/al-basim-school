@@ -8495,7 +8495,16 @@ function AuthGate() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  const frontendOnly =
+    !window.alBassamDesktop &&
+    (import.meta.env.VITE_FRONTEND_ONLY === "true" ||
+      !import.meta.env.VITE_API_URL);
+
   useEffect(() => {
+    if (frontendOnly) {
+      setReady(true);
+      return;
+    }
     setAuthTokenGetter(() => authToken);
     fetch("/api/auth/status")
       .then((response) => response.json())
@@ -8518,7 +8527,7 @@ function AuthGate() {
           ),
         ),
       );
-  }, [t]);
+  }, [t, frontendOnly]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
