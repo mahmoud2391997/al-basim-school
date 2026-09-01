@@ -676,6 +676,7 @@ const createBorrowFn = (_opts?: any) =>
         bookId: data.bookId,
         borrowerType: data.borrowerType,
         borrowerId: data.borrowerId,
+        studentId: data.borrowerType === "student" ? data.borrowerId : null,
         borrowerName,
         bookTitle: book?.title ?? '',
         bookBarcode: book?.isbn ?? '',

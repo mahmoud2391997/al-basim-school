@@ -681,7 +681,7 @@ function Shell({ children }: { children: ReactNode }) {
                 <div className="truncate text-xs font-semibold text-sidebar-foreground">
                   {text(
                     "Library Admin",
-                    "آمين المكت���ة",
+                    "أمين المكتبة",
                   )}
                 </div>
                 <div className="truncate text-[10px] text-sidebar-foreground/45">
@@ -1389,8 +1389,8 @@ function Dashboard() {
   const mostBorrowedStudents = useMemo(() => {
     const counts = new Map<number, { student: (typeof rawStudents)[number]; count: number }>();
     rawBorrows.forEach((borrow) => {
-      if (borrow.borrowerType !== "student" || borrow.studentId == null) return;
-      const student = rawStudents.find((item) => item.id === borrow.studentId);
+      if (borrow.borrowerType !== "student") return;
+      const student = rawStudents.find((item) => item.id === (borrow.studentId ?? borrow.borrowerId));
       if (!student) return;
       const current = counts.get(student.id);
       counts.set(student.id, { student, count: (current?.count ?? 0) + 1 });
@@ -1515,7 +1515,7 @@ function Dashboard() {
         arabic="صباح الخير، آمين المكتبة."
         description={t(
           "A composed live view of library circulation, student enrolments, and key school operations.",
-          "نظرة حية متكاملة على حركة الإعارة المكتبية، سجلات الطلاب، ومؤش��ات العمليات المدرسية اليوم.",
+          "نظرة حية متكاملة على حركة الإعارة المكتبية، سجلات الطلاب، ومؤشرات العمليات المدرسية اليوم.",
         )}
         action={
           <div className="flex items-center gap-2">
@@ -2837,7 +2837,7 @@ const teacherSections: {
       {
         key: "englishName",
         label: "English name",
-        arabic: "الاسم بالانجليزي��",
+        arabic: "الاسم بالإنجليزية",
       },
       {
         key: "nationalId",
@@ -3745,7 +3745,7 @@ function EmployeesPage() {
         arabic="الموظفون"
         description={t(
           "The staff behind the school day — administration, operations and support.",
-          "الفريق خلف ��ليوم الدراسي — الإدارة والتشغيل والدعم.",
+          "الفريق خلف اليوم الدراسي — الإدارة والتشغيل والدعم.",
         )}
         action={
           <div className="flex items-center gap-2">
@@ -4065,7 +4065,7 @@ function TeachersPage() {
         title: t(`Delete ${teacher.fullName}?`, `حذف ${teacher.fullName}؟`),
         description: t(
           `Delete ${teacher.fullName} from the faculty directory? This cannot be undone.`,
-          `حذف ${teacher.fullName} من دليل هيئة التدريس�� لا يمكن التراجع عن هذا الإجراء.`,
+          `حذف ${teacher.fullName} من دليل هيئة التدريس؟ لا يمكن التراجع عن هذا الإجراء.`,
         ),
         confirmLabel: t("Delete", "حذف"),
         destructive: true,
@@ -5167,7 +5167,7 @@ function LibraryPage() {
                   action === "lost"
                     ? "تم وضع علامة لى نسخة كمفقودة"
                     : action === "damaged"
-                      ? "ت�� وضع علامة على نسخة كتالفة"
+                      ? "تم وضع علامة على نسخة تالفة"
                       : action === "fixed"
                         ? "تم استعادة النسخة التالفة"
                         : "تم استعادة النسخة المفقودة",
@@ -5899,16 +5899,15 @@ function DistributionPage() {
   }, [students]);
   const total = students.length;
   const flatRows = useMemo(() => {
-    return groups.flatMap(([grade, classes]) =>
-      Array.from(classes.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([klass, count]) => ({ grade, klass, count, key: `${grade}-${klass}` }))
-    );
+    return groups.map(([grade, classes]) => ({
+      grade,
+      count: Array.from(classes.values()).reduce((sum, count) => sum + count, 0),
+      key: grade,
+    }));
   }, [groups]);
-  type FlatRow = { grade: string; klass: string; count: number; key: string };
+  type FlatRow = { grade: string; count: number; key: string };
   const sortColumns: SortColumn<FlatRow>[] = [
     { key: "grade", accessor: (r) => r.grade },
-    { key: "klass", accessor: (r) => r.klass },
     { key: "count", accessor: (r) => r.count },
   ];
   const { sorted, sortKey, sortDir, toggleSort } = useSort<FlatRow>(
@@ -5984,7 +5983,7 @@ function DistributionPage() {
             ))}
           </div>
           <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-            <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+            <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1.6fr] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
               <SortHeader
                 columnKey="grade"
                 activeKey={sortKey}
@@ -5993,15 +5992,6 @@ function DistributionPage() {
                 align="start"
               >
                 {t("Grade", "الرحلة")}
-              </SortHeader>
-              <SortHeader
-                columnKey="klass"
-                activeKey={sortKey}
-                activeDir={sortDir}
-                onSort={toggleSort}
-                align="center"
-              >
-                {t("Class", "الفصل")}
               </SortHeader>
               <SortHeader
                 columnKey="count"
@@ -6022,19 +6012,16 @@ function DistributionPage() {
                 {t("Share of school", "نسبة من المدرسة")}
               </SortHeader>
             </div>
-            {distPages.pageItems.map(({ grade, klass, count, key }) => {
+            {distPages.pageItems.map(({ grade, count, key }) => {
               const percent = total ? Math.round((count / total) * 100) : 0;
               return (
                 <div
                   key={key}
-                  className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center border-b border-border/70 px-5 py-3 transition-colors last:border-b-0 hover:bg-secondary/40"
-                  data-testid={`row-distribution-${grade.toLowerCase().replaceAll(" ", "-")}-${klass.toLowerCase()}`}
+                  className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1.6fr] items-center border-b border-border/70 px-5 py-3 transition-colors last:border-b-0 hover:bg-secondary/40"
+                  data-testid={`row-distribution-${grade.toLowerCase().replaceAll(" ", "-")}`}
                 >
                   <span className="text-start text-sm font-semibold text-foreground">
                     {grade}
-                  </span>
-                  <span className="justify-self-center text-center font-mono text-xs text-muted-foreground">
-                    {klass}
                   </span>
                   <strong className="justify-self-center text-center font-mono text-sm text-foreground">
                     {count}
@@ -6053,11 +6040,10 @@ function DistributionPage() {
                 </div>
               );
             })}
-            <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1fr_1.6fr] items-center bg-primary/5 px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">
+            <div className="grid min-w-[640px] grid-cols-[1.5fr_1fr_1.6fr] items-center bg-primary/5 px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">
               <span className="text-start">
                 {t("Total", "الإجمالي")}
               </span>
-              <span />
             </div>
             <Pagination
               page={distPages.page}
@@ -6317,7 +6303,7 @@ function BorrowsPage() {
         </div>
         {scanning && (
           <span className="text-xs text-muted-foreground">
-            {t("Looking up…", "جارٍ الب��ث…")}
+            {t("Looking up…", "جارٍ البحث…")}
           </span>
         )}
       </form>
@@ -6853,21 +6839,48 @@ function BorrowHistoryPage() {
       )}
 
       <section className="mt-8 rounded-xl border border-border bg-card p-6 soft-shadow">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Trophy size={20} />
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Trophy size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-foreground">
+                {t("Student ranking", "ترتيب الطلاب")}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  "All students ranked by books borrowed this academic year, highest to lowest.",
+                  "جميع الطلاب مرتبون حسب عدد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
+                )}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold text-foreground">
-              {t("Student ranking", "ترتيب الطلاب")}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {t(
-                "All students ranked by books borrowed this academic year, highest to lowest.",
-                "جميع الطلاب مرتبون حسب عدد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
-              )}
-            </p>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => exportTableToPDF(
+              ranking.map(({ student, count, rank }) => ({
+                rank,
+                student: student.fullName,
+                studentArabic: student.fullNameArabic,
+                class: `${student.grade}${student.className ? ` · ${student.className}` : ""}`,
+                borrows: count,
+              })),
+              [
+                { key: "rank", header: "Rank", headerAr: "الترتيب" },
+                { key: "student", header: "Student", headerAr: "الطالب" },
+                { key: "studentArabic", header: "Name (Arabic)", headerAr: "الاسم بالعربية" },
+                { key: "class", header: "Class", headerAr: "الفصل" },
+                { key: "borrows", header: "Books borrowed", headerAr: "الكتب المستعارة" },
+              ],
+              "Student ranking",
+              "ترتيب الطلاب",
+            )}
+          >
+            <Download size={14} /> {t("Export PDF", "تصدير PDF")}
+          </Button>
         </div>
         {ranking.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
@@ -7093,8 +7106,8 @@ function AnalyticsPage() {
       }
       if (gradeFilter !== "all") {
         const grade =
-          b.borrowerType === "student" && b.studentId != null
-            ? studentById.get(b.studentId)?.grade
+          b.borrowerType === "student"
+            ? studentById.get(b.studentId ?? b.borrowerId)?.grade
             : undefined;
         if (grade !== gradeFilter) return false;
       }
@@ -7135,8 +7148,8 @@ function AnalyticsPage() {
     const map = new Map<string, number>();
     filteredBorrows.forEach((b) => {
       let grade: string;
-      if (b.borrowerType === "student" && b.studentId != null && studentByGrade.has(b.studentId)) {
-        grade = studentByGrade.get(b.studentId)!;
+      if (b.borrowerType === "student" && studentByGrade.has(b.studentId ?? b.borrowerId)) {
+        grade = studentByGrade.get(b.studentId ?? b.borrowerId)!;
       } else {
         grade = t("Staff / Other", "الكادر / أخرى");
       }
@@ -7152,7 +7165,9 @@ function AnalyticsPage() {
     const studentMap = new Map(students.map((student) => [student.id, student]));
     const counts = new Map<number, number>();
     filteredBorrows.forEach((borrow) => {
-      if (borrow.borrowerType === "student" && borrow.studentId != null) counts.set(borrow.studentId, (counts.get(borrow.studentId) || 0) + 1);
+      if (borrow.borrowerType !== "student") return;
+      const id = borrow.studentId ?? borrow.borrowerId;
+      counts.set(id, (counts.get(id) ?? 0) + 1);
     });
     return Array.from(counts, ([id, count]) => ({ student: studentMap.get(id), count }))
       .filter((item): item is { student: (typeof students)[number]; count: number } => Boolean(item.student))
@@ -7480,7 +7495,7 @@ function AnalyticsPage() {
                               {t("Grade", "الصف")}
                             </th>
                             <th className="px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              {t("Borrows", "الإع��رات")}
+                              {t("Borrows", "الإعارات")}
                             </th>
                             <th className="px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
                               {t("Percentage", "النسبة")}
