@@ -121,11 +121,8 @@ import {
 } from "@workspace/api-client-react";
 import { getBooks } from "@workspace/api-client-react";
 import {
-  getActiveSchoolSystem,
   getSavedClassNames,
   saveClassName,
-  setActiveSchoolSystem,
-  type SchoolSystem,
 } from "./api-client/local";
 import {
   changeCredentials,
@@ -428,7 +425,6 @@ function Shell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [activeSystem, setActiveSystem] = useState<SchoolSystem>(() => getActiveSchoolSystem());
   const queryClient = useQueryClient();
   const [collapsed, setCollapsed] = useState(
     () => false,
@@ -445,14 +441,6 @@ function Shell({ children }: { children: ReactNode }) {
   const { profilePicture } = useProfilePicture();
   const sidebarWidth = collapsed ? 64 : 208;
   const text = t;
-
-  const switchSystem = (nextSystem: SchoolSystem) => {
-    if (nextSystem === activeSystem) return;
-    setActiveSystem(nextSystem);
-    setActiveSchoolSystem(nextSystem);
-    queryClient.clear();
-    void queryClient.refetchQueries({ type: "active" });
-  };
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -762,19 +750,7 @@ function Shell({ children }: { children: ReactNode }) {
             </span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <label className="flex items-center gap-2 rounded-lg border border-border bg-card px-2 py-1 text-[10px] font-semibold text-muted-foreground" dir="ltr">
-              <span className="hidden sm:inline">{text("School", "المدرسة")}</span>
-              <select
-                value={activeSystem}
-                onChange={(event) => switchSystem(event.target.value as SchoolSystem)}
-                className="bg-transparent text-foreground outline-none"
-                aria-label={text("Active school system", "النظام المدرسي النشط")}
-                data-testid="select-school-system"
-              >
-                <option value="boys">{text("Boys School", "مدرسة البنين")}</option>
-                <option value="girls">{text("Girls School", "مدرسة البنات")}</option>
-              </select>
-            </label>
+
             <div
               className="flex items-center rounded-lg border border-border bg-card p-0.5 text-[10px] font-semibold"
               dir="ltr"
@@ -859,7 +835,7 @@ function Shell({ children }: { children: ReactNode }) {
           language={language}
           onNavigate={navigate}
         />
-        <div key={activeSystem} className="px-5 py-7 sm:px-8 lg:px-10">{children}</div>
+        <div className="px-5 py-7 sm:px-8 lg:px-10">{children}</div>
       </main>
     </div>
   );
@@ -1419,7 +1395,7 @@ function Dashboard() {
       const current = counts.get(student.id);
       counts.set(student.id, { student, count: (current?.count ?? 0) + 1 });
     });
-    return Array.from(counts.values()).sort((a, b) => b.count - a.count).slice(0, 5);
+    return Array.from(counts.values()).sort((a, b) => b.count - a.count || a.student.fullName.localeCompare(b.student.fullName)).slice(0, 5);
   }, [rawBorrows, rawStudents]);
 
   const summaryData = summaryQuery.data ?? fallbackSummary;
@@ -1539,7 +1515,7 @@ function Dashboard() {
         arabic="صباح الخير، آمين المكتبة."
         description={t(
           "A composed live view of library circulation, student enrolments, and key school operations.",
-          "نظرة حية متكاملة على حركة الإعارة المكتبية، سجلات الطلاب، ومؤشرات العمليات المدرسية اليوم.",
+          "نظرة حية متكاملة على حركة الإعارة المكتبية، سجلات الطلاب، ومؤش��ات العمليات المدرسية اليوم.",
         )}
         action={
           <div className="flex items-center gap-2">
@@ -1597,7 +1573,7 @@ function Dashboard() {
               value={totalEmployees.toLocaleString()}
               icon={Briefcase}
               tone="sky"
-              note={t("Administrative & staff members", "أعضء الكادر الإداري")}
+              note={t("Administrative & staff members", "أعضاء الكادر الإداري")}
             />
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -6597,34 +6573,9 @@ function BorrowHistoryPage() {
     const studentBorrows = allBorrows.filter(
       (b) => b.borrowerType === "student",
     );
-    const years = (Array.isArray(yearsQuery.data) ? yearsQuery.data : []) as AcademicYear[];
-    const year = getDefaultAcademicYear(years);
-    let startTs = Number.NEGATIVE_INFINITY;
-    let endTs = Number.POSITIVE_INFINITY;
-    if (year) {
-      startTs = new Date(`${year.startDate}T00:00:00`).getTime();
-      endTs = new Date(`${year.endDate}T23:59:59`).getTime();
-    }
-    // A borrow counts toward this year when it falls within the current
-    // academic-year window, or when it falls outside every known year window
-    // (so slightly out-of-sync dates are never dropped from the ranking).
-    const windows = years.map((y) => ({
-      start: new Date(`${y.startDate}T00:00:00`).getTime(),
-      end: new Date(`${y.endDate}T23:59:59`).getTime(),
-    }));
-    const inCurrentYear = (ts: string | null | undefined) => {
-      if (!ts || Number.isNaN(new Date(ts).getTime())) return false;
-      const time = new Date(ts).getTime();
-      if (time >= startTs && time <= endTs) return true;
-      const inAnyWindow = windows.some(
-        (w) => time >= w.start && time <= w.end,
-      );
-      return !inAnyWindow;
-    };
     const rows = students.map((student) => {
       const count = studentBorrows.filter(
         (b) =>
-          inCurrentYear(b.borrowedAt) &&
           (b.studentId != null
             ? b.studentId === student.id
             : b.borrowerId === student.id),
@@ -6913,7 +6864,7 @@ function BorrowHistoryPage() {
             <p className="text-xs text-muted-foreground">
               {t(
                 "All students ranked by books borrowed this academic year, highest to lowest.",
-                "جميع الطلاب مرتبون حسب دد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
+                "جميع الطلاب مرتبون حسب عدد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
               )}
             </p>
           </div>
@@ -7529,7 +7480,7 @@ function AnalyticsPage() {
                               {t("Grade", "الصف")}
                             </th>
                             <th className="px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              {t("Borrows", "الإعارات")}
+                              {t("Borrows", "الإع��رات")}
                             </th>
                             <th className="px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
                               {t("Percentage", "النسبة")}
