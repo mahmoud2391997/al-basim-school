@@ -2262,7 +2262,7 @@ function StudentRow({
     }[student.status] ?? student.status;
   return (
     <div
-      className="group grid min-w-[1000px] grid-cols-[2fr_.7fr_1.1fr_1.15fr_.9fr_1.25fr_1fr_.8fr_88px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
+      className="group grid min-w-[1180px] grid-cols-[minmax(280px,2fr)_minmax(120px,.85fr)_minmax(150px,1.1fr)_minmax(120px,1fr)_minmax(170px,1.25fr)_minmax(140px,1fr)_minmax(110px,.8fr)_88px] items-center gap-4 border-b border-border/70 px-5 py-4 transition-colors hover:bg-secondary/40"
       data-testid={`row-student-${student.id}`}
     >
       <div className="flex items-center gap-3 text-start">
@@ -2606,7 +2606,7 @@ function StudentsPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card soft-shadow">
-          <div className="grid min-w-[1000px] grid-cols-[2fr_.7fr_1.1fr_1.15fr_.9fr_1.25fr_1fr_.8fr_88px] items-center border-b border-border bg-primary/5 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+          <div className="grid min-w-[1180px] grid-cols-[minmax(280px,2fr)_minmax(120px,.85fr)_minmax(150px,1.1fr)_minmax(120px,1fr)_minmax(170px,1.25fr)_minmax(140px,1fr)_minmax(110px,.8fr)_88px] items-center gap-4 border-b border-border bg-primary/5 px-5 py-4 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
             <div className="flex items-center gap-3">
               <Checkbox checked={allVisibleStudentsSelected} onCheckedChange={(checked) => toggleAllVisibleStudents(checked === true)} aria-label={t("Select all visible students", "تحديد جميع الطلاب الظاهرين")} data-testid="checkbox-select-all-students" />
               <SortHeader
@@ -5797,7 +5797,7 @@ function DistributionPage() {
     const map = new Map<string, Map<string, number>>();
     for (const student of students) {
       const grade = student.grade || "Unassigned";
-      const klass = student.className || "—";
+      const klass = student.className || "���";
       if (!map.has(grade)) map.set(grade, new Map());
       map.get(grade)!.set(klass, (map.get(grade)!.get(klass) ?? 0) + 1);
     }
@@ -6795,7 +6795,7 @@ function BorrowHistoryPage() {
             <p className="text-xs text-muted-foreground">
               {t(
                 "All students ranked by books borrowed this academic year, highest to lowest.",
-                "جميع الطلاب مرتبون حسب عدد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
+                "جميع الطلاب مرتبون حسب ��دد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
               )}
             </p>
           </div>
@@ -7630,7 +7630,7 @@ function CategoriesPage() {
             className="rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none"
             data-testid="select-category-sort"
           >
-            <option value="count">{t("Sort by count", "حسب العدد")}</option>
+            <option value="count">{t("Sort by count", "��سب العدد")}</option>
             <option value="name">{t("Sort by name", "حسب الاسم")}</option>
           </select>
           <button
@@ -7704,7 +7704,7 @@ function CategoriesPage() {
                         {category}
                       </div>
                       <div className="ar text-[10px] text-muted-foreground">
-                        التصنيف
+                        الت��نيف
                       </div>
                     </div>
                   </div>
@@ -8840,7 +8840,7 @@ function AuthGate() {
           {/* Header & Language Toggle */}
           <div className="flex items-center justify-between">
             <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-              {t("Al-Bassam School", "مدارس البسام الأهلية")}
+              {t("Al-Bassam School", "م��ارس البسام الأهلية")}
             </div>
             <button
               type="button"
