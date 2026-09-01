@@ -213,9 +213,51 @@ function LocalStoreSync() {
       queryClient.invalidateQueries();
     };
     window.addEventListener("storage", refresh);
-    return () => window.removeEventListener("storage", refresh);
+    window.addEventListener("school-data-change", refresh);
+    window.addEventListener("school-system-change", refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("school-data-change", refresh);
+      window.removeEventListener("school-system-change", refresh);
+    };
   }, [queryClient]);
   return null;
+}
+
+function useRecordFocus(recordType: "book" | "teacher" | "employee" | "borrow") {
+  const [location, navigate] = useLocation();
+  const urlSearch = useSearch();
+  const [focusTick, setFocusTick] = useState(0);
+  useEffect(() => {
+    const retry = () => setFocusTick((tick) => tick + 1);
+    window.addEventListener("school-record-focus-retry", retry);
+    return () => window.removeEventListener("school-record-focus-retry", retry);
+  }, []);
+  useEffect(() => {
+    const source = urlSearch || (location.includes("?") ? location.slice(location.indexOf("?")) : "");
+    const params = new URLSearchParams(source);
+    const id = Number(params.get("focus"));
+    if (!Number.isInteger(id)) return;
+    const selector = `[data-testid="row-${recordType}-${id}"]`;
+    const row = document.querySelector(selector);
+    if (!row) {
+      const retry = window.setTimeout(() => window.dispatchEvent(new Event("school-record-focus-retry")), 150);
+      return () => window.clearTimeout(retry);
+    }
+    row.classList.add("bg-primary/25", "ring-4", "ring-inset", "ring-primary/80");
+    row.setAttribute("data-focused", "true");
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    params.delete("focus");
+    params.delete("at");
+    const base = location.split("?")[0];
+    const clean = params.toString();
+    navigate(clean ? `${base}?${clean}` : base, { replace: true });
+    const timer = window.setTimeout(() => {
+      row.classList.remove("bg-primary/25", "ring-4", "ring-inset", "ring-primary/80");
+      row.removeAttribute("data-focused");
+    }, 2200);
+    return () => window.clearTimeout(timer);
+  }, [recordType, location, urlSearch, navigate, focusTick]);
 }
 
 const fallbackSummary = {
@@ -2799,7 +2841,7 @@ const teacherSections: {
       {
         key: "englishName",
         label: "English name",
-        arabic: "الاسم بالانجليزية",
+        arabic: "الاسم بالانجليزي��",
       },
       {
         key: "nationalId",
@@ -3570,6 +3612,7 @@ function EmployeeRow({
 }
 
 function EmployeesPage() {
+  useRecordFocus("employee");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | undefined>();
@@ -3949,6 +3992,7 @@ function EmployeesPage() {
 }
 
 function TeachersPage() {
+  useRecordFocus("teacher");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Teacher | undefined>();
@@ -4025,7 +4069,7 @@ function TeachersPage() {
         title: t(`Delete ${teacher.fullName}?`, `حذف ${teacher.fullName}؟`),
         description: t(
           `Delete ${teacher.fullName} from the faculty directory? This cannot be undone.`,
-          `حذف ${teacher.fullName} من دليل هيئة التدريس؟ لا يمكن التراجع عن هذا الإجراء.`,
+          `حذف ${teacher.fullName} من دليل هيئة التدريس�� لا يمكن التراجع عن هذا الإجراء.`,
         ),
         confirmLabel: t("Delete", "حذف"),
         destructive: true,
@@ -4938,6 +4982,7 @@ function BorrowDialog({
 }
 
 function LibraryPage() {
+  useRecordFocus("book");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Book | undefined>();
@@ -6127,6 +6172,7 @@ function ReturnBorrowControls({
 }
 
 function BorrowsPage() {
+  useRecordFocus("borrow");
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [scan, setScan] = useState("");
@@ -6509,6 +6555,7 @@ function BorrowsPage() {
 type HistoryFilter = "all" | "active" | "returned";
 
 function BorrowHistoryPage() {
+  useRecordFocus("borrow");
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<HistoryFilter>("all");
