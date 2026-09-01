@@ -2421,6 +2421,11 @@ function StudentsPage() {
       studentPages.setPage(targetPage);
       return;
     }
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      next.add(requestedId);
+      return next;
+    });
     setFocusedStudentId(requestedId);
     const row = document.querySelector(`[data-testid="row-student-${requestedId}"]`);
     row?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -7370,7 +7375,7 @@ function AnalyticsPage() {
                     </div>
                   ) : (
                     <p className="py-10 text-center text-sm text-muted-foreground">
-                      {t("No borrows to chart within the current filters.", "لا توجد إعارات لعرضها ضمن ��وامل التصفية الحا��ية.")}
+                      {t("No borrows to chart within the current filters.", "لا توجد إعارات لعرضها ضم�� ��وامل التصفية الحا��ية.")}
                     </p>
                   )}
                 </section>
