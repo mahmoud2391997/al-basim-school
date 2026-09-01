@@ -681,15 +681,17 @@ function Shell({ children }: { children: ReactNode }) {
           <div
             className={`${collapsed ? "mt-3 justify-center" : "mt-5"} flex items-center gap-3${collapsed ? "" : " border-t border-sidebar-border pt-5"}`}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064] dark:text-[#263064]!">
-              LA
-            </div>
+            {profilePicture ? (
+              <img src={profilePicture} alt={text("Library Admin", "أمين المكتبة")} className="h-9 w-9 rounded-full object-cover ring-2 ring-sidebar-border" />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064] dark:text-[#263064]!">LA</div>
+            )}
             {!collapsed && (
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-semibold text-sidebar-foreground">
                   {text(
                     "Library Admin",
-                    "آمين المكت��ة",
+                    "آمين المكت���ة",
                   )}
                 </div>
                 <div className="truncate text-[10px] text-sidebar-foreground/45">
@@ -2006,7 +2008,8 @@ function StudentDialog({
   const queryClient = useQueryClient();
   const studentsQuery = useGetStudents({}, { query: { queryKey: getGetStudentsQueryKey() } });
   const existingStudents = Array.isArray(studentsQuery.data) ? studentsQuery.data : [];
-  const uniqueGrades = Array.from(new Set(existingStudents.map((s) => s.grade).filter(Boolean)));
+  const gradeOptions = Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`);
+  const uniqueGrades = Array.from(new Set([...gradeOptions, ...existingStudents.map((s) => s.grade).filter(Boolean)]));
   const [savedClasses, setSavedClasses] = useState<string[]>([]);
   const [newClassName, setNewClassName] = useState("");
   useEffect(() => {
@@ -2972,7 +2975,7 @@ function TeacherDialog({
       );
     }
   }, [open, editing]);
-  const subjectCatalog = useMemo(() => getSubjectCatalog(), []);
+  const [subjectCatalog, setSubjectCatalog] = useState<string[]>(() => getSubjectCatalog());
   useEffect(() => {
     if (!open) return;
     if (editing && editing.subject) {
@@ -3013,7 +3016,7 @@ function TeacherDialog({
     if (customSubjectActive) {
       const trimmed = customSubject.trim();
       if (trimmed) {
-        addSubjectToCatalog(trimmed);
+        setSubjectCatalog(addSubjectToCatalog(trimmed));
       }
     }
     const text = (key: keyof TeacherInput) => {
@@ -3764,7 +3767,7 @@ function EmployeesPage() {
         arabic="الموظفون"
         description={t(
           "The staff behind the school day — administration, operations and support.",
-          "الفريق خلف اليوم الدراسي — الإدارة والتشغيل والدعم.",
+          "الفريق خلف ��ليوم الدراسي — الإدارة والتشغيل والدعم.",
         )}
         action={
           <div className="flex items-center gap-2">
@@ -5186,7 +5189,7 @@ function LibraryPage() {
                   action === "lost"
                     ? "تم وضع علامة لى نسخة كمفقودة"
                     : action === "damaged"
-                      ? "تم وضع علامة على نسخة كتالفة"
+                      ? "ت�� وضع علامة على نسخة كتالفة"
                       : action === "fixed"
                         ? "تم استعادة النسخة التالفة"
                         : "تم استعادة النسخة المفقودة",
@@ -7113,9 +7116,8 @@ function AnalyticsPage() {
     [books],
   );
   const gradeList = useMemo(
-    () =>
-      Array.from(new Set(students.map((s) => s.grade).filter(Boolean))).sort(),
-    [students],
+    () => Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`),
+    [],
   );
   const bookById = useMemo(
     () => new Map(books.map((book) => [book.id, book])),
