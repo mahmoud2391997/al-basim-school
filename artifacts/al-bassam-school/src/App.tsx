@@ -119,9 +119,20 @@ import {
 import { getBooks } from "@workspace/api-client-react";
 import {
   getActiveSchoolSystem,
+  seedDemoData,
   setActiveSchoolSystem,
   type SchoolSystem,
 } from "./api-client/local";
+import {
+  changeCredentials,
+  createSession,
+  ensureCredentials,
+  isAuthenticated,
+  isSeeded,
+  logout as webLogout,
+  markSeeded,
+  verifyLogin,
+} from "@/lib/web-auth";
 import {
   getAcademicYears,
   getBorrows,
@@ -585,6 +596,15 @@ function Shell({ children }: { children: ReactNode }) {
           </Link>
           <button
             onClick={async () => {
+              if (
+                !window.alBassamDesktop &&
+                (import.meta.env.VITE_FRONTEND_ONLY === "true" ||
+                  !import.meta.env.VITE_API_URL)
+              ) {
+                webLogout();
+                window.location.reload();
+                return;
+              }
               await fetch("/api/auth/logout", {
                 method: "POST",
                 headers: {
@@ -8350,6 +8370,41 @@ function PasswordSettings() {
       );
     }
 
+    if (
+      !window.alBassamDesktop &&
+      (import.meta.env.VITE_FRONTEND_ONLY === "true" ||
+        !import.meta.env.VITE_API_URL)
+    ) {
+      const result = await changeCredentials(
+        currentPassword,
+        newUsername,
+        newPassword,
+      );
+      if (result.ok) {
+        setIsSuccess(true);
+        setMessage(
+          t(
+            "Credentials updated successfully.",
+            "تم تحديث بيانات الدخول بنجاح.",
+          ),
+        );
+        setCurrentPassword("");
+        setNewUsername("");
+        setNewPassword("");
+        setConfirmation("");
+      } else {
+        setIsSuccess(false);
+        setMessage(
+          result.error ||
+            t(
+              "Could not change password. Please check current password.",
+              "تعذر تغيير كلمة المرور. يرجى التحقق من كلمة المرور الحالية.",
+            ),
+        );
+      }
+      return;
+    }
+
     const response = await fetch("/api/auth/change-password", {
       method: "POST",
       headers: {
@@ -8502,8 +8557,15 @@ function AuthGate() {
 
   useEffect(() => {
     if (frontendOnly) {
-      setReady(true);
-      return;
+      let cancelled = false;
+      (async () => {
+        await ensureCredentials();
+        if (cancelled) return;
+        if (isAuthenticated()) setReady(true);
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
     setAuthTokenGetter(() => authToken);
     fetch("/api/auth/status")
@@ -8527,11 +8589,31 @@ function AuthGate() {
           ),
         ),
       );
+    return undefined;
   }, [t, frontendOnly]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
+    if (frontendOnly) {
+      const ok = await verifyLogin(username, password);
+      if (!ok) {
+        return setError(
+          t(
+            "Authentication failed. Please check your credentials.",
+            "فشل تسجيل الدخول. يرجى التحقق من اسم المستخدم وكلمة المرور.",
+          ),
+        );
+      }
+      createSession();
+      if (!isSeeded()) {
+        seedDemoData();
+        markSeeded();
+      }
+      setPassword("");
+      setReady(true);
+      return;
+    }
     const endpoint = setupRequired ? "/api/auth/setup" : "/api/auth/login";
     const response = await fetch(endpoint, {
       method: "POST",

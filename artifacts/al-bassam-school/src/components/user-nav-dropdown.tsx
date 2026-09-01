@@ -44,6 +44,15 @@ export function UserNavDropdown({
   const [open, setOpen] = useState(false);
 
   const handleLogout = async () => {
+    if (
+      !window.alBassamDesktop &&
+      (import.meta.env.VITE_FRONTEND_ONLY === "true" ||
+        !import.meta.env.VITE_API_URL)
+    ) {
+      window.localStorage.removeItem("al-bassam:web-session");
+      window.location.reload();
+      return;
+    }
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
