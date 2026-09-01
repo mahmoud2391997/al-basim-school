@@ -690,7 +690,7 @@ function Shell({ children }: { children: ReactNode }) {
                 <div className="truncate text-xs font-semibold text-sidebar-foreground">
                   {text(
                     "Library Admin",
-                    "آمين المكتبة",
+                    "آمين المكت��ة",
                   )}
                 </div>
                 <div className="truncate text-[10px] text-sidebar-foreground/45">
@@ -6967,6 +6967,12 @@ function BorrowHistoryPage() {
 
 type ReportColumn = { key: string; header: string };
 
+function getBookConditionCount(book: Book, condition: "lost" | "damaged") {
+  const count = condition === "lost" ? book.lostCopies : book.damagedCopies;
+  if (typeof count === "number") return Math.max(0, count);
+  return book.status === condition ? 1 : 0;
+}
+
 function ReportSection({ title, titleAr, columns, data, exportType, t }: {
   title: string;
   titleAr: string;
@@ -7063,12 +7069,20 @@ function AnalyticsPage() {
   const students = Array.isArray(studentsQuery.data) ? studentsQuery.data : [];
   const copies = books.reduce((total, book) => total + book.copies, 0);
   const available = books.reduce(
-    (total, book) => total + (book.availableCopies ?? book.copies),
+    (total, book) =>
+      total + Math.max(
+        0,
+        Math.min(
+          book.copies,
+          book.availableCopies ??
+            book.copies - getBookConditionCount(book, "lost") - getBookConditionCount(book, "damaged"),
+        ),
+      ),
     0,
   );
   const borrowedCopies = Math.max(copies - available, 0);
-  const lostBooks = books.reduce((total, book) => total + (book.lostCopies ?? 0), 0);
-  const damagedBooks = books.reduce((total, book) => total + (book.damagedCopies ?? 0), 0);
+  const lostBooks = books.reduce((total, book) => total + getBookConditionCount(book, "lost"), 0);
+  const damagedBooks = books.reduce((total, book) => total + getBookConditionCount(book, "damaged"), 0);
   const categories = new Set(books.map((book) => book.category).filter(Boolean))
     .size;
   const borrowedPercent = copies
@@ -7618,7 +7632,7 @@ function AnalyticsPage() {
                   { key: "isbn", header: "ISBN" },
                   { key: "shelf", header: t("Shelf", "الرف") },
                 ]}
-                data={books.filter((b) => b.status === "lost").map((b) => ({
+                data={books.filter((b) => getBookConditionCount(b, "lost") > 0).map((b) => ({
                   title: b.title,
                   author: b.author || "—",
                   isbn: b.isbn || "—",
@@ -7636,7 +7650,7 @@ function AnalyticsPage() {
                   { key: "isbn", header: "ISBN" },
                   { key: "shelf", header: t("Shelf", "الرف") },
                 ]}
-                data={books.filter((b) => b.status === "damaged").map((b) => ({
+                data={books.filter((b) => getBookConditionCount(b, "damaged") > 0).map((b) => ({
                   title: b.title,
                   author: b.author || "—",
                   isbn: b.isbn || "—",
