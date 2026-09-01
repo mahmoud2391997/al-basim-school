@@ -225,6 +225,10 @@ export function GlobalSearchDialog({
     onNavigate(path);
   };
 
+  const handleStudentSelect = (studentId: number) => {
+    handleSelect(`/students?focus=${encodeURIComponent(studentId)}`);
+  };
+
   const hasAnyResults = searchResults.totalCount > 0;
 
   return (
@@ -464,7 +468,7 @@ export function GlobalSearchDialog({
                       {searchResults.students.slice(0, 6).map((student) => (
                         <button
                           key={student.id}
-                          onClick={() => handleSelect("/students")}
+                          onClick={() => handleStudentSelect(student.id)}
                           className="flex w-full items-center justify-between rounded-lg p-2.5 text-start transition-colors hover:bg-muted/60"
                           data-testid={`search-item-student-${student.id}`}
                         >

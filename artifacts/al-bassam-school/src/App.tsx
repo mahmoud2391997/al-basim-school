@@ -1552,7 +1552,7 @@ function Dashboard() {
               value={totalEmployees.toLocaleString()}
               icon={Briefcase}
               tone="sky"
-              note={t("Administrative & staff members", "أعضاء الكادر الإداري")}
+              note={t("Administrative & staff members", "أعض��ء الكادر الإداري")}
             />
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -2246,12 +2246,14 @@ function StudentRow({
   onDelete,
   selected,
   onSelect,
+  focused,
 }: {
   student: Student;
   onEdit: (student: Student) => void;
   onDelete: (student: Student) => void;
   selected: boolean;
   onSelect: (checked: boolean) => void;
+  focused: boolean;
 }) {
   const { t } = useT();
   const statusLabel =
@@ -2262,8 +2264,9 @@ function StudentRow({
     }[student.status] ?? student.status;
   return (
     <div
-      className="group grid min-w-[1180px] grid-cols-[minmax(280px,2fr)_minmax(120px,.85fr)_minmax(150px,1.1fr)_minmax(120px,1fr)_minmax(170px,1.25fr)_minmax(140px,1fr)_minmax(110px,.8fr)_88px] items-center gap-4 border-b border-border/70 px-5 py-4 transition-colors hover:bg-secondary/40"
+      className={`group grid min-w-[1180px] grid-cols-[minmax(280px,2fr)_minmax(120px,.85fr)_minmax(150px,1.1fr)_minmax(120px,1fr)_minmax(170px,1.25fr)_minmax(140px,1fr)_minmax(110px,.8fr)_88px] items-center gap-4 border-b border-border/70 px-5 py-4 transition-colors hover:bg-secondary/40 ${focused ? "bg-primary/15 ring-2 ring-inset ring-primary/50" : ""}`}
       data-testid={`row-student-${student.id}`}
+      data-focused={focused ? "true" : undefined}
     >
       <div className="flex items-center gap-3 text-start">
         <Checkbox
@@ -2348,7 +2351,9 @@ function StudentRow({
 }
 
 function StudentsPage() {
+  const [location] = useLocation();
   const [search, setSearch] = useState("");
+  const [focusedStudentId, setFocusedStudentId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Student | undefined>();
   const [toast, setToast] = useState("");
@@ -2401,6 +2406,29 @@ function StudentsPage() {
     [sorted, filters.values, filterFields],
   );
   const studentPages = usePagination(filtered);
+
+  useEffect(() => {
+    const focusValue = new URLSearchParams(location.split("?")[1] ?? "").get("focus");
+    const requestedId = focusValue ? Number(focusValue) : NaN;
+    if (!Number.isInteger(requestedId) || !students.length) return;
+    const targetIndex = filtered.findIndex((student) => student.id === requestedId);
+    if (targetIndex < 0) {
+      setSearch("");
+      filters.resetFilter();
+      return;
+    }
+    const targetPage = Math.floor(targetIndex / studentPages.pageSize) + 1;
+    if (studentPages.page !== targetPage) {
+      studentPages.setPage(targetPage);
+      return;
+    }
+    setFocusedStudentId(requestedId);
+    const row = document.querySelector(`[data-testid="row-student-${requestedId}"]`);
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timeout = window.setTimeout(() => setFocusedStudentId(null), 750);
+    return () => window.clearTimeout(timeout);
+  }, [location, students, filtered, studentPages.page, studentPages.pageSize]);
+
   const visibleStudentIds = studentPages.pageItems.map((student) => student.id);
   const allVisibleStudentsSelected = visibleStudentIds.length > 0 && visibleStudentIds.every((id) => selectedIds.has(id));
   const toggleStudentSelection = (id: number, checked: boolean) => {
@@ -2682,6 +2710,7 @@ function StudentsPage() {
               onEdit={edit}
               onDelete={remove}
               selected={selectedIds.has(student.id)}
+              focused={focusedStudentId === student.id}
               onSelect={(checked) => toggleStudentSelection(student.id, checked)}
             />
           ))}
@@ -5057,7 +5086,7 @@ function LibraryPage() {
         description: t(
           `Are you sure you want to ${action === "fixed" || action === "found" ? "restore" : "mark"} “${book.title}”?`,
           action === "fixed" || action === "found"
-            ? `هل تريد استعادة "${book.title}"؟`
+            ? `هل تريد استعا��ة "${book.title}"؟`
             : `هل تريد وضع علامة على "${book.title}"؟`,
         ),
         confirmLabel: t("Yes", "نعم"),
