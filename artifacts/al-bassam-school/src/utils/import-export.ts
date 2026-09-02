@@ -211,8 +211,8 @@ export function parseImportFile(file: File, type: EntityType): Promise<ImportRes
 
 // ─── EXPORT TO EXCEL ────────────────────────────────────────────────
 
-export function exportToExcel(data: Record<string, any>[], type: EntityType) {
-  const schema = SCHEMAS[type];
+export function exportToExcel(data: Record<string, any>[], type: EntityType, customSchema?: EntitySchema) {
+  const schema = customSchema ?? SCHEMAS[type];
   const headers = schema.columns.map((c) => c.header);
   const rows = data.map((row) => schema.columns.map((c) => row[c.key] ?? ""));
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -291,8 +291,8 @@ export async function exportTableToPDF(
   } finally { document.body.removeChild(container); }
 }
 
-export async function exportToPDF(data: Record<string, any>[], type: EntityType) {
-  const schema = SCHEMAS[type];
+export async function exportToPDF(data: Record<string, any>[], type: EntityType, customSchema?: EntitySchema) {
+  const schema = customSchema ?? SCHEMAS[type];
   const container = document.createElement("div");
   container.style.cssText = "position:fixed;left:-9999px;top:0;width:1200px;background:#fff;padding:32px;font-family:Arial,sans-serif;";
   container.innerHTML = buildExportTableHTML(schema, data);

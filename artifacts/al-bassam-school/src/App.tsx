@@ -157,6 +157,7 @@ import {
   exportToExcel,
   exportToPDF,
   exportTableToPDF,
+  type EntitySchema,
 } from "@/utils/import-export";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -2900,7 +2901,7 @@ const teacherSections: {
       {
         key: "email",
         label: "Email",
-        arabic: "البريد الالكتروني",
+        arabic: "البر��د الالكتروني",
         type: "email",
       },
     ],
@@ -4940,7 +4941,7 @@ function BorrowDialog({
             </label>
             <label className="grid gap-1.5 text-start">
               <span className="text-xs font-semibold text-foreground">
-                {t("Return by", "موعد الإرجاع")} *
+                {t("Return by", "موعد ا��إرجاع")} *
               </span>
               <input
                 type="date"
@@ -5235,7 +5236,7 @@ function LibraryPage() {
     if (!ids.length) return;
     confirm({
       title: t(`Delete ${ids.length} selected books?`, `حذف ${ids.length} من الكتب المحددة؟`),
-      description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
+      description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإج��اء."),
       confirmLabel: t("Delete selected", "حذف المحدد"),
       destructive: true,
     }, () => {
@@ -6986,12 +6987,22 @@ function ReportSection({ title, titleAr, columns, data, exportType, t }: {
 }) {
   const reportPages = usePagination(data, 16);
   const exportRows = () => data.map((row) => {
-    const obj: Record<string, string> = {};
-    columns.forEach((c) => { obj[c.header] = row[c.key] || "—"; });
-    return obj;
+  const obj: Record<string, string> = {};
+  columns.forEach((c) => { obj[c.key] = row[c.key] || "—"; });
+  return obj;
   });
-  const handleExcel = () => exportToExcel(exportRows(), exportType);
-  const handlePDF = () => exportToPDF(exportRows(), exportType);
+  const reportSchema: EntitySchema = {
+  label: title,
+  labelAr: titleAr,
+  columns: columns.map((column) => ({
+  key: column.key,
+  header: column.header,
+  headerAr: column.header,
+  required: false,
+  })),
+  };
+  const handleExcel = () => exportToExcel(exportRows(), exportType, reportSchema);
+  const handlePDF = () => exportToPDF(exportRows(), exportType, reportSchema);
   return (
     <section className="rounded-xl border border-border bg-card p-6 soft-shadow">
       <div className="mb-4 flex items-center justify-between">
@@ -7175,7 +7186,10 @@ function AnalyticsPage() {
       map.set(grade, (map.get(grade) || 0) + 1);
     });
     return Array.from(map.entries())
-      .map(([name, count]) => ({ name, count }))
+      .map(([name, count]) => ({
+        name: /^grade\s+/i.test(name) || name.includes("/") ? name : `Grade ${name}`,
+        count,
+      }))
       .sort((a, b) => b.count - a.count);
   }, [filteredBorrows, students, t]);
 
@@ -7215,7 +7229,7 @@ function AnalyticsPage() {
               value={uniqueTitles.toLocaleString()}
               icon={BookOpen}
               tone="navy"
-              note={t("Distinct titles in catalogue", "عناوين فريدة في الفهرس")}
+              note={t("Distinct titles in catalogue", "ع��اوين فريدة في الفهرس")}
             />
             <StatCard
               label="Total copies"
@@ -8906,7 +8920,12 @@ function AuthGate() {
   if (!ready) {
     return (
       <div
-        className="flex min-h-screen items-center justify-center bg-[#FCFBF0] p-6"
+        className="relative flex min-h-screen items-center justify-center overflow-hidden bg-primary p-6"
+        style={{
+          backgroundImage: "linear-gradient(120deg, hsl(var(--primary) / 0.96), hsl(var(--primary) / 0.78)), url('/al-bassam-logo.jpg')",
+          backgroundPosition: "center",
+          backgroundSize: "cover",
+        }}
         dir={language === "ar" ? "rtl" : "ltr"}
       >
         <form
