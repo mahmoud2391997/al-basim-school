@@ -8920,9 +8920,9 @@ function AuthGate() {
   if (!ready) {
     return (
       <div
-        className="relative flex min-h-screen items-center justify-center overflow-hidden bg-primary p-6"
+        className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#263064] p-6"
         style={{
-          backgroundImage: "linear-gradient(120deg, hsl(var(--primary) / 0.96), hsl(var(--primary) / 0.78)), url('/al-bassam-logo.jpg')",
+          backgroundImage: "linear-gradient(120deg, rgba(38, 48, 100, 0.94), rgba(38, 48, 100, 0.78) 54%, rgba(236, 159, 66, 0.5)), url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-pej3AHaKP4cnfnTH9mx9MTj3OPXqN3.png')",
           backgroundPosition: "center",
           backgroundSize: "cover",
         }}
