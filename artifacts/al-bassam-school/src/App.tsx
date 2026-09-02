@@ -184,7 +184,16 @@ import {
 const queryClient = new QueryClient();
 
 function useDesktopLocation() {
-  const readLocation = () => window.location.hash.slice(1) || "/";
+  const currentSearch = () => {
+    const hash = window.location.hash;
+    const qIndex = hash.indexOf("?");
+    return qIndex === -1 ? "" : hash.slice(qIndex);
+  };
+  const readLocation = () => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return "/";
+    return hash.split("?")[0] || "/";
+  };
   const [location, setLocation] = useState(readLocation);
 
   useEffect(() => {
@@ -196,7 +205,7 @@ function useDesktopLocation() {
   const navigate = (nextLocation: string, options?: { replace?: boolean }) => {
     if (options?.replace) {
       window.history.replaceState(null, "", `#${nextLocation}`);
-      setLocation(nextLocation);
+      setLocation(nextLocation.split("?")[0] || "/");
     } else {
       window.location.hash = nextLocation;
     }
@@ -204,6 +213,16 @@ function useDesktopLocation() {
 
   return [location, navigate] as [string, (path: string, ...args: any[]) => any];
 }
+const desktopRouterHook: typeof useDesktopLocation & {
+  searchHook: () => string;
+} = useDesktopLocation as unknown as typeof useDesktopLocation & {
+  searchHook: () => string;
+};
+desktopRouterHook.searchHook = () => {
+  const hash = window.location.hash;
+  const qIndex = hash.indexOf("?");
+  return qIndex === -1 ? "" : hash.slice(qIndex);
+};
 
 function LocalStoreSync() {
   const queryClient = useQueryClient();
@@ -8981,7 +9000,7 @@ function App() {
       ? ""
       : import.meta.env.BASE_URL.replace(/\/$/, "");
   const routerHook =
-    window.location.protocol === "file:" ? useDesktopLocation : undefined;
+    window.location.protocol === "file:" ? desktopRouterHook : undefined;
   return (
     <LanguageProvider>
       <ThemeProvider>
