@@ -5,16 +5,17 @@
 
 
 /* Accessible controls and compact responsive data rows */
-select, option, [role="option"], input, textarea { color: hsl(var(--foreground)); }
-select, option, [role="listbox"], [data-radix-popper-content-wrapper] { color-scheme: light; }
+select, option, [role="option"], [role="menuitem"], input, textarea, th, td { color: hsl(var(--foreground)); }
+select, option, [role="listbox"], [role="menu"], [role="option"], [role="menuitem"], [data-radix-popper-content-wrapper] { background-color: hsl(var(--popover)); color-scheme: light; }
 ::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
-[dir="rtl"] .bilingual-name { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; align-items: baseline; }
+[dir="rtl"] .bilingual-name, .bilingual-name { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; align-items: baseline; }
 [dir="rtl"] .bilingual-name [dir="ltr"] { unicode-bidi: isolate; }
 @media (max-width: 900px) {
   main { min-width: 0; }
   table { width: 100%; table-layout: fixed; }
   th, td { max-width: 15rem; overflow-wrap: anywhere; }
-  .table-scroll, [data-table-scroll] { overflow-x: visible !important; }
+  .table-scroll, [data-table-scroll], main .overflow-x-auto { overflow-x: visible !important; }
+  main [data-testid^="row-"] { min-width: 0 !important; grid-template-columns: minmax(0, 1fr) !important; justify-items: stretch; }
 }
 
 @theme inline {

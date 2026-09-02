@@ -1,6 +1,6 @@
 import type { AcademicYear } from "../api-client/generated/api.schemas";
 
-export const SELECTED_ACADEMIC_YEAR_KEY = "al-bassam-selected-academic-year";
+export const SELECTED_ACADEMIC_YEAR_KEY = "al-bassam-selected-academic-year-v2";
 
 export function getAcademicYearForDate(date = new Date()): { startYear: number; endYear: number; label: string } {
   const year = date.getFullYear();
@@ -17,12 +17,15 @@ export function getDefaultAcademicYear(years: AcademicYear[], date = new Date())
     years[0];
 }
 
-let selectedAcademicYearId: number | undefined;
-
 export function getStoredAcademicYearId(): number | undefined {
-  return selectedAcademicYearId;
+  if (typeof window === "undefined") return undefined;
+  const stored = window.localStorage.getItem(SELECTED_ACADEMIC_YEAR_KEY);
+  const id = stored ? Number(stored) : NaN;
+  return Number.isInteger(id) ? id : undefined;
 }
 
 export function setStoredAcademicYearId(id: number) {
-  selectedAcademicYearId = id;
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(SELECTED_ACADEMIC_YEAR_KEY, String(id));
+  }
 }

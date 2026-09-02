@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { getActionNotifications, subscribeToActionNotifications, type ActionNotification } from "@/utils/action-notifications";
+import { getActionNotifications, READ_KEY, subscribeToActionNotifications, type ActionNotification } from "@/utils/action-notifications";
 import {
   Bell,
   AlertTriangle,
@@ -48,13 +48,21 @@ export function NotificationsMenu({
     "all" | "overdue" | "dueSoon" | "returned"
   >("all");
 
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [readIds, setReadIds] = useState<Set<string>>(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(READ_KEY) || "[]");
+      return new Set(Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string") : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [actionNotifications, setActionNotifications] = useState<ActionNotification[]>(() => getActionNotifications());
 
-  useEffect(() => subscribeToActionNotifications((item) => setActionNotifications((current) => [item, ...current].slice(0, 50))), []);
+  useEffect(() => subscribeToActionNotifications((item) => setActionNotifications((current) => [item, ...current.filter((existing) => existing.id !== item.id)].slice(0, 50))), []);
 
   const saveReadIds = (newSet: Set<string>) => {
     setReadIds(newSet);
+    window.localStorage.setItem(READ_KEY, JSON.stringify(Array.from(newSet).slice(-200)));
   };
 
   const markAllAsRead = () => {

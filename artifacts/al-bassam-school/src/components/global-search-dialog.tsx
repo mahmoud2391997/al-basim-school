@@ -480,7 +480,7 @@ export function GlobalSearchDialog({
                               <div className="truncate text-xs font-bold text-foreground">
                                 {student.fullNameArabic || student.fullName}
                                 {student.fullName && student.fullNameArabic && (
-                                  <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                                  <span className="ms-2 text-[11px] font-normal text-muted-foreground">
                                     ({student.fullName})
                                   </span>
                                 )}

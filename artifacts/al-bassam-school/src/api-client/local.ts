@@ -138,30 +138,69 @@ export function resetDemoData(): void {
  */
 export function seedDemoData(): void {
   if (typeof window === "undefined") return;
+  const currentYear = { id: 2, label: "2026 / 2027", startDate: "2026-09-01", endDate: "2027-06-30", isCurrent: true } satisfies AcademicYear;
+  (['boys', 'girls'] as SchoolSystem[]).forEach((system) => {
+    const key = `${STORE_PREFIX}${system}:${LS.years}`;
+    try {
+      const years = JSON.parse(window.localStorage.getItem(key) || "[]") as AcademicYear[];
+      if (years.length && !years.some((year) => year.label === currentYear.label)) {
+        const migrated = years.map((year) => ({ ...year, isCurrent: false }));
+        migrated.unshift({ ...currentYear, id: Math.max(0, ...migrated.map((year) => Number(year.id) || 0)) + 1 });
+        window.localStorage.setItem(key, JSON.stringify(migrated));
+      }
+    } catch {
+      // Invalid local data is handled by the normal seed pass below.
+    }
+    const classNames: Record<string, string> = {
+      "5A": "Grade 5 - Section A", "5B": "Grade 5 - Section B",
+      "6A": "Grade 6 - Section A", "6B": "Grade 6 - Section B",
+      "7A": "Grade 7 - Section A", "7B": "Grade 7 - Section B",
+      "8A": "Grade 8 - Section A", "8B": "Grade 8 - Section B",
+    };
+    try {
+      const studentsKey = `${STORE_PREFIX}${system}:${LS.students}`;
+      const students = JSON.parse(window.localStorage.getItem(studentsKey) || "[]") as Array<{ className?: string }>;
+      const migratedStudents = students.map((student) => ({
+        ...student,
+        className: student.className ? classNames[student.className] ?? student.className : student.className,
+      }));
+      if (JSON.stringify(students) !== JSON.stringify(migratedStudents)) {
+        window.localStorage.setItem(studentsKey, JSON.stringify(migratedStudents));
+      }
+      const classesKey = `${STORE_PREFIX}${system}:${LS.classes}`;
+      const classes = JSON.parse(window.localStorage.getItem(classesKey) || "[]") as string[];
+      const migratedClasses = Array.from(new Set(classes.map((name) => classNames[name] ?? name)));
+      if (JSON.stringify(classes) !== JSON.stringify(migratedClasses)) {
+        window.localStorage.setItem(classesKey, JSON.stringify(migratedClasses));
+      }
+    } catch {
+      // Invalid local data is handled by the normal seed pass below.
+    }
+  });
   if (window.localStorage.getItem("al-bassam:web-seeded") === "1") return;
   window.localStorage.setItem("al-bassam:web-seeded", "1");
 
   const isoFromNow = (days: number) => new Date(Date.now() + days * 86400000).toISOString();
 
-  const classes = ["5A", "5B", "6A", "6B", "7A", "7B", "8A", "8B"];
+  const classes = ["Grade 5 - Section A", "Grade 5 - Section B", "Grade 6 - Section A", "Grade 6 - Section B", "Grade 7 - Section A", "Grade 7 - Section B", "Grade 8 - Section A", "Grade 8 - Section B"];
 
   const students: Student[] = [
-    { id: 1, fullName: "Ahmed Khaled Alshammari", fullNameArabic: "أحمد خالد الشمري", studentNumber: "S1001", nationalId: "2981101234567", grade: "5", className: "5A", guardianName: "خالد الشمري", guardianPhone: "0501112233", status: "active", enrollmentDate: "2024-09-01" },
-    { id: 2, fullName: "Sara Mohammed Alotaibi", fullNameArabic: "سارة محمد العتيبي", studentNumber: "S1002", nationalId: "2981107654321", grade: "5", className: "5A", guardianName: "محمد العتيبي", guardianPhone: "0553334444", status: "active", enrollmentDate: "2024-09-01" },
-    { id: 3, fullName: "Yousef Abdullah Alqahtani", fullNameArabic: "يوسف عبدالله القحطاني", studentNumber: "S1003", nationalId: "2981202345678", grade: "5", className: "5B", guardianName: "عبدالله القحطاني", guardianPhone: "0566667777", status: "active", enrollmentDate: "2024-09-01" },
-    { id: 4, fullName: "Layan Fahad Aldosari", fullNameArabic: "ليان فهد الدوسري", studentNumber: "S1004", nationalId: "2981208765432", grade: "5", className: "5B", guardianName: "فهد الدوسري", guardianPhone: "0509990000", status: "active", enrollmentDate: "2024-09-01" },
-    { id: 5, fullName: "Abdulrahman Saud Alharbi", fullNameArabic: "عبدالرحمن سعود الحربي", studentNumber: "S2001", nationalId: "2991301234567", grade: "6", className: "6A", guardianName: "سعود الحربي", guardianPhone: "0533334444", status: "active", enrollmentDate: "2023-09-01" },
-    { id: 6, fullName: "Nour Ali Alghamdi", fullNameArabic: "نور علي الغامدي", studentNumber: "S2002", nationalId: "2991307654321", grade: "6", className: "6A", guardianName: "علي الغامدي", guardianPhone: "0522221111", status: "active", enrollmentDate: "2023-09-01" },
-    { id: 7, fullName: "Khalid Nasser Alzahrani", fullNameArabic: "خالد ناصر الزهراني", studentNumber: "S2003", nationalId: "2991402345678", grade: "6", className: "6B", guardianName: "ناصر الزهراني", guardianPhone: "0555556666", status: "active", enrollmentDate: "2023-09-01" },
-    { id: 8, fullName: "Fatima Hassan Almaliki", fullNameArabic: "فاطمة حسن المالكي", studentNumber: "S2004", nationalId: "2991409876543", grade: "6", className: "6B", guardianName: "حسن المالكي", guardianPhone: "0567778888", status: "active", enrollmentDate: "2023-09-01" },
-    { id: 9, fullName: "Mohammed Ibrahim Alanazi", fullNameArabic: "محمد إبراهيم العنزي", studentNumber: "S3001", nationalId: "3001501234567", grade: "7", className: "7A", guardianName: "إبراهيم العنزي", guardianPhone: "0501234567", status: "active", enrollmentDate: "2023-09-01" },
-    { id: 10, fullName: "Reem Saad Alshehri", fullNameArabic: "ريم سعد الشهري", studentNumber: "S3002", nationalId: "3001507654321", grade: "7", className: "7A", guardianName: "سعد الشهري", guardianPhone: "0559876543", status: "active", enrollmentDate: "2023-09-01" },
-    { id: 11, fullName: "Abdullah Majed Alsubaie", fullNameArabic: "عبدالله ماجد السبيعي", studentNumber: "S3003", nationalId: "3001602345678", grade: "7", className: "7B", guardianName: "ماجد السبيعي", guardianPhone: "0563216547", status: "active", enrollmentDate: "2022-09-01" },
-    { id: 12, fullName: "Jamila Sultan Almutairi", fullNameArabic: "جميلة سلطان المطيري", studentNumber: "S3004", nationalId: "3001609876543", grade: "7", className: "7B", guardianName: "سلطان المطيري", guardianPhone: "0506543210", status: "active", enrollmentDate: "2022-09-01" },
-    { id: 13, fullName: "Omar Khaled Alobaidi", fullNameArabic: "عمر خالد العبيد", studentNumber: "S4001", nationalId: "3011701234567", grade: "8", className: "8A", guardianName: "خالد العبيد", guardianPhone: "0552223333", status: "active", enrollmentDate: "2022-09-01" },
-    { id: 14, fullName: "Amal Yasser Almubarak", fullNameArabic: "أمل ياسر المبارك", studentNumber: "S4002", nationalId: "3011707654321", grade: "8", className: "8A", guardianName: "ياسر المبارك", guardianPhone: "0564445555", status: "active", enrollmentDate: "2022-09-01" },
-    { id: 15, fullName: "Ziad Bandar Alajmi", fullNameArabic: "زياد بندر العجمي", studentNumber: "S4003", nationalId: "3011802345678", grade: "8", className: "8B", guardianName: "بندر العجمي", guardianPhone: "0501119999", status: "active", enrollmentDate: "2022-09-01" },
-    { id: 16, fullName: "Noura Adel Altwaijri", fullNameArabic: "نورة عادل الطويل", studentNumber: "S4004", nationalId: "3011809876543", grade: "8", className: "8B", guardianName: "عادل الطويل", guardianPhone: "0558887777", status: "active", enrollmentDate: "2022-09-01" },
+    { id: 1, fullName: "Ahmed Khaled Alshammari", fullNameArabic: "أحمد خالد الشمري", studentNumber: "S1001", nationalId: "2981101234567", grade: "5", className: "Grade 5 - Section A", guardianName: "خالد الشمري", guardianPhone: "0501112233", status: "active", enrollmentDate: "2024-09-01" },
+    { id: 2, fullName: "Sara Mohammed Alotaibi", fullNameArabic: "سارة محمد العتيبي", studentNumber: "S1002", nationalId: "2981107654321", grade: "5", className: "Grade 5 - Section A", guardianName: "محمد العتيبي", guardianPhone: "0553334444", status: "active", enrollmentDate: "2024-09-01" },
+    { id: 3, fullName: "Yousef Abdullah Alqahtani", fullNameArabic: "يوسف عبدالله القحطاني", studentNumber: "S1003", nationalId: "2981202345678", grade: "5", className: "Grade 5 - Section B", guardianName: "عبدالله القحطاني", guardianPhone: "0566667777", status: "active", enrollmentDate: "2024-09-01" },
+    { id: 4, fullName: "Layan Fahad Aldosari", fullNameArabic: "ليان فهد الدوسري", studentNumber: "S1004", nationalId: "2981208765432", grade: "5", className: "Grade 5 - Section B", guardianName: "فهد الدوسري", guardianPhone: "0509990000", status: "active", enrollmentDate: "2024-09-01" },
+    { id: 5, fullName: "Abdulrahman Saud Alharbi", fullNameArabic: "عبدالرحمن سعود الحربي", studentNumber: "S2001", nationalId: "2991301234567", grade: "6", className: "Grade 6 - Section A", guardianName: "سعود الحربي", guardianPhone: "0533334444", status: "active", enrollmentDate: "2023-09-01" },
+    { id: 6, fullName: "Nour Ali Alghamdi", fullNameArabic: "نور علي الغامدي", studentNumber: "S2002", nationalId: "2991307654321", grade: "6", className: "Grade 6 - Section A", guardianName: "علي الغامدي", guardianPhone: "0522221111", status: "active", enrollmentDate: "2023-09-01" },
+    { id: 7, fullName: "Khalid Nasser Alzahrani", fullNameArabic: "خالد ناصر الزهراني", studentNumber: "S2003", nationalId: "2991402345678", grade: "6", className: "Grade 6 - Section B", guardianName: "ناصر الزهراني", guardianPhone: "0555556666", status: "active", enrollmentDate: "2023-09-01" },
+    { id: 8, fullName: "Fatima Hassan Almaliki", fullNameArabic: "فاطمة حسن المالكي", studentNumber: "S2004", nationalId: "2991409876543", grade: "6", className: "Grade 6 - Section B", guardianName: "حسن المالكي", guardianPhone: "0567778888", status: "active", enrollmentDate: "2023-09-01" },
+    { id: 9, fullName: "Mohammed Ibrahim Alanazi", fullNameArabic: "محمد إبراهيم العنزي", studentNumber: "S3001", nationalId: "3001501234567", grade: "7", className: "Grade 7 - Section A", guardianName: "إبراهيم العنزي", guardianPhone: "0501234567", status: "active", enrollmentDate: "2023-09-01" },
+    { id: 10, fullName: "Reem Saad Alshehri", fullNameArabic: "ريم سعد الشهري", studentNumber: "S3002", nationalId: "3001507654321", grade: "7", className: "Grade 7 - Section A", guardianName: "سعد الشهري", guardianPhone: "0559876543", status: "active", enrollmentDate: "2023-09-01" },
+    { id: 11, fullName: "Abdullah Majed Alsubaie", fullNameArabic: "عبدالله ماجد السبيعي", studentNumber: "S3003", nationalId: "3001602345678", grade: "7", className: "Grade 7 - Section B", guardianName: "ماجد السبيعي", guardianPhone: "0563216547", status: "active", enrollmentDate: "2022-09-01" },
+    { id: 12, fullName: "Jamila Sultan Almutairi", fullNameArabic: "جميلة سلطان المطيري", studentNumber: "S3004", nationalId: "3001609876543", grade: "7", className: "Grade 7 - Section B", guardianName: "سلطان المطيري", guardianPhone: "0506543210", status: "active", enrollmentDate: "2022-09-01" },
+    { id: 13, fullName: "Omar Khaled Alobaidi", fullNameArabic: "عمر خالد العبيد", studentNumber: "S4001", nationalId: "3011701234567", grade: "8", className: "Grade 8 - Section A", guardianName: "خالد العبيد", guardianPhone: "0552223333", status: "active", enrollmentDate: "2022-09-01" },
+    { id: 14, fullName: "Amal Yasser Almubarak", fullNameArabic: "أمل ياسر المبارك", studentNumber: "S4002", nationalId: "3011707654321", grade: "8", className: "Grade 8 - Section A", guardianName: "ياسر المبارك", guardianPhone: "0564445555", status: "active", enrollmentDate: "2022-09-01" },
+    { id: 15, fullName: "Ziad Bandar Alajmi", fullNameArabic: "زياد بندر العجمي", studentNumber: "S4003", nationalId: "3011802345678", grade: "8", className: "Grade 8 - Section B", guardianName: "بندر العجمي", guardianPhone: "0501119999", status: "active", enrollmentDate: "2022-09-01" },
+    { id: 16, fullName: "Noura Adel Altwaijri", fullNameArabic: "نورة عادل الطويل", studentNumber: "S4004", nationalId: "3011809876543", grade: "8", className: "Grade 8 - Section B", guardianName: "عادل الطويل", guardianPhone: "0558887777", status: "active", enrollmentDate: "2022-09-01" },
   ];
 
   const teachers: Teacher[] = [

@@ -243,7 +243,11 @@ function LocalStoreSync() {
   return null;
 }
 
-function useRecordFocus(recordType: "book" | "teacher" | "employee" | "borrow") {
+function useRecordFocus(
+  recordType: "book" | "teacher" | "employee" | "borrow",
+  items: Array<{ id: number }>,
+  pagination: { page: number; pageSize: number; setPage: (page: number) => void },
+) {
   const [location, navigate] = useLocation();
   const urlSearch = useSearch();
   const [focusTick, setFocusTick] = useState(0);
@@ -257,6 +261,14 @@ function useRecordFocus(recordType: "book" | "teacher" | "employee" | "borrow") 
     const params = new URLSearchParams(source);
     const id = Number(params.get("focus"));
     if (!Number.isInteger(id)) return;
+    const targetIndex = items.findIndex((item) => item.id === id);
+    if (targetIndex >= 0) {
+      const targetPage = Math.floor(targetIndex / pagination.pageSize) + 1;
+      if (pagination.page !== targetPage) {
+        pagination.setPage(targetPage);
+        return;
+      }
+    }
     const selector = `[data-testid="row-${recordType}-${id}"]`;
     const row = document.querySelector(selector);
     if (!row) {
@@ -276,7 +288,7 @@ function useRecordFocus(recordType: "book" | "teacher" | "employee" | "borrow") 
       row.removeAttribute("data-focused");
     }, 2200);
     return () => window.clearTimeout(timer);
-  }, [recordType, location, urlSearch, navigate, focusTick]);
+  }, [recordType, location, urlSearch, navigate, focusTick, items, pagination]);
 }
 
 const fallbackSummary = {
@@ -2203,18 +2215,18 @@ function StudentDialog({
                         {t(field.arabic, field.label)}
                       </span>
                     </span>
-                    <select
+                    <input
                       required
                       value={String(form[field.key] ?? "")}
                       onChange={(event) => set(field.key, event.target.value)}
-                      className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary"
+                      list="student-class-suggestions"
+                      className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground outline-none focus:border-primary"
                       data-testid={`input-student-${field.key}`}
-                    >
-                      <option value="">{t("Select class", "اختر الفصل")}</option>
-                      {uniqueClasses.map((className) => (
-                        <option key={className} value={className}>{className}</option>
-                      ))}
-                    </select>
+                      placeholder={t("Enter class", "أدخل الفصل")}
+                    />
+                    <datalist id="student-class-suggestions">
+                      {uniqueClasses.map((className) => <option key={className} value={className} />)}
+                    </datalist>
                     <div className="mt-2 flex gap-2">
                       <input value={newClassName} onChange={(event) => setNewClassName(event.target.value)} placeholder={t("Enter a new class", "أدخل فصلاً جديداً")} className="h-9 min-w-0 flex-1 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary" data-testid="input-new-class-name" />
                       <Button type="button" variant="outline" size="sm" onClick={addClass} disabled={!newClassName.trim()}>{t("Save class", "حفظ الفصل")}</Button>
@@ -2449,7 +2461,7 @@ function StudentsPage() {
   const { sorted, sortKey, sortDir, toggleSort } = useSort<Student>(
     students,
     sortColumns,
-    "fullName",
+    undefined,
   );
   const filterFields: FilterField[] = [
     {
@@ -2901,7 +2913,7 @@ const teacherSections: {
       {
         key: "email",
         label: "Email",
-        arabic: "البر��د الالكتروني",
+        arabic: "البريد الإلكتروني",
         type: "email",
       },
     ],
@@ -3628,7 +3640,6 @@ function EmployeeRow({
 }
 
 function EmployeesPage() {
-  useRecordFocus("employee");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | undefined>();
@@ -3660,7 +3671,7 @@ function EmployeesPage() {
   const { sorted, sortKey, sortDir, toggleSort } = useSort<Employee>(
     employees,
     sortColumns,
-    "fullName",
+    undefined,
   );
   const filterFields: FilterField[] = [
     {
@@ -3691,6 +3702,7 @@ function EmployeesPage() {
     });
   }, [sorted, search, filters.values, filterFields]);
   const employeePages = usePagination(filteredEmployees);
+  useRecordFocus("employee", filteredEmployees, employeePages);
   const openNew = () => {
     setEditing(undefined);
     setDialogOpen(true);
@@ -4008,7 +4020,6 @@ function EmployeesPage() {
 }
 
 function TeachersPage() {
-  useRecordFocus("teacher");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Teacher | undefined>();
@@ -4040,7 +4051,7 @@ function TeachersPage() {
   const { sorted, sortKey, sortDir, toggleSort } = useSort<Teacher>(
     teachers,
     sortColumns,
-    "fullName",
+    undefined,
   );
   const filterFields: FilterField[] = [
     {
@@ -4071,6 +4082,7 @@ function TeachersPage() {
     });
   }, [sorted, search, filters.values, filterFields]);
   const teacherPages = usePagination(filteredTeachers);
+  useRecordFocus("teacher", filteredTeachers, teacherPages);
   const openNew = () => {
     setEditing(undefined);
     setDialogOpen(true);
@@ -4941,7 +4953,7 @@ function BorrowDialog({
             </label>
             <label className="grid gap-1.5 text-start">
               <span className="text-xs font-semibold text-foreground">
-                {t("Return by", "موعد ا��إرجاع")} *
+                {t("Return by", "موعد الإرجاع")} *
               </span>
               <input
                 type="date"
@@ -4998,7 +5010,6 @@ function BorrowDialog({
 }
 
 function LibraryPage() {
-  useRecordFocus("book");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Book | undefined>();
@@ -5075,7 +5086,7 @@ function LibraryPage() {
   const { sorted: sortedBooks, sortKey, sortDir, toggleSort } = useSort<Book>(
     books,
     sortColumns,
-    "title",
+    undefined,
   );
   const filterFields: FilterField[] = [
     {
@@ -5110,6 +5121,7 @@ function LibraryPage() {
     [sortedBooks, filters.values, filterFields],
   );
   const bookPages = usePagination(filteredBooks);
+  useRecordFocus("book", filteredBooks, bookPages);
   const categories = useMemo(
     () =>
       Array.from(new Set(books.map((book) => book.category).filter(Boolean))),
@@ -5236,7 +5248,7 @@ function LibraryPage() {
     if (!ids.length) return;
     confirm({
       title: t(`Delete ${ids.length} selected books?`, `حذف ${ids.length} من الكتب المحددة؟`),
-      description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإج��اء."),
+      description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
       confirmLabel: t("Delete selected", "حذف المحدد"),
       destructive: true,
     }, () => {
@@ -5933,7 +5945,7 @@ function DistributionPage() {
   const { sorted, sortKey, sortDir, toggleSort } = useSort<FlatRow>(
     flatRows,
     sortColumns,
-    "grade",
+    undefined,
   );
   const distPages = usePagination(sorted);
   return (
@@ -6174,7 +6186,6 @@ function ReturnBorrowControls({
 }
 
 function BorrowsPage() {
-  useRecordFocus("borrow");
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [scan, setScan] = useState("");
@@ -6206,7 +6217,7 @@ function BorrowsPage() {
   const { sorted, sortKey, sortDir, toggleSort } = useSort<Borrow>(
     borrows,
     sortColumns,
-    "borrowedAt",
+    undefined,
   );
   const filterFields: FilterField[] = [
     {
@@ -6229,6 +6240,7 @@ function BorrowsPage() {
     [sorted, search, filters.values, filterFields],
   );
   const borrowPages = usePagination(filteredBorrows);
+  useRecordFocus("borrow", filteredBorrows, borrowPages);
   useEffect(() => {
     let stamps: number[] = [];
     const onKey = (event: KeyboardEvent) => {
@@ -6557,7 +6569,6 @@ function BorrowsPage() {
 type HistoryFilter = "all" | "active" | "returned";
 
 function BorrowHistoryPage() {
-  useRecordFocus("borrow");
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<HistoryFilter>("all");
@@ -6606,7 +6617,7 @@ function BorrowHistoryPage() {
   const { sorted, sortKey, sortDir, toggleSort } = useSort<Borrow>(
     borrows,
     sortColumns,
-    "borrowedAt",
+    undefined,
   );
   const filterFields: FilterField[] = [
     {
@@ -6644,6 +6655,7 @@ function BorrowHistoryPage() {
     });
   }, [sorted, search, status, filters.values, filterFields]);
   const pages = usePagination(filtered);
+  useRecordFocus("borrow", filtered, pages);
   const conditionBadge = (
     condition: BorrowCondition | undefined,
   ) => {
@@ -6940,7 +6952,7 @@ function BorrowHistoryPage() {
                     </td>
                     <td className="px-4 py-2.5 font-medium text-foreground">
                       {student.fullName}
-                      <span className="ml-2 text-xs text-muted-foreground">
+                      <span className="ms-2 text-xs text-muted-foreground">
                         {student.fullNameArabic}
                       </span>
                     </td>
@@ -7229,7 +7241,7 @@ function AnalyticsPage() {
               value={uniqueTitles.toLocaleString()}
               icon={BookOpen}
               tone="navy"
-              note={t("Distinct titles in catalogue", "ع��اوين فريدة في الفهرس")}
+              note={t("Distinct titles in catalogue", "عناوين فريدة في الفهرس")}
             />
             <StatCard
               label="Total copies"
@@ -7950,7 +7962,7 @@ function IndexPage() {
   const { sorted, sortKey, sortDir, toggleSort } = useSort<Book>(
     rawBooks,
     sortColumns,
-    "title",
+    undefined,
   );
   const filterFields: FilterField[] = [
     {
@@ -8430,7 +8442,7 @@ function SettingsPage() {
                   "\u062A\u0646\u0633\u064A\u0642\u0020\u0627\u0644\u062A\u0627\u0631\u064A\u062E",
                 )}
               </span>
-              <span className="font-mono text-[11px] text-[#DBB46C]">
+              <span className="font-mono text-[11px] font-semibold text-foreground">
                 {t("MMM DD, YYYY", "YYYY، MMM DD")}
               </span>
             </div>
