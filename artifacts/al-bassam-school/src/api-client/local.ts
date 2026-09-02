@@ -18,6 +18,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
+import { recordActionNotification } from "../utils/action-notifications";
 import type {
   AcademicYear,
   Book,
@@ -84,6 +85,10 @@ function write<T>(key: string, data: T[]) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(storageKey(key), JSON.stringify(data));
   window.dispatchEvent(new Event('school-data-change'));
+  const labels: Record<string, [string, string]> = {
+    students: ["Student data updated", "تم تحديث بيانات الطلاب"], teachers: ["Teacher data updated", "تم تحديث بيانات المعلمين"], employees: ["Employee data updated", "تم تحديث بيانات الموظفين"], books: ["Book data updated", "تم تحديث بيانات الكتب"], borrows: ["Borrowing data updated", "تم تحديث بيانات الإعارات"],
+  };
+  if (labels[key]) recordActionNotification(labels[key][0], labels[key][1], key === LS.books || key === LS.borrows ? "/library" : `/${key}`);
 }
 function nextId(key: string): number {
   const existing = read<{ id: number }>(key);
@@ -207,7 +212,7 @@ export function seedDemoData(): void {
   ];
 
   const academicYears: AcademicYear[] = [
-    { id: 1, label: "2025/2026", startDate: "2025-09-01", endDate: "2026-06-30", isCurrent: true },
+    { id: 1, label: "2026 / 2027", startDate: "2026-09-01", endDate: "2027-06-30", isCurrent: true },
   ];
 
   (["boys", "girls"] as SchoolSystem[]).forEach((system) => {
@@ -519,7 +524,7 @@ const studentMutations = makeMutation<{ data: StudentInput }, Student>('createSt
     fullName: data.fullName,
     fullNameArabic: data.fullNameArabic,
   };
-  items.push(student);
+  items.unshift(student);
   write(LS.students, items);
   return student;
 });
@@ -588,7 +593,7 @@ const createTeacherFn = (_opts?: any) =>
         fullNameArabic: data.fullNameArabic ?? fullName,
         status: 'active',
       };
-      items.push(teacher);
+      items.unshift(teacher);
       write(LS.teachers, items);
       return teacher;
     },
@@ -632,7 +637,7 @@ const createEmployeeFn = (_opts?: any) =>
       const items = read<Employee>(LS.employees);
       const id = nextId(LS.employees);
       const employee: Employee = { ...data, id, status: data.status ?? 'active' };
-      items.push(employee);
+      items.unshift(employee);
       write(LS.employees, items);
       return employee;
     },
@@ -694,7 +699,7 @@ const createBookFn = (_opts?: any) =>
         coverImage: data.coverImage ?? '',
         shelf: data.shelf ?? '',
       };
-      items.push(book);
+      items.unshift(book);
       write(LS.books, items);
       return book;
     },
@@ -784,7 +789,7 @@ const createBorrowFn = (_opts?: any) =>
         dueDate: data.dueDate,
         returnedAt: undefined,
       };
-      items.push(borrow);
+      items.unshift(borrow);
       book.availableCopies = Math.max(0, availableCopies - 1);
       book.status = 'available';
       write(LS.books, books);

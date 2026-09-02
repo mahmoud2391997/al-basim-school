@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { getActionNotifications, subscribeToActionNotifications, type ActionNotification } from "@/utils/action-notifications";
 import {
   Bell,
   AlertTriangle,
@@ -22,7 +23,7 @@ import { Button } from "@/components/ui/button";
 
 export interface NotificationItem {
   id: string;
-  type: "overdue" | "dueSoon" | "returned" | "stock";
+  type: "action" | "overdue" | "dueSoon" | "returned" | "stock";
   title: string;
   message: string;
   badgeText: string;
@@ -48,6 +49,9 @@ export function NotificationsMenu({
   >("all");
 
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [actionNotifications, setActionNotifications] = useState<ActionNotification[]>(() => getActionNotifications());
+
+  useEffect(() => subscribeToActionNotifications((item) => setActionNotifications((current) => [item, ...current].slice(0, 50))), []);
 
   const saveReadIds = (newSet: Set<string>) => {
     setReadIds(newSet);
@@ -193,10 +197,13 @@ export function NotificationsMenu({
       }
     }
 
-    // Sort: overdue first, then warnings/info, then others
-    const severityOrder = { danger: 0, warning: 1, info: 2, success: 3, neutral: 4 };
-    return items.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
-  }, [borrows, books, t]);
+    const actions: NotificationItem[] = actionNotifications.map((item) => ({ ...item }));
+    return [...actions, ...items].sort((a, b) => {
+      if (a.type === "action" && b.type !== "action") return -1;
+      if (b.type === "action" && a.type !== "action") return 1;
+      return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime();
+    });
+  }, [borrows, books, t, actionNotifications]);
 
   const filteredNotifications = useMemo(() => {
     if (activeTab === "all") return allNotifications;

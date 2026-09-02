@@ -3,7 +3,19 @@
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
 
-@custom-variant dark (&:is(.dark *));
+
+/* Accessible controls and compact responsive data rows */
+select, option, [role="option"], input, textarea { color: hsl(var(--foreground)); }
+select, option, [role="listbox"], [data-radix-popper-content-wrapper] { color-scheme: light; }
+::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+[dir="rtl"] .bilingual-name { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; align-items: baseline; }
+[dir="rtl"] .bilingual-name [dir="ltr"] { unicode-bidi: isolate; }
+@media (max-width: 900px) {
+  main { min-width: 0; }
+  table { width: 100%; table-layout: fixed; }
+  th, td { max-width: 15rem; overflow-wrap: anywhere; }
+  .table-scroll, [data-table-scroll] { overflow-x: visible !important; }
+}
 
 @theme inline {
   --color-background: hsl(var(--background));
@@ -85,7 +97,7 @@
 
   --background: 55 67% 96%;
 
-  --foreground: 230 45% 27%;
+  --foreground: 222 35% 10%;
 
   --border: 230 22% 86%;
 
@@ -127,7 +139,7 @@
 
   --muted: 230 18% 93%;
 
-  --muted-foreground: 230 15% 42%;
+  --muted-foreground: 222 18% 30%;
 
   --accent: 39 61% 64%;
 

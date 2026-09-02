@@ -23,12 +23,14 @@ if (!hasSingleInstance) app.quit();
 else app.on('second-instance', () => mainWindow?.show());
 
 function createWindow() {
+  const iconPath = path.join(__dirname, "..", "public", "al-bassam-school-icon.png");
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 960,
     minWidth: 1100,
     minHeight: 720,
     backgroundColor: "#f2f6f9",
+    icon: iconPath,
     title: "Al-Bassam School Management",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
