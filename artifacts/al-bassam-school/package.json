@@ -35,6 +35,7 @@
     ],
     "npmRebuild": true,
     "win": {
+      "icon": "public/al-bassam-school-icon.png",
       "target": [
         "nsis",
         "portable"
