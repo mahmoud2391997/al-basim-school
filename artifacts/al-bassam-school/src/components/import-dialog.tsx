@@ -80,7 +80,7 @@ export function ImportDialog({
       setImported(valid.length);
       setStage("done");
     } catch {
-      setError(t("Import failed. Please try again.", "فشل الاستيراد. يرجى المحاولة مرة أخرى."));
+      setError(t("Import failed. No records were marked complete. Please try again.", "فشل الاستيراد. لم تكتمل السجلات. يرجى المحاولة مرة أخرى."));
       setStage("preview");
     }
   }, [result, onImport, t]);
@@ -95,7 +95,7 @@ export function ImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl max-h-[calc(100vh-1rem)] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload size={18} className="text-[#263064]" />
@@ -112,7 +112,7 @@ export function ImportDialog({
         {stage === "pick" && (
           <div className="space-y-4">
             <div
-              className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 px-6 py-12 text-center transition-colors hover:border-primary/50 hover:bg-muted/50 cursor-pointer"
+              className="flex min-h-56 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 px-4 py-8 text-center transition-colors hover:border-primary/50 hover:bg-muted/50 cursor-pointer sm:px-6 sm:py-12"
               onClick={() => fileRef.current?.click()}
               data-testid={`dropzone-import-${entityType}`}
             >
