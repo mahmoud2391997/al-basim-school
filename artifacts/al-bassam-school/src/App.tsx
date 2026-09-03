@@ -564,7 +564,7 @@ function Shell({ children }: { children: ReactNode }) {
           <nav className="space-y-1">
             {navItems.filter((item) => !isStudent || item.href === "/library").map((item) => {
               const visibleTabs = isStudent
-                ? item.tabs.filter((tab) => tab.href === "/library")
+                ? item.tabs.filter((tab) => tab.href === "/library" || tab.href === "/library/index")
                 : item.tabs;
               const groupHrefs = [
                 item.href,
@@ -5692,7 +5692,7 @@ function LibraryPage() {
         </DialogContent>
       </Dialog>
       {(() => {
-        if (!borrows.length) return null;
+        if (isStudent || !borrows.length) return null;
         return (
           <section className="mt-6 overflow-hidden rounded-xl border border-border bg-card soft-shadow">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
@@ -8023,9 +8023,10 @@ function IndexPage() {
     },
   ];
   const filters = useTableFilters(filterFields);
+  const isStudent = getSessionUser()?.role === "student";
   const books = useMemo(
-    () => sorted.filter((b) => filters.matches(filters.values, b)),
-    [sorted, filters.values, filterFields],
+    () => sorted.filter((b) => filters.matches(filters.values, b) && (!isStudent || (b.availableCopies ?? b.copies ?? 0) > 0)),
+    [sorted, filters.values, filterFields, isStudent],
   );
   const bookPages = usePagination(books);
   return (
@@ -8207,7 +8208,7 @@ function IndexPage() {
                 {book.isbn || "—"}
               </span>
               <span className="justify-self-center text-center font-mono text-xs font-bold text-foreground">
-                {book.availableCopies ?? book.copies}/{book.copies}
+                {isStudent ? (book.availableCopies ?? book.copies ?? 0) : `${book.availableCopies ?? book.copies}/${book.copies}`}
               </span>
             </div>
           ))}
