@@ -719,12 +719,16 @@ function Shell({ children }: { children: ReactNode }) {
         </div>
           <div className={`mt-auto ${collapsed ? "px-2 pb-4" : "p-5"}`}>
           {isStudent && (
-            <Link
-              href="/profile"
-              onClick={() => setMobileOpen(false)}
-              className={`mb-3 flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/profile" ? "nav-active bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/65"} ${collapsed ? "justify-center px-0" : ""}`}
-              data-testid="link-nav-profile"
-            >
+  <Link
+  href="#/profile"
+  onClick={(event) => {
+  event.preventDefault();
+  setMobileOpen(false);
+  navigate("/profile");
+  }}
+  className={`mb-3 flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/profile" ? "nav-active bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/65"} ${collapsed ? "justify-center px-0" : ""}`}
+  data-testid="link-nav-profile"
+  >
               <User size={18} />
               {!collapsed && <span className="truncate text-sm font-medium">{text("My Profile", "ملفي الشخصي")}</span>}
             </Link>
@@ -5560,7 +5564,7 @@ function LibraryPage() {
               className="h-9 shrink-0 bg-primary px-3 text-xs hover:bg-primary/85"
               data-testid="button-scan-add-new"
             >
-              <Plus size={14} /> {t("Catalogue it now", "أضفه للفهرس الآن")}
+              <Plus size={14} /> {t("Catalogue it now", "أضفه للفهرس ال��ن")}
             </Button>
             <button
               onClick={() => setScanned(undefined)}
