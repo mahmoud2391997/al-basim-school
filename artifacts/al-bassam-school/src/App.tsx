@@ -2329,10 +2329,70 @@ function StudentDialog({
   );
 }
 
+function RecordDetailsDialog({
+  record,
+  open,
+  onOpenChange,
+  title,
+  arabicTitle,
+}: {
+  record?: Record<string, unknown>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  arabicTitle: string;
+}) {
+  const { t } = useT();
+  const labelMap: Record<string, [string, string]> = {
+    fullName: ["Full name", "الاسم الكامل"],
+    fullNameArabic: ["Arabic name", "الاسم بالعربية"],
+    studentNumber: ["Student number", "رقم الطالب"],
+    employeeCode: ["Employee code", "الرقم الوظيفي"],
+    employeeNumber: ["Employee number", "الرقم الوظيفي"],
+    nationalId: ["National ID", "الهوية الوطنية"],
+    grade: ["Grade", "الصف"],
+    className: ["Class", "الفصل"],
+    guardianName: ["Guardian", "ولي الأمر"],
+    guardianPhone: ["Guardian phone", "هاتف ولي الأمر"],
+    enrollmentDate: ["Enrollment date", "تاريخ التسجيل"],
+    subject: ["Subject", "المادة"],
+    jobTitle: ["Job title", "المسمى الوظيفي"],
+    phone: ["Phone", "الهاتف"],
+    status: ["Status", "الحالة"],
+    title: ["Title", "العنوان"],
+    author: ["Author", "المؤلف"],
+    category: ["Category", "التصنيف"],
+    language: ["Language", "اللغة"],
+    isbn: ["ISBN", "الرقم الدولي"],
+    shelf: ["Shelf", "الرف"],
+    copies: ["Copies", "النسخ"],
+    availableCopies: ["Available copies", "النسخ المتاحة"],
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[88dvh] max-w-2xl overflow-y-auto border-border bg-[#FCFBF0] p-0">
+        <DialogHeader className="border-b border-border bg-card px-6 py-5 text-start">
+          <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Eye /></div>
+          <DialogTitle className="text-2xl text-foreground">{title}</DialogTitle>
+          <DialogDescription>{arabicTitle} · {t("Complete record details", "كامل تفاصيل السجل")}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 px-6 py-6 sm:grid-cols-2">
+          {record && Object.entries(record).filter(([key]) => key !== "id").map(([key, value]) => {
+            const labels = labelMap[key] ?? [key.replace(/([A-Z])/g, " $1"), key];
+            const display = value === null || value === undefined || value === "" ? "—" : String(value);
+            return <div key={key} className="rounded-xl border border-border/70 bg-background/60 px-4 py-3 text-start"><div className="flex items-baseline justify-between gap-3"><span className="text-xs font-semibold text-muted-foreground">{t(labels[0], labels[1])}</span><span className="text-[10px] text-muted-foreground/70">{t(labels[1], labels[0])}</span></div><p className="mt-1 break-words text-sm font-medium text-foreground" dir="auto">{display}</p></div>;
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function StudentRow({
   student,
   onEdit,
   onDelete,
+  onView,
   selected,
   onSelect,
   focused,
@@ -2340,6 +2400,7 @@ function StudentRow({
   student: Student;
   onEdit: (student: Student) => void;
   onDelete: (student: Student) => void;
+  onView: (student: Student) => void;
   selected: boolean;
   onSelect: (checked: boolean) => void;
   focused: boolean;
@@ -2419,6 +2480,14 @@ function StudentRow({
       </span>
       <div className="flex justify-center items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
         <button
+          onClick={() => onView(student)}
+          className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+          data-testid={`button-view-student-${student.id}`}
+          aria-label={`View ${student.fullName}`}
+        >
+          <Eye size={14} />
+        </button>
+        <button
           onClick={() => onEdit(student)}
           className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
           data-testid={`button-edit-student-${student.id}`}
@@ -2447,6 +2516,7 @@ function StudentsPage() {
   const focusTimerRef = useRef<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Student | undefined>();
+  const [viewingStudent, setViewingStudent] = useState<Student>();
   const [toast, setToast] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -2818,9 +2888,10 @@ function StudentsPage() {
             <StudentRow
               key={student.id}
               student={student}
-              onEdit={edit}
-              onDelete={remove}
-              selected={selectedIds.has(student.id)}
+  onEdit={edit}
+  onDelete={remove}
+  onView={setViewingStudent}
+  selected={selectedIds.has(student.id)}
               focused={focusedStudentId === student.id}
               onSelect={(checked) => toggleStudentSelection(student.id, checked)}
             />
@@ -2840,6 +2911,13 @@ function StudentsPage() {
         onOpenChange={setDialogOpen}
         editing={editing}
         onSaved={setToast}
+      />
+      <RecordDetailsDialog
+        record={viewingStudent as unknown as Record<string, unknown>}
+        open={Boolean(viewingStudent)}
+        onOpenChange={(open) => !open && setViewingStudent(undefined)}
+        title={viewingStudent?.fullName ?? t("Student", "الطالب")}
+        arabicTitle={viewingStudent?.fullNameArabic ?? "الطالب"}
       />
       <ImportDialog
         open={importOpen}
@@ -4782,7 +4860,7 @@ function BookDialog({
                         <AlertTriangle size={15} />
                         {t(
                           `Total copies cannot be below the ${minTotalCopies} copies currently on loan.`,
-                          `لا يمكن أن يقل إجمالي النسخ عن ${minTotalCopies} نسخة معارة حالياً.`,
+                          `لا يمكن أن يقل إجمالي النسخ عن ${minTotalCopies} نسخة معارة حا��ياً.`,
                         )}
                       </p>
                     )}
