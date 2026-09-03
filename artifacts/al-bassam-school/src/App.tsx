@@ -818,6 +818,7 @@ function Shell({ children }: { children: ReactNode }) {
               </button>
             </div>
             {/* Global Search Button Trigger */}
+            {!isStudent && <>
             <button
               onClick={() => setSearchOpen(true)}
               className="hidden items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 md:flex"
@@ -843,6 +844,7 @@ function Shell({ children }: { children: ReactNode }) {
             >
               <Search size={18} />
             </button>
+            </>}
 
             <button
               onClick={toggleTheme}
@@ -854,12 +856,12 @@ function Shell({ children }: { children: ReactNode }) {
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            {/* Notifications Menu Popover */}
-            <NotificationsMenu
+            {/* Notifications are an admin-only workspace feature. */}
+            {!isStudent && <NotificationsMenu
               t={text}
               language={language}
               onNavigate={navigate}
-            />
+            />}
 
             <div className="hidden h-7 w-px bg-border sm:block" />
 
@@ -876,13 +878,13 @@ function Shell({ children }: { children: ReactNode }) {
             />
           </div>
         </header>
-        <GlobalSearchDialog
+        {!isStudent && <GlobalSearchDialog
           open={searchOpen}
           onOpenChange={setSearchOpen}
           t={text}
           language={language}
           onNavigate={navigate}
-        />
+        />}
         <div className="px-5 py-7 sm:px-8 lg:px-10">{children}</div>
       </main>
     </div>
@@ -2771,7 +2773,7 @@ function StudentsPage() {
               onSort={toggleSort}
               align="center"
             >
-              {t("National ID", "الهوية الوطنية")}
+              {t("National ID", "الهوية الو��نية")}
             </SortHeader>
             <SortHeader
               columnKey="class"
@@ -2881,7 +2883,7 @@ const teacherSections: {
     titleAr: "البيانات الشخصية",
     fields: [
       { key: "name", label: "Name", arabic: "الاسم", required: true },
-      { key: "surname", label: "Surname", arabic: "اللقب", required: true },
+      { key: "surname", label: "Surname", arabic: "ا��لقب", required: true },
       {
         key: "englishName",
         label: "English name",
@@ -4158,7 +4160,7 @@ function TeachersPage() {
       Promise.all(ids.map((id) => new Promise<void>((resolve) => deletion.mutate({ id }, { onSettled: () => resolve() })))).then(() => {
         setSelectedIds(new Set());
         queryClient.invalidateQueries({ queryKey: getGetTeachersQueryKey() });
-        setToast(t(`${ids.length} teacher records deleted`, `تم حذف ${ids.length} من سجلات المعلمين`));
+        setToast(t(`${ids.length} teacher records deleted`, `تم حذف ${ids.length} من سجلات المعلم��ن`));
       });
     });
   };
