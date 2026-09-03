@@ -5951,7 +5951,7 @@ function DistributionPage() {
   return (
     <div className="rise-in">
       <PageHeading
-        eyebrow="People · 03 · Distribution"
+        eyebrow="People · Distribution"
         title="Student distribution"
         arabic="توزيع الطلاب"
         description="How learners are spread across grades and classes this academic year."
@@ -6024,7 +6024,7 @@ function DistributionPage() {
                 onSort={toggleSort}
                 align="start"
               >
-                {t("Grade", "الرحلة")}
+                {t("Grade", "المرحلة")}
               </SortHeader>
               <SortHeader
                 columnKey="count"

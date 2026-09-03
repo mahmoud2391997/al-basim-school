@@ -152,16 +152,25 @@ export function seedDemoData(): void {
       // Invalid local data is handled by the normal seed pass below.
     }
     const classNames: Record<string, string> = {
+      "1A": "Grade 1 - Section A", "1B": "Grade 1 - Section B",
+      "2A": "Grade 2 - Section A", "2B": "Grade 2 - Section B",
+      "3A": "Grade 3 - Section A", "3B": "Grade 3 - Section B",
+      "4A": "Grade 4 - Section A", "4B": "Grade 4 - Section B",
       "5A": "Grade 5 - Section A", "5B": "Grade 5 - Section B",
       "6A": "Grade 6 - Section A", "6B": "Grade 6 - Section B",
       "7A": "Grade 7 - Section A", "7B": "Grade 7 - Section B",
       "8A": "Grade 8 - Section A", "8B": "Grade 8 - Section B",
+      "9A": "Grade 9 - Section A", "9B": "Grade 9 - Section B",
+      "10A": "Grade 10 - Section A", "10B": "Grade 10 - Section B",
+      "11A": "Grade 11 - Section A", "11B": "Grade 11 - Section B",
+      "12A": "Grade 12 - Section A", "12B": "Grade 12 - Section B",
     };
     try {
       const studentsKey = `${STORE_PREFIX}${system}:${LS.students}`;
-      const students = JSON.parse(window.localStorage.getItem(studentsKey) || "[]") as Array<{ className?: string }>;
+      const students = JSON.parse(window.localStorage.getItem(studentsKey) || "[]") as Array<{ className?: string; grade?: string }>;
       const migratedStudents = students.map((student) => ({
         ...student,
+        grade: /^\d+$/.test(String(student.grade ?? "")) ? `Grade ${student.grade}` : student.grade,
         className: student.className ? classNames[student.className] ?? student.className : student.className,
       }));
       if (JSON.stringify(students) !== JSON.stringify(migratedStudents)) {
@@ -182,7 +191,7 @@ export function seedDemoData(): void {
 
   const isoFromNow = (days: number) => new Date(Date.now() + days * 86400000).toISOString();
 
-  const classes = ["Grade 5 - Section A", "Grade 5 - Section B", "Grade 6 - Section A", "Grade 6 - Section B", "Grade 7 - Section A", "Grade 7 - Section B", "Grade 8 - Section A", "Grade 8 - Section B"];
+  const classes = Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`).flatMap((grade) => [`${grade} - Section A`, `${grade} - Section B`]);
 
   const students: Student[] = [
     { id: 1, fullName: "Ahmed Khaled Alshammari", fullNameArabic: "أحمد خالد الشمري", studentNumber: "S1001", nationalId: "2981101234567", grade: "5", className: "Grade 5 - Section A", guardianName: "خالد الشمري", guardianPhone: "0501112233", status: "active", enrollmentDate: "2024-09-01" },
@@ -255,7 +264,10 @@ export function seedDemoData(): void {
   ];
 
   (["boys", "girls"] as SchoolSystem[]).forEach((system) => {
-    seedCollection(system, "students", students);
+    seedCollection(system, "students", students.map((student) => ({
+      ...student,
+      grade: /^\d+$/.test(student.grade) ? `Grade ${student.grade}` : student.grade,
+    })));
     seedCollection(system, "teachers", teachers);
     seedCollection(system, "employees", employees);
     seedCollection(system, "books", books);

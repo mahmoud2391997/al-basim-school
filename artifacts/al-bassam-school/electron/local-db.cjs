@@ -47,6 +47,9 @@ function openSchoolDatabase(userDataPath) {
   }
   ensureColumnDefault('students', 'academic_year_id', 1);
   ensureColumnDefault('teachers', 'academic_year_id', 1);
+  for (let gradeNumber = 1; gradeNumber <= 12; gradeNumber += 1) {
+    db.prepare('UPDATE students SET grade = ? WHERE grade = ?').run(`Grade ${gradeNumber}`, String(gradeNumber));
+  }
   if (db.prepare('SELECT COUNT(*) AS count FROM students').get().count === 0) {
     const seed = db.transaction(() => {
       db.prepare('INSERT OR IGNORE INTO academic_years (name, label, start_date, end_date, is_current) VALUES (?, ?, ?, ?, ?)').run('2025-2026', '2025-2026', '2025-09-01', '2026-06-30', 1);
