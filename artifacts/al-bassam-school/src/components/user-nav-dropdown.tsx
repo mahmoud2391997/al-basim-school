@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface UserNavDropdownProps {
+  role?: "admin" | "library-admin" | "student";
   t: (en: string, ar: string) => string;
   language: "en" | "ar";
   theme: "light" | "dark";
@@ -33,6 +34,7 @@ interface UserNavDropdownProps {
 }
 
 export function UserNavDropdown({
+  role = "admin",
   t,
   language,
   theme,
@@ -83,7 +85,7 @@ export function UserNavDropdown({
           )}
           <div className="hidden text-start sm:block">
             <span className="block text-xs font-semibold text-foreground">
-              {t("Library Admin", "أمين المكتبة")}
+              {role === "student" ? t("Student", "طالب") : t("Library Admin", "أمين المكتبة")}
             </span>
           </div>
           <ChevronDown
@@ -115,15 +117,15 @@ export function UserNavDropdown({
             )}
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold text-foreground">
-                {t("Library Admin", "أمين المكتبة")}
+                {role === "student" ? t("Student", "طالب") : t("Library Admin", "أمين المكتبة")}
               </div>
               <div className="truncate text-[11px] text-muted-foreground">
                 admin@albassamschool.edu.sa
               </div>
-              <div className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-[#14BAC6]">
+              {role !== "student" && <div className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-[#14BAC6]">
                 <Shield size={11} />
                 <span>{t("System Administrator", "مسؤول النظام")}</span>
-              </div>
+              </div>}
             </div>
           </div>
         </DropdownMenuLabel>
@@ -131,6 +133,7 @@ export function UserNavDropdown({
         <DropdownMenuSeparator />
 
         {/* Quick Navigation Items */}
+        {role !== "student" && <>
         <DropdownMenuItem
           onClick={() => onNavigate("/library/analytics")}
           className="cursor-pointer gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
@@ -166,6 +169,9 @@ export function UserNavDropdown({
           <Settings2 size={15} className="text-muted-foreground" />
           <span>{t("System Settings", "إعدادات النظام")}</span>
         </DropdownMenuItem>
+
+        </>}
+        {role === "student" && <DropdownMenuLabel className="px-3 py-2 text-xs font-normal text-muted-foreground">{t("Read-only access: Books and Index", "صلاحية قراءة فقط: الكتب والفهرس")}</DropdownMenuLabel>}
 
         <DropdownMenuSeparator />
 

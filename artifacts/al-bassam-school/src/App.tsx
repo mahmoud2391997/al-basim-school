@@ -482,6 +482,8 @@ function Shell({ children }: { children: ReactNode }) {
   const { profilePicture } = useProfilePicture();
   const sidebarWidth = collapsed ? 64 : 208;
   const text = t;
+  const studentLibraryRoutes = ["/library", "/library/index"];
+  const canStudentAccess = (path: string) => studentLibraryRoutes.includes(path);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -628,7 +630,7 @@ function Shell({ children }: { children: ReactNode }) {
                     )}
                   </div>
                   {!collapsed &&
-                    item.tabs.length > 0 &&
+                    visibleTabs.length > 0 &&
                     (expandedGroups[item.href] ?? active) && (
                       <div
                         className={`mt-1 space-y-0.5 border-sidebar-border pb-1 ${language === "ar" ? "mr-9 border-r-2 border-r-[#14BAC6]/40 pr-3" : "ml-9 border-l-2 border-l-[#14BAC6]/40 pl-3"}`}
@@ -649,12 +651,12 @@ function Shell({ children }: { children: ReactNode }) {
                   );
                 })}
           </nav>
-          {!collapsed && (
+          {!isStudent && !collapsed && (
             <p className="mb-3 mt-9 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-sidebar-foreground/45">
               {text("Administration", "الإدارة")}
             </p>
           )}
-          <Link
+          {!isStudent && <Link
             href="/settings"
             onClick={() => setMobileOpen(false)}
             className={`group flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/settings" ? "nav-active bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/65"}`}
@@ -673,7 +675,7 @@ function Shell({ children }: { children: ReactNode }) {
                 {text("Settings", "الإعدادات")}
               </span>
             )}
-          </Link>
+          </Link>}
           <button
             onClick={async () => {
               if (
@@ -861,9 +863,10 @@ function Shell({ children }: { children: ReactNode }) {
 
             <div className="hidden h-7 w-px bg-border sm:block" />
 
-            {/* Reactive Library Admin Dropdown */}
-            <UserNavDropdown
-              t={text}
+  {/* Role-aware account menu */}
+  <UserNavDropdown
+  role={sessionUser?.role ?? "admin"}
+  t={text}
               language={language}
               theme={theme}
               profilePicture={profilePicture}
@@ -1707,7 +1710,7 @@ function Dashboard() {
                   onClick={() => setActivityTab("borrows")}
                   className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "borrows" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  {t("Borrows", "الإعارات")}
+                  {t("Borrows", "الإع��رات")}
                 </button>
                 <button
                   onClick={() => setActivityTab("books")}
@@ -8693,7 +8696,7 @@ function SettingsPage() {
     const users = getStudentUsers();
     return <main className="mx-auto max-w-6xl p-6" data-testid="page-library-users">
       <PageHeading eyebrow="Library access" eyebrowAr="صلاحيات المكتبة" title="Library Users" arabic="مستخدمو المكتبة" description="Student accounts with read-only access to Books and Index." descriptionAr="حسابات الطلاب بصلاحية قراءة الكتب والفهرس فقط." />
-      <section className="rounded-xl border border-border bg-card p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">{t("Student accounts", "حسابات الطلاب")}</h2><span className="text-sm text-muted-foreground">{users.length}</span></div>{users.length ? <div className="grid gap-3">{users.map((user) => <div key={user.username} className="flex items-center justify-between rounded-lg border border-border p-4"><div><p className="font-semibold">{user.fullName || user.username}</p><p className="text-xs text-muted-foreground">{user.username} · {user.studentNumber}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{t("Books + Index", "الكتب + الفهرس")}</span></div>)}</div> : <p className="text-sm text-muted-foreground">{t("No student accounts yet.", "لا توجد حسابات طلاب بعد.")}</p>}</section>
+      <section className="rounded-xl border border-border bg-card p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">{t("Student accounts", "حسابات الطلاب")}</h2><span className="text-sm text-muted-foreground">{users.length}</span></div>{users.length ? <div className="grid gap-3">{users.map((user) => <div key={user.username} className="flex items-center justify-between rounded-lg border border-border p-4"><div><p className="font-semibold">{user.fullName || user.username}</p><p className="text-xs text-muted-foreground">{user.username} · {user.studentNumber}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{t("Books + Index", "الكتب + الفهرس")}</span></div>)}</div> : <p className="text-sm text-muted-foreground">{t("No student accounts yet.", "لا توجد حسابات ط��اب بعد.")}</p>}</section>
     </main>;
   }
 
