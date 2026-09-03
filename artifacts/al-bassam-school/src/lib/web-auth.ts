@@ -50,6 +50,21 @@ export function isAuthenticated(): boolean { return Boolean(window.localStorage.
 export function getSessionUser(): WebUser | null { try { const raw = window.localStorage.getItem(SESSION_USER_KEY); return raw ? JSON.parse(raw) as WebUser : null; } catch { return null; } }
 export function createSession(user: WebUser = { username: "schooladmin", role: "library-admin" }): void { window.localStorage.setItem(SESSION_KEY, randomHex(24)); window.localStorage.setItem(SESSION_USER_KEY, JSON.stringify(user)); }
 export function logout(): void { window.localStorage.removeItem(SESSION_KEY); window.localStorage.removeItem(SESSION_USER_KEY); }
+export async function changeStudentCredentials(currentUsername: string, currentPassword: string, newUsername: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
+  const students = readStudents();
+  const index = students.findIndex((item) => item.username.toLowerCase() === currentUsername.trim().toLowerCase());
+  if (index < 0) return { ok: false, error: "Student account not found" };
+  if (!(await matches(currentPassword, students[index]))) return { ok: false, error: "Current password is incorrect" };
+  const username = newUsername.trim().toLowerCase();
+  if (!username) return { ok: false, error: "New username is required" };
+  if (newPassword.length < 8) return { ok: false, error: "New password must be at least 8 characters" };
+  if ([readAdmin(), ...students].some((item, itemIndex) => item && itemIndex !== index + 1 && item.username.toLowerCase() === username)) return { ok: false, error: "That username is already registered" };
+  const salt = randomHex(16); const hash = await deriveHash(newPassword, salt);
+  students[index] = { ...students[index], username, hash: `${salt}:${hash}` };
+  window.localStorage.setItem(STUDENT_CRED_KEY, JSON.stringify(students));
+  return { ok: true };
+}
+
 export async function changeCredentials(currentPassword: string, newUsername: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
   const credentials = readAdmin(); if (!credentials) return { ok: false, error: "No admin account configured" }; if (!(await matches(currentPassword, credentials))) return { ok: false, error: "Current password is incorrect" };
   const username = newUsername.trim(); if (!username) return { ok: false, error: "New username is required" }; if (newPassword.length < 10) return { ok: false, error: "New password must be at least 10 characters" };
