@@ -33,6 +33,7 @@ import {
   Clock3,
   Database,
   Download,
+  Eye,
   Filter,
   FileSpreadsheet,
   GraduationCap,
@@ -563,7 +564,7 @@ function Shell({ children }: { children: ReactNode }) {
           <nav className="space-y-1">
             {navItems.filter((item) => !isStudent || item.href === "/library").map((item) => {
               const visibleTabs = isStudent
-                ? item.tabs.filter((tab) => tab.href === "/library" || tab.href === "/library/index")
+                ? item.tabs.filter((tab) => tab.href === "/library")
                 : item.tabs;
               const groupHrefs = [
                 item.href,
@@ -5028,7 +5029,9 @@ function BorrowDialog({
 }
 
 function LibraryPage() {
+  const isStudent = getSessionUser()?.role === "student";
   const [search, setSearch] = useState("");
+  const [viewingBook, setViewingBook] = useState<Book>();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Book | undefined>();
   const [borrowing, setBorrowing] = useState<Book>();
@@ -5291,6 +5294,7 @@ function LibraryPage() {
         )}
         action={
           <div className="flex items-center gap-2">
+            {!isStudent && <>
             <ExportMenu entityType="books" data={books} t={t} />
             <Button
               variant="outline"
@@ -5317,6 +5321,7 @@ function LibraryPage() {
             >
               <Plus size={17} /> {t("Add book", "إضافة كتاب")}
             </Button>
+            </>}
           </div>
         }
       />
@@ -5649,8 +5654,10 @@ function LibraryPage() {
               book={book}
               onEdit={edit}
               onDelete={remove}
-              onConditionChange={handleConditionChange}
-              selected={selectedIds.has(book.id)}
+  onConditionChange={handleConditionChange}
+  readOnly={isStudent}
+  onView={setViewingBook}
+  selected={selectedIds.has(book.id)}
               onSelect={(checked) => toggleBookSelection(book.id, checked)}
             />
           ))}
@@ -5678,6 +5685,12 @@ function LibraryPage() {
           editing ? borrows.filter((b) => b.bookId === editing.id).length : 0
         }
       />
+      <Dialog open={Boolean(viewingBook)} onOpenChange={(open) => !open && setViewingBook(undefined)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{viewingBook?.title}</DialogTitle><DialogDescription>{t("Book details", "تفاصيل الكتاب")}</DialogDescription></DialogHeader>
+          {viewingBook && <div className="grid gap-3 text-sm"><div><span className="font-semibold">{t("Author", "المؤلف")}: </span>{viewingBook.author || "—"}</div><div><span className="font-semibold">{t("Category", "التصنيف")}: </span>{viewingBook.category || "—"}</div><div><span className="font-semibold">{t("Language", "اللغة")}: </span>{viewingBook.language || "—"}</div><div><span className="font-semibold">{t("ISBN", "الرقم الدولي")}: </span>{viewingBook.isbn || "—"}</div><div><span className="font-semibold">{t("Shelf", "الرف")}: </span>{viewingBook.shelf || "—"}</div><div><span className="font-semibold">{t("Copies", "النسخ")}: </span>{viewingBook.availableCopies ?? viewingBook.copies}/{viewingBook.copies}</div><div><span className="font-semibold">{t("Status", "الحالة")}: </span>{viewingBook.status || "available"}</div></div>}
+        </DialogContent>
+      </Dialog>
       {(() => {
         if (!borrows.length) return null;
         return (
@@ -5797,6 +5810,8 @@ function BookRow({
   onEdit,
   onDelete,
   onConditionChange,
+  readOnly = false,
+  onView,
   selected = false,
   onSelect,
 }: {
@@ -5804,6 +5819,8 @@ function BookRow({
   onEdit: (book: Book) => void;
   onDelete: (book: Book) => void;
   onConditionChange: (book: Book, action: "lost" | "damaged" | "fixed" | "found") => void;
+  readOnly?: boolean;
+  onView?: (book: Book) => void;
   selected?: boolean;
   onSelect?: (checked: boolean) => void;
 }) {
@@ -5872,6 +5889,7 @@ function BookRow({
         {book.isbn || "—"}
       </span>
       <div className="flex flex-col items-end gap-1">
+        {readOnly ? <button onClick={() => onView?.(book)} className="rounded-md p-2 text-primary hover:bg-primary/10" data-testid={`button-view-book-${book.id}`} aria-label={`View ${book.title}`}><Eye size={16} /></button> : <>
         <div className="flex justify-end gap-1">
           <button
             onClick={() => onEdit(book)}
@@ -5924,6 +5942,7 @@ function BookRow({
             {t("Found", "تم العثور عليه")}
           </button>
         </div>
+        </>}
       </div>
     </div>
   );
