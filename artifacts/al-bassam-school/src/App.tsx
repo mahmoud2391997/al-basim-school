@@ -1335,7 +1335,7 @@ function ErrorState({
       <p className="mt-1 text-sm text-[#B92327]/70">
         {t(
           "The workspace will try again when you ask it to.",
-          "ستحاول مساحة العمل مجددًا بمجرد طلب ذلك.",
+          "ستحاول مساحة العمل مجددًا بم��رد طلب ذلك.",
         )}
       </p>
       <Button
@@ -8858,7 +8858,7 @@ function SettingsPage() {
   function Router() {
   const [location, setLocation] = useLocation();
   const sessionUser = getSessionUser();
-  if (sessionUser?.role === "student" && !["/library", "/library/index"].includes(location)) {
+  if (sessionUser?.role === "student" && !["/library", "/library/index", "/profile"].includes(location)) {
     setLocation("/library");
     return null;
   }
