@@ -5955,6 +5955,7 @@ function DistributionPage() {
         title="Student distribution"
         arabic="توزيع الطلاب"
         description="How learners are spread across grades and classes this academic year."
+        descriptionAr="توزيع الطلاب على الصفوف والفصول خلال هذا العام الدراسي."
       />
       {query.isLoading ? (
         <LoadingCards />
