@@ -1544,7 +1544,7 @@ function Dashboard() {
         eyebrow="School pulse · 01"
         eyebrowAr="نبض المدرسة · 01"
         title="Good morning, admin."
-        arabic="صباح الخير، آمين المكتبة."
+        arabic="صباح الخير، أمين المكتبة."
         description={t(
           "A composed live view of library circulation, student enrolments, and key school operations.",
           "نظرة حية متكاملة على حركة الإعارة المكتبية، سجلات الطلاب، ومؤشرات العمليات المدرسية اليوم.",
@@ -3116,7 +3116,7 @@ function TeacherDialog({
               <span
                 className={`text-xs text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}
               >
-                {t("تعديل السجل", "Edit record")}
+                {t("��عديل السجل", "Edit record")}
               </span>
             </div>
           </DialogHeader>
@@ -3772,7 +3772,7 @@ function EmployeesPage() {
     <div className="rise-in" dir={t("ltr", "rtl")}>
       <PageHeading
         eyebrow="Employees · 02"
-        eyebrowAr="الموظفون · ٠٢"
+        eyebrowAr="ال��وظفون · ٠٢"
         title="Employees"
         arabic="الموظفون"
         description={t(
