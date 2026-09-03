@@ -3116,7 +3116,7 @@ function TeacherDialog({
               <span
                 className={`text-xs text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}
               >
-                {t("����عديل السجل", "Edit record")}
+                {t("������عديل السجل", "Edit record")}
               </span>
             </div>
           </DialogHeader>
@@ -4942,7 +4942,7 @@ function BorrowDialog({
                 data-testid="input-borrower"
               >
                 <option value="">
-                  {borrowerOptions.length ? t("Choose a borrower…", "اختر مستعيرًا…") : t("No borrowers registered yet", "لا يوجد مستعيرون مسجلون بعد")}
+                  {borrowerOptions.length ? t("Choose a borrower…", "ا��تر مستعيرًا…") : t("No borrowers registered yet", "لا يوجد مستعيرون مسجلون بعد")}
                 </option>
                 {borrowerOptions.map((borrower) => (
                   <option value={borrower.id} key={borrower.id}>
@@ -8280,9 +8280,17 @@ function SettingsPage() {
       );
       return;
     }
+    const confirmed = window.confirm(
+      t(
+        "Warning: importing this backup will overwrite the current database data. Continue?",
+        "تحذير: استيراد هذه النسخة الاحتياطية سيؤدي إلى استبدال بيانات قاعدة البيانات الحالية. هل تريد المتابعة؟",
+      ),
+    );
+    if (!confirmed) return;
     setRestoring(true);
     try {
-      await window.alBassamDesktop.restore();
+      const result = await window.alBassamDesktop.restore();
+      if (result?.canceled) return;
       window.location.reload();
     } catch {
       setRestoreError(
