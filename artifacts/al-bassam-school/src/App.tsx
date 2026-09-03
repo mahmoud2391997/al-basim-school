@@ -126,12 +126,17 @@ import {
   seedDemoData,
 } from "./api-client/local";
 import {
+  authenticate,
   changeCredentials,
   createSession,
   ensureCredentials,
+  getSessionUser,
+  getStudentUsers,
   isAuthenticated,
   logout as webLogout,
+  signUpStudent,
   verifyLogin,
+  type WebRole,
 } from "@/lib/web-auth";
 import {
   getAcademicYears,
@@ -437,6 +442,7 @@ const navItems = [
     icon: Library,
     tabs: [
       { label: "Books", arabic: "الكتب", href: "/library" },
+      { label: "Library Users", arabic: "مستخدمو المكتبة", href: "/library/users" },
       {
         label: "Categories",
         arabic: "تصنيفات الكتب",
@@ -456,6 +462,8 @@ const navItems = [
 
 function Shell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
+  const sessionUser = getSessionUser();
+  const isStudent = sessionUser?.role === "student";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -551,11 +559,16 @@ function Shell({ children }: { children: ReactNode }) {
             </button>
           </div>
           <nav className="space-y-1">
-            {navItems.map((item) => {
+            {navItems.filter((item) => !isStudent || item.href === "/library").map((item) => {
+              const visibleTabs = isStudent
+                ? item.tabs.filter((tab) => tab.href === "/library" || tab.href === "/library/index")
+                : item.tabs;
               const groupHrefs = [
                 item.href,
-                ...item.tabs.map((tab) => tab.href),
+                ...visibleTabs.map((tab) => tab.href),
               ];
+              /* Students receive a deliberately small, read-only library surface. */
+              if (isStudent && item.href !== "/library") return null;
               const active =
                 item.href === "/"
                   ? location === "/"
@@ -588,7 +601,7 @@ function Shell({ children }: { children: ReactNode }) {
                         </span>
                       )}
                     </Link>
-                    {!collapsed && item.tabs.length > 0 && (
+                    {!collapsed && visibleTabs.length > 0 && (
                       <button
                         onClick={() =>
                           setExpandedGroups((current) => ({
@@ -620,7 +633,7 @@ function Shell({ children }: { children: ReactNode }) {
                       <div
                         className={`mt-1 space-y-0.5 border-sidebar-border pb-1 ${language === "ar" ? "mr-9 border-r-2 border-r-[#14BAC6]/40 pr-3" : "ml-9 border-l-2 border-l-[#14BAC6]/40 pl-3"}`}
                       >
-                        {item.tabs.map((tab) => (
+                        {visibleTabs.map((tab) => (
                           <Link
                             key={tab.href}
                             href={tab.href}
@@ -6291,7 +6304,7 @@ function BorrowsPage() {
         arabic="الاستعارات"
         description={t(
           "Keep track of books currently away from the shelves.",
-          "تابع الكتب الموجودة حاليًا خارج الرفوف.",
+          "تابع الكتب ا��موجودة حاليًا خارج الرفوف.",
         )}
         action={<Button onClick={() => setBookPickerOpen(true)} className="h-11 rounded-lg bg-primary px-5 text-primary-foreground hover:bg-primary/85" data-testid="button-borrows-borrow"><Plus size={17} /> {t("Borrow a book", "استعارة كتاب")}</Button>}
       />
@@ -8517,7 +8530,7 @@ function SettingsPage() {
                 {isDesktop
                   ? t(
                       "Stored on this device so it persists across app restarts.",
-                      "تُحفظ على هذا الجهاز لتستمر بين جلسات التطبيق.",
+                      "تُحفظ على هذا الجهاز لتستمر بين ��لسات التطبيق.",
                     )
                   : t(
                       "This web session keeps the picture for the current session only.",
@@ -8675,8 +8688,22 @@ function SettingsPage() {
   );
 }
 
-function Router() {
-  const [location] = useLocation();
+  function LibraryUsersPage() {
+    const { t } = useT();
+    const users = getStudentUsers();
+    return <main className="mx-auto max-w-6xl p-6" data-testid="page-library-users">
+      <PageHeading eyebrow="Library access" eyebrowAr="صلاحيات المكتبة" title="Library Users" arabic="مستخدمو المكتبة" description="Student accounts with read-only access to Books and Index." descriptionAr="حسابات الطلاب بصلاحية قراءة الكتب والفهرس فقط." />
+      <section className="rounded-xl border border-border bg-card p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">{t("Student accounts", "حسابات الطلاب")}</h2><span className="text-sm text-muted-foreground">{users.length}</span></div>{users.length ? <div className="grid gap-3">{users.map((user) => <div key={user.username} className="flex items-center justify-between rounded-lg border border-border p-4"><div><p className="font-semibold">{user.fullName || user.username}</p><p className="text-xs text-muted-foreground">{user.username} · {user.studentNumber}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{t("Books + Index", "الكتب + الفهرس")}</span></div>)}</div> : <p className="text-sm text-muted-foreground">{t("No student accounts yet.", "لا توجد حسابات طلاب بعد.")}</p>}</section>
+    </main>;
+  }
+
+  function Router() {
+  const [location, setLocation] = useLocation();
+  const sessionUser = getSessionUser();
+  if (sessionUser?.role === "student" && !["/library", "/library/index"].includes(location)) {
+    setLocation("/library");
+    return null;
+  }
   return (
     <ErrorBoundary resetKey={location}>
       <Shell>
@@ -8686,8 +8713,9 @@ function Router() {
           <Route path="/students/distribution" component={DistributionPage} />
           <Route path="/teachers" component={TeachersPage} />
           <Route path="/employees" component={EmployeesPage} />
-          <Route path="/library" component={LibraryPage} />
-          <Route path="/library/categories" component={CategoriesPage} />
+  <Route path="/library" component={LibraryPage} />
+  <Route path="/library/users" component={LibraryUsersPage} />
+  <Route path="/library/categories" component={CategoriesPage} />
           <Route path="/library/borrows" component={BorrowsPage} />
           <Route path="/library/history" component={BorrowHistoryPage} />
           <Route path="/library/index" component={IndexPage} />
@@ -8908,6 +8936,9 @@ function AuthGate() {
   const [setupRequired, setSetupRequired] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [studentNumber, setStudentNumber] = useState("");
+  const [signupMode, setSignupMode] = useState(false);
   const [error, setError] = useState("");
 
   const frontendOnly =
@@ -8958,16 +8989,17 @@ function AuthGate() {
     event.preventDefault();
     setError("");
     if (frontendOnly) {
-      const ok = await verifyLogin(username, password);
-      if (!ok) {
-        return setError(
-          t(
-            "Authentication failed. Please check your credentials.",
-            "فشل تسجيل الدخول. يرجى التحقق من اسم المستخدم وكلمة المرور.",
-          ),
-        );
+      if (signupMode) {
+        const result = await signUpStudent(username, password, fullName, studentNumber);
+        if (!result.ok) return setError(result.error || t("Could not create account.", "تعذر إنشاء الحساب."));
+        const user = await authenticate(username, password);
+        if (!user) return setError(t("Account created, but sign in failed.", "تم إنشاء الحساب ولكن تعذر تسجيل الدخول."));
+        createSession(user);
+      } else {
+        const user = await authenticate(username, password);
+        if (!user) return setError(t("Authentication failed. Please check your credentials.", "فشل تسجيل الدخول. يرجى التحقق من اسم المستخدم وكلمة المرور."));
+        createSession(user);
       }
-      createSession();
       setPassword("");
       seedDemoData();
       setReady(true);
@@ -9032,7 +9064,9 @@ function AuthGate() {
           <h1 className="mt-3 text-2xl font-bold text-foreground">
             {setupRequired
               ? t("Create admin account", "إنشاء حساب المدير")
-              : t("Sign in", "تسجيل الدخول")}
+              : signupMode
+                ? t("Student signup", "تسجيل الطالب")
+                : t("Sign in", "تسجيل الدخول")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
             {setupRequired
@@ -9047,6 +9081,18 @@ function AuthGate() {
           </p>
 
           <div className="mt-6 space-y-3.5">
+            {signupMode && !setupRequired && (
+              <>
+                <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
+                  <span>{t("Full name", "الاسم الكامل")}</span>
+                  <input required value={fullName} onChange={(event) => setFullName(event.target.value)} className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-sans outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" data-testid="input-student-full-name" />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
+                  <span>{t("Student number", "الرقم الطلابي")}</span>
+                  <input required value={studentNumber} onChange={(event) => setStudentNumber(event.target.value)} className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-sans outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" data-testid="input-student-number" />
+                </label>
+              </>
+            )}
             <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
               <span>{t("Username", "اسم المستخدم")}</span>
               <input
@@ -9065,7 +9111,7 @@ function AuthGate() {
               <span>{t("Password", "كلمة المرور")}</span>
               <input
                 required
-                minLength={10}
+                minLength={signupMode ? 8 : 10}
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -9083,8 +9129,16 @@ function AuthGate() {
           >
             {setupRequired
               ? t("Create account", "إنشاء الحساب")
-              : t("Sign in", "تسجيل الدخول")}
+              : signupMode
+                ? t("Create student account", "إنشاء حساب الطالب")
+                : t("Sign in", "تسجيل الدخول")}
           </Button>
+
+          {!setupRequired && (
+            <button type="button" onClick={() => { setSignupMode((value) => !value); setError(""); }} className="mt-4 w-full text-xs font-semibold text-primary hover:underline" data-testid="button-toggle-student-signup">
+              {signupMode ? t("Already have an account? Sign in", "لديك حساب؟ تسجيل الدخول") : t("New student? Sign up", "طالب جديد؟ إنشاء حساب")}
+            </button>
+          )}
 
           {error && <p className="mt-3 text-xs font-medium text-destructive">{error}</p>}
         </form>
