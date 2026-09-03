@@ -3116,7 +3116,7 @@ function TeacherDialog({
               <span
                 className={`text-xs text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}
               >
-                {t("��عديل السجل", "Edit record")}
+                {t("����عديل السجل", "Edit record")}
               </span>
             </div>
           </DialogHeader>
@@ -3772,7 +3772,7 @@ function EmployeesPage() {
     <div className="rise-in" dir={t("ltr", "rtl")}>
       <PageHeading
         eyebrow="Employees · 02"
-        eyebrowAr="ال��وظفون · ٠٢"
+        eyebrowAr="��ل��وظفون · ٠٢"
         title="Employees"
         arabic="الموظفون"
         description={t(
@@ -8191,6 +8191,8 @@ function SettingsPage() {
   const { t } = useT();
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [restoring, setRestoring] = useState(false);
+  const [restoreError, setRestoreError] = useState("");
   const {
     profilePicture,
     isDesktop,
@@ -8266,6 +8268,32 @@ function SettingsPage() {
   const setSelected = (id: number) => {
     setSelectedId(id);
     setStoredAcademicYearId(id);
+  };
+  const handleRestore = async () => {
+    setRestoreError("");
+    if (!window.alBassamDesktop?.restore) {
+      setRestoreError(
+        t(
+          "Database import is available in the desktop app. Open a JSON backup there to restore the database.",
+          "استيراد قاعدة البيانات متاح في تطبيق سطح المكتب. افتح نسخة JSON الاحتياطية هناك لاستعادة قاعدة البيانات.",
+        ),
+      );
+      return;
+    }
+    setRestoring(true);
+    try {
+      await window.alBassamDesktop.restore();
+      window.location.reload();
+    } catch {
+      setRestoreError(
+        t(
+          "The database import failed. Please select a valid backup and try again.",
+          "فشل استيراد قاعدة البيانات. يرجى اختيار نسخة احتياطية صحيحة والمحاولة مرة أخرى.",
+        ),
+      );
+    } finally {
+      setRestoring(false);
+    }
   };
   const handleExport = async () => {
     setExporting(true);
@@ -8598,6 +8626,39 @@ function SettingsPage() {
           <p className="mt-4 flex items-center gap-2 text-sm text-destructive">
             <AlertTriangle size={15} />
             {exportError}
+          </p>
+        )}
+      </section>
+      <section className="mt-6 rounded-xl border border-border bg-card p-6 soft-shadow">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
+              <Upload size={18} />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                {t("Data restore", "استعادة البيانات")}
+              </div>
+              <h2 className="mt-1 text-xl font-bold tracking-[-.03em] text-foreground">
+                {t("Import database backup", "استيراد نسخة قاعدة البيانات")}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                {t(
+                  "Restore students, teachers, employees, books, borrows and academic years from a JSON backup.",
+                  "استعد الطلاب والمعلمين والموظفين والكتب والإعارات والسنوات الدراسية من نسخة JSON احتياطية.",
+                )}
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" className="shrink-0" onClick={handleRestore} disabled={restoring} data-testid="button-import-backup">
+            {restoring ? <RefreshCw size={16} className="animate-spin" /> : <Upload size={16} />}
+            {restoring ? t("Importing…", "جارٍ الاستيراد…") : t("Import JSON", "استيراد JSON")}
+          </Button>
+        </div>
+        {restoreError && (
+          <p className="mt-4 flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle size={15} />
+            {restoreError}
           </p>
         )}
       </section>
