@@ -56,6 +56,7 @@ import {
   Trash2,
   Trophy,
   Upload,
+  User,
   UsersRound,
   X,
 } from "lucide-react";
@@ -716,28 +717,33 @@ function Shell({ children }: { children: ReactNode }) {
               )}
           </button>
         </div>
-        <div className={`mt-auto ${collapsed ? "px-2 pb-4" : "p-5"}`}>
+          <div className={`mt-auto ${collapsed ? "px-2 pb-4" : "p-5"}`}>
+          {isStudent && (
+            <Link
+              href="/profile"
+              onClick={() => setMobileOpen(false)}
+              className={`mb-3 flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/profile" ? "nav-active bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/65"} ${collapsed ? "justify-center px-0" : ""}`}
+              data-testid="link-nav-profile"
+            >
+              <User size={18} />
+              {!collapsed && <span className="truncate text-sm font-medium">{text("My Profile", "ملفي الشخصي")}</span>}
+            </Link>
+          )}
           <div
             className={`${collapsed ? "mt-3 justify-center" : "mt-5"} flex items-center gap-3${collapsed ? "" : " border-t border-sidebar-border pt-5"}`}
           >
             {profilePicture ? (
-              <img src={profilePicture} alt={text("Library Admin", "أمين المكتبة")} className="h-9 w-9 rounded-full object-cover ring-2 ring-sidebar-border" />
+              <img src={profilePicture} alt={sessionUser?.fullName ?? text("Student", "طالب")} className="h-9 w-9 rounded-full object-cover ring-2 ring-sidebar-border" />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064] dark:text-[#263064]!">LA</div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064] dark:text-[#263064]!">{(sessionUser?.fullName ?? (isStudent ? "Student" : "Library Admin")).split(" ").map((part) => part[0]).slice(0, 2).join("")}</div>
             )}
             {!collapsed && (
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-semibold text-sidebar-foreground">
-                  {text(
-                    "Library Admin",
-                    "أمين المكتبة",
-                  )}
+                  {sessionUser?.fullName ?? text(isStudent ? "Student" : "Library Admin", isStudent ? "طالب" : "أمين المكتبة")}
                 </div>
                 <div className="truncate text-[10px] text-sidebar-foreground/45">
-                  {text(
-                    "Library office",
-                    "مكتب المكتبة",
-                  )}
+                  {isStudent ? text("Student profile", "ملف الطالب") : text("Library office", "مكتب المكتبة")}
                 </div>
               </div>
             )}
@@ -777,6 +783,7 @@ function Shell({ children }: { children: ReactNode }) {
               <span className="mx-2 text-border">/</span>
               <span>
                 {(() => {
+                  if (location === "/profile") return text("My Profile", "ملفي الشخصي");
                   if (location === "/settings") return text("Settings", "الإعدادات");
                   const parent = navItems.find(
                     (item) =>
@@ -8983,7 +8990,7 @@ function PasswordSettings() {
         {t("Security & Credentials", "الأمان وبيانات الدخول")}
       </div>
       <h2 className="mt-1 text-xl font-bold text-foreground">
-        {t("Change username and password", "تغيير اسم المستخدم وكلمة المرور")}
+        {t("Change username and password", "تغي��ر اسم المستخدم وكلمة المرور")}
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
         {t(

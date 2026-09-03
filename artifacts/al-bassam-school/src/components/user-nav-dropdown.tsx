@@ -111,7 +111,7 @@ export function UserNavDropdown({
             {profilePicture ? (
               <img
                 src={profilePicture}
-                alt={t("Admin", "المسؤول")}
+                alt={displayName ?? t("Student", "طالب")}
                 className="h-10 w-10 shrink-0 rounded-full object-cover"
               />
             ) : (
