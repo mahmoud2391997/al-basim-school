@@ -8495,6 +8495,8 @@ function StudentProfilePage() {
 function SettingsPage() {
   const { t } = useT();
   const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState(false);
+  const [copiedToClipboard, setCopiedToClipboard] = useState(false);
   const [exportError, setExportError] = useState("");
   const [restoring, setRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState("");
@@ -8611,8 +8613,10 @@ function SettingsPage() {
   const handleExport = async () => {
     setExporting(true);
     setExportError("");
+    setExported(false);
+    setCopiedToClipboard(false);
     try {
-      await exportDatabase({
+      const result = await exportDatabase({
         students: () => getStudents(),
         teachers: () => getTeachers(),
         employees: () => getEmployees(),
@@ -8620,6 +8624,8 @@ function SettingsPage() {
         borrows: () => getBorrows(),
         academicYears: () => getAcademicYears(),
       });
+      setExported(true);
+      setCopiedToClipboard(result.copiedToClipboard);
     } catch (err) {
       setExportError(
         t(
@@ -8909,7 +8915,13 @@ function SettingsPage() {
               <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
                 {t(
                   "Download a JSON backup containing all records (students, teachers, employees, books, borrows and academic years).",
-                  "\u0642\u0645\u0020\u062A\u0646\u0632\u064A\u0644\u0020\u0646\u0633\u062E\u0629\u0020\u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629\u0020\u0628\u0635\u064A\u063A\u0629\u0020JSON\u0020\u062A\u062D\u062A\u0648\u064A\u0020\u0639\u0644\u0649\u0020\u062C\u0645\u064A\u0639\u0020\u0627\u0644\u0633\u062C\u0644\u0627\u062A\u0020\u0028\u0627\u0644\u0637\u0644\u0627\u0628\u2026",
+                  "\u0642\u0645\u0020\u062A\u0646\u0632\u064A\u0644\u0020\u0646\u0633\u062E\u0629\u0020\u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629\u0020\u0628\u0635\u064A\u063A\u0629\u0020JSON\u0020\u062A\u062D\u062A\u0648\u064A\u0020\u0639\u0644\u0649\u0020\u062C\u0645\u064A\u0639\u0020\u0627\u0644\u0633\u062C\u0644\u0627\u062A\u0020\u0028\u0627\u0644\u0637\u0644\u0627\u0628…",
+                )}
+              </p>
+              <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+                {t(
+                  "Available on both the web app and the desktop app.",
+                  "متاح في تطبيق الويب وتطبيق سطح المكتب على حد سواء.",
                 )}
               </p>
             </div>
@@ -8935,6 +8947,24 @@ function SettingsPage() {
           <p className="mt-4 flex items-center gap-2 text-sm text-destructive">
             <AlertTriangle size={15} />
             {exportError}
+          </p>
+        )}
+        {exported && !exportError && (
+          <p
+            className="mt-4 flex items-center gap-2 text-sm text-[#32B77E]"
+            role="status"
+            data-testid="text-export-success"
+          >
+            <CircleCheck size={15} />
+            {copiedToClipboard
+              ? t(
+                  "Backup JSON exported. The download has started; if your browser blocked it, the backup was copied to your clipboard.",
+                  "تم تصدير النسخة الاحتياطية JSON. بدأ التنزيل؛ وإذا كان المتصفح قد منعه فقد تم نسخ النسخة إلى الحافظة.",
+                )
+              : t(
+                  "Backup JSON exported. The download has started.",
+                  "تم تصدير النسخة الاحتياطية JSON. بدأ التنزيل.",
+                )}
           </p>
         )}
       </section>

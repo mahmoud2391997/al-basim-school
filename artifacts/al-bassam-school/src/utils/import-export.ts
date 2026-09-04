@@ -455,9 +455,21 @@ export function downloadSampleData(type: EntityType) {
 
 // ─── DATABASE BACKUP (JSON EXPORT) ─────────────────────────────────
 
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export async function exportDatabase(
   fetchers: Record<string, () => Promise<unknown[]>>,
-) {
+): Promise<{ copiedToClipboard: boolean }> {
   const meta = {
     app: "Al-Bassam School Library",
     exportedAt: new Date().toISOString(),
@@ -468,11 +480,20 @@ export async function exportDatabase(
     collections[name] = await fetch();
   }
   const backup = { meta, collections };
-  const blob = new Blob([JSON.stringify(backup, null, 2)], {
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], {
     type: "application/json",
   });
-  saveAs(
-    blob,
-    `al-bassam_backup_${new Date().toISOString().slice(0, 10)}.json`,
-  );
+  const filename = `al-bassam_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  triggerDownload(blob, filename);
+  let copiedToClipboard = false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(json);
+      copiedToClipboard = true;
+    }
+  } catch {
+    copiedToClipboard = false;
+  }
+  return { copiedToClipboard };
 }
