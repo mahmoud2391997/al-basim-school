@@ -1339,7 +1339,7 @@ function ErrorState({
       <p className="mt-1 text-sm text-[#B92327]/70">
         {t(
           "The workspace will try again when you ask it to.",
-          "ستحاول مساحة العمل مجددًا بم��رد طلب ذلك.",
+          "ستحاول مساحة العمل مجددًا بمجرد طلب ذلك.",
         )}
       </p>
       <Button
@@ -1731,7 +1731,7 @@ function Dashboard() {
                   onClick={() => setActivityTab("borrows")}
                   className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "borrows" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  {t("Borrows", "الإع��رات")}
+                  {t("Borrows", "الإعارات")}
                 </button>
                 <button
                   onClick={() => setActivityTab("books")}
@@ -2871,7 +2871,7 @@ function StudentsPage() {
               onSort={toggleSort}
               align="center"
             >
-              {t("National ID", "الهوية الو��نية")}
+              {t("National ID", "الهوية الوطنية")}
             </SortHeader>
             <SortHeader
               columnKey="class"
@@ -2989,7 +2989,7 @@ const teacherSections: {
     titleAr: "البيانات الشخصية",
     fields: [
       { key: "name", label: "Name", arabic: "الاسم", required: true },
-      { key: "surname", label: "Surname", arabic: "ا��لقب", required: true },
+      { key: "surname", label: "Surname", arabic: "اللقب", required: true },
       {
         key: "englishName",
         label: "English name",
@@ -3001,7 +3001,7 @@ const teacherSections: {
         arabic: "الهوية الوطنية",
         placeholder: "10xxxxxxxxxx",
       },
-      { key: "nationality", label: "Nationality", arabic: "ا��جنسية" },
+      { key: "nationality", label: "Nationality", arabic: "الجنسية" },
       {
         key: "gender",
         label: "Gender",
@@ -3580,7 +3580,7 @@ function EmployeeDialog({
                 <DialogTitle className="mt-1 text-2xl text-foreground">
                   {t(
                     isEditing ? "Update employee" : "Add an employee",
-                    isEditing ? "تحديث بيان��ت موظف" : "إضافة موظف",
+                    isEditing ? "تحديث بيانات موظف" : "إضافة موظف",
                   )}
                 </DialogTitle>
                 <DialogDescription className="mt-1">
@@ -4266,7 +4266,7 @@ function TeachersPage() {
       Promise.all(ids.map((id) => new Promise<void>((resolve) => deletion.mutate({ id }, { onSettled: () => resolve() })))).then(() => {
         setSelectedIds(new Set());
         queryClient.invalidateQueries({ queryKey: getGetTeachersQueryKey() });
-        setToast(t(`${ids.length} teacher records deleted`, `تم حذف ${ids.length} من سجلات المعلم��ن`));
+        setToast(t(`${ids.length} teacher records deleted`, `تم حذف ${ids.length} من سجلات المعلمين`));
       });
     });
   };
@@ -4887,7 +4887,7 @@ function BookDialog({
                         <AlertTriangle size={15} />
                         {t(
                           `Total copies cannot be below the ${minTotalCopies} copies currently on loan.`,
-                          `لا يمكن أن يقل إجمالي النسخ عن ${minTotalCopies} نسخة معارة حا��ياً.`,
+                          `لا يمكن أن يقل إجمالي النسخ عن ${minTotalCopies} نسخة معارة حاليًا.`,
                         )}
                       </p>
                     )}
@@ -4943,6 +4943,131 @@ function BookDialog({
     </Dialog>
   );
 }
+function BookSearchField({
+  value,
+  onChange,
+}: {
+  value?: Book;
+  onChange: (book?: Book) => void;
+}) {
+  const { t } = useT();
+  const [query, setQuery] = useState("");
+  const [resultsOpen, setResultsOpen] = useState(false);
+  const booksQuery = useGetBooks(undefined, {
+    query: { queryKey: getGetBooksQueryKey(undefined) },
+  });
+  const books = Array.isArray(booksQuery.data) ? booksQuery.data : [];
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return books
+      .filter((b) =>
+        `${b.title} ${b.author ?? ""} ${b.isbn ?? ""}`
+          .toLowerCase()
+          .includes(q),
+      )
+      .slice(0, 8);
+  }, [books, query]);
+  return (
+    <label className="grid gap-1.5 text-start" data-testid="book-search-field">
+      <span className="text-xs font-semibold text-foreground">
+        {t("Book", "الكتاب")} *
+      </span>
+      {value ? (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-[#14BAC6]/40 bg-[#14BAC6]/5 px-3 py-2">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-foreground">
+              {value.title}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {value.isbn ? `${value.isbn} · ` : ""}
+              {(value.availableCopies ?? 0) > 0
+                ? t(
+                    `${value.availableCopies}/${value.copies} available`,
+                    `${value.availableCopies}/${value.copies} متاح`,
+                  )
+                : t("No copies available", "لا توجد نسخ متاحة")}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onChange(undefined);
+              setQuery("");
+            }}
+            className="shrink-0 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            data-testid="button-change-book"
+          >
+            {t("Change", "تغيير")}
+          </button>
+        </div>
+      ) : (
+        <div className="relative">
+          <input
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setResultsOpen(true);
+            }}
+            onFocus={() => setResultsOpen(true)}
+            onBlur={() => setTimeout(() => setResultsOpen(false), 150)}
+            placeholder={t(
+              "Search book by title, author or ISBN…",
+              "ابحث عن كتاب بالعنوان أو المؤلف أو الرقم الدولي…",
+            )}
+            className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+            data-testid="input-book-search"
+          />
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          {resultsOpen && query.trim() !== "" && (
+            <div
+              className="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border bg-popover shadow-lg"
+              data-testid="book-search-results"
+            >
+              {filtered.length === 0 ? (
+                <p className="px-3 py-3 text-sm text-muted-foreground">
+                  {t("No books match", "لا توجد كتب مطابقة")}
+                </p>
+              ) : (
+                filtered.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onMouseDown={() => {
+                      onChange(b);
+                      setQuery("");
+                      setResultsOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-start transition-colors hover:bg-accent ${(b.availableCopies ?? 0) <= 0 ? "opacity-60" : ""}`}
+                    data-testid={`book-search-result-${b.id}`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-foreground">
+                        {b.title}
+                      </span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        {[b.author, b.isbn].filter(Boolean).join(" · ") || "—"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {(b.availableCopies ?? 0) > 0
+                        ? `${b.availableCopies}/${b.copies}`
+                        : t("0 avail", "0")}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </label>
+  );
+}
+
 function BorrowDialog({
   open,
   onOpenChange,
@@ -4965,13 +5090,15 @@ function BorrowDialog({
   >("student");
   const [borrowerId, setBorrowerId] = useState("");
   const [dueDate, setDueDate] = useState(dueDefault);
+  const [selectedBook, setSelectedBook] = useState<Book | undefined>(book);
   useEffect(() => {
     if (open) {
       setBorrowerType("student");
       setBorrowerId("");
       setDueDate(dueDefault);
+      setSelectedBook(book);
     }
-  }, [open, dueDefault]);
+  }, [open, dueDefault, book]);
   const studentsQuery = useGetStudents(undefined, {
     query: { queryKey: getGetStudentsQueryKey(undefined) },
   });
@@ -4993,11 +5120,11 @@ function BorrowDialog({
   const queryClient = useQueryClient();
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!book || !borrowerId) return;
+    if (!selectedBook || !borrowerId) return;
     create.mutate(
       {
         data: {
-          bookId: book.id,
+          bookId: selectedBook.id,
           borrowerType,
           borrowerId: Number(borrowerId),
           dueDate,
@@ -5020,7 +5147,7 @@ function BorrowDialog({
         ? teachers
         : employees
   ).filter((borrower) => !borrowsQuery.data?.some(
-    (borrow) => borrow.bookId === book?.id && borrow.borrowerType === borrowerType && borrow.borrowerId === borrower.id,
+    (borrow) => borrow.bookId === selectedBook?.id && borrow.borrowerType === borrowerType && borrow.borrowerId === borrower.id,
   ));
   const borrowerLabel =
     borrowerType === "student"
@@ -5040,12 +5167,14 @@ function BorrowDialog({
               {t("Borrow this book", "استعارة الكتاب")}
             </DialogTitle>
             <DialogDescription className="mt-1">
-              {book
-                ? `${book.title}${(book.availableCopies ?? 0) > 0 ? ` · ${book.availableCopies ?? 0}/${book.copies} ${t("available", "متاح")}` : ""}`
-                : ""}
+              {t(
+                "Choose the book and borrower to record the loan.",
+                "اختر الكتاب والمستعير لتسجيل الإعارة.",
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 px-6 py-6">
+            <BookSearchField value={selectedBook} onChange={setSelectedBook} />
             <label className="grid gap-1.5 text-start">
               <span className="text-xs font-semibold text-foreground">{t("Borrower type", "نوع المستعير")} *</span>
               <select value={borrowerType} onChange={(event) => { setBorrowerType(event.target.value as typeof borrowerType); setBorrowerId(""); }} className="h-10 rounded-lg border border-input bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" data-testid="select-borrower-type">
@@ -5568,7 +5697,7 @@ function LibraryPage() {
               className="h-9 shrink-0 bg-primary px-3 text-xs hover:bg-primary/85"
               data-testid="button-scan-add-new"
             >
-              <Plus size={14} /> {t("Catalogue it now", "أضفه للفهرس ال��ن")}
+              <Plus size={14} /> {t("Catalogue it now", "أضفه للفهرس الآن")}
             </Button>
             <button
               onClick={() => setScanned(undefined)}
@@ -6439,7 +6568,7 @@ function BorrowsPage() {
         arabic="الاستعارات"
         description={t(
           "Keep track of books currently away from the shelves.",
-          "تابع الكتب ا��موجودة حاليًا خارج الرفوف.",
+          "تابع الكتب الموجودة حاليًا خارج الرفوف.",
         )}
         action={<Button onClick={() => setBookPickerOpen(true)} className="h-11 rounded-lg bg-primary px-5 text-primary-foreground hover:bg-primary/85" data-testid="button-borrows-borrow"><Plus size={17} /> {t("Borrow a book", "استعارة كتاب")}</Button>}
       />
@@ -6698,10 +6827,10 @@ function BorrowsPage() {
             <DialogDescription>{t("Select the book to lend.", "اختر الكتاب المراد إعارته.")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 px-6 py-6">
-            <select value={selectedBookId} onChange={(event) => setSelectedBookId(event.target.value)} className="h-10 rounded-lg border border-input bg-card px-3 text-sm" data-testid="select-borrows-book">
-              <option value="">{t("Choose a book…", "اختر كتابًا…")}</option>
-              {books.map((book) => <option value={book.id} key={book.id}>{book.title} · {book.availableCopies ?? book.copies}/{book.copies}</option>)}
-            </select>
+            <BookSearchField
+              value={books.find((item) => item.id === Number(selectedBookId))}
+              onChange={(book) => setSelectedBookId(book ? String(book.id) : "")}
+            />
             <input value={bookBarcode} onChange={(event) => { const barcode = event.target.value; setBookBarcode(barcode); const match = books.find((book) => (book.isbn || "").trim() === barcode.trim()); if (match) setSelectedBookId(String(match.id)); }} placeholder={t("Enter or scan book barcode", "أدخل أو امسح باركود الكتاب")} className="h-10 rounded-lg border border-input bg-card px-3 font-mono text-sm" data-testid="input-borrows-book-barcode" />
           </div>
           <DialogFooter className="border-t border-border bg-card px-6 py-4">
@@ -7032,7 +7161,7 @@ function BorrowHistoryPage() {
               <p className="text-xs text-muted-foreground">
                 {t(
                   "All students ranked by books borrowed this academic year, highest to lowest.",
-                  "جميع الطلاب مرتبون ح��ب عدد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
+                  "جميع الطلاب مرتبون حسب عدد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
                 )}
               </p>
             </div>
@@ -8688,7 +8817,7 @@ function SettingsPage() {
                 {isDesktop
                   ? t(
                       "Stored on this device so it persists across app restarts.",
-                      "تُحفظ على هذا الجهاز لتستمر بين ��لسات التطبيق.",
+                      "تُحفظ على هذا الجهاز لتستمر بين جلسات التطبيق.",
                     )
                   : t(
                       "This web session keeps the picture for the current session only.",
@@ -8851,7 +8980,7 @@ function SettingsPage() {
     const users = getStudentUsers();
     return <main className="mx-auto max-w-6xl p-6" data-testid="page-library-users">
       <PageHeading eyebrow="Library access" eyebrowAr="صلاحيات المكتبة" title="Library Users" arabic="مستخدمو المكتبة" description="Student accounts with read-only access to Books and Index." descriptionAr="حسابات الطلاب بصلاحية قراءة الكتب والفهرس فقط." />
-      <section className="rounded-xl border border-border bg-card p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">{t("Student accounts", "حسابات الطلاب")}</h2><span className="text-sm text-muted-foreground">{users.length}</span></div>{users.length ? <div className="grid gap-3">{users.map((user) => <div key={user.username} className="flex items-center justify-between rounded-lg border border-border p-4"><div><p className="font-semibold">{user.fullName || user.username}</p><p className="text-xs text-muted-foreground">{user.username} · {user.studentNumber}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{t("Books + Index", "الكتب + الفهرس")}</span></div>)}</div> : <p className="text-sm text-muted-foreground">{t("No student accounts yet.", "لا توجد حسابات ط��اب بعد.")}</p>}</section>
+      <section className="rounded-xl border border-border bg-card p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">{t("Student accounts", "حسابات الطلاب")}</h2><span className="text-sm text-muted-foreground">{users.length}</span></div>{users.length ? <div className="grid gap-3">{users.map((user) => <div key={user.username} className="flex items-center justify-between rounded-lg border border-border p-4"><div><p className="font-semibold">{user.fullName || user.username}</p><p className="text-xs text-muted-foreground">{user.username} · {user.studentNumber}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{t("Books + Index", "الكتب + الفهرس")}</span></div>)}</div> : <p className="text-sm text-muted-foreground">{t("No student accounts yet.", "لا توجد حسابات طلاب بعد.")}</p>}</section>
     </main>;
   }
 
@@ -8994,7 +9123,7 @@ function PasswordSettings() {
         {t("Security & Credentials", "الأمان وبيانات الدخول")}
       </div>
       <h2 className="mt-1 text-xl font-bold text-foreground">
-        {t("Change username and password", "تغي��ر اسم المستخدم وكلمة المرور")}
+        {t("Change username and password", "تغيير اسم المستخدم وكلمة المرور")}
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
         {t(
