@@ -23,20 +23,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface UserNavDropdownProps {
+  role?: "admin" | "library-admin" | "student";
   t: (en: string, ar: string) => string;
   language: "en" | "ar";
   theme: "light" | "dark";
   profilePicture?: string | null;
+  displayName?: string;
+  username?: string;
   onLanguageChange: (lang: "en" | "ar") => void;
   onThemeChange: () => void;
   onNavigate: (path: string) => void;
 }
 
 export function UserNavDropdown({
+  role = "admin",
   t,
   language,
   theme,
   profilePicture,
+  displayName,
+  username,
   onLanguageChange,
   onThemeChange,
   onNavigate,
@@ -73,17 +79,17 @@ export function UserNavDropdown({
           {profilePicture ? (
             <img
               src={profilePicture}
-              alt={t("Admin", "المسؤول")}
+              alt={displayName ?? t("Student", "طالب")}
               className="h-8 w-8 rounded-full object-cover shadow-sm"
             />
           ) : (
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#14BAC6]/15 text-[11px] font-bold text-[#14BAC6] shadow-sm">
-              LA
+              {(displayName ?? (role === "student" ? "Student" : "Library Admin")).split(" ").map((part) => part[0]).slice(0, 2).join("")}
             </div>
           )}
           <div className="hidden text-start sm:block">
             <span className="block text-xs font-semibold text-foreground">
-              {t("Library Admin", "أمين المكتبة")}
+              {role === "student" ? t("Student", "طالب") : t("Library Admin", "أمين المكتبة")}
             </span>
           </div>
           <ChevronDown
@@ -105,7 +111,7 @@ export function UserNavDropdown({
             {profilePicture ? (
               <img
                 src={profilePicture}
-                alt={t("Admin", "المسؤول")}
+                alt={displayName ?? t("Student", "طالب")}
                 className="h-10 w-10 shrink-0 rounded-full object-cover"
               />
             ) : (
@@ -115,15 +121,15 @@ export function UserNavDropdown({
             )}
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold text-foreground">
-                {t("Library Admin", "أمين المكتبة")}
+                {displayName ?? (role === "student" ? t("Student", "طالب") : t("Library Admin", "أمين المكتبة"))}
               </div>
               <div className="truncate text-[11px] text-muted-foreground">
-                admin@albassamschool.edu.sa
+                {username ?? "admin@albassamschool.edu.sa"}
               </div>
-              <div className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-[#14BAC6]">
+              {role !== "student" && <div className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-[#14BAC6]">
                 <Shield size={11} />
                 <span>{t("System Administrator", "مسؤول النظام")}</span>
-              </div>
+              </div>}
             </div>
           </div>
         </DropdownMenuLabel>
@@ -131,6 +137,7 @@ export function UserNavDropdown({
         <DropdownMenuSeparator />
 
         {/* Quick Navigation Items */}
+        {role !== "student" && <>
         <DropdownMenuItem
           onClick={() => onNavigate("/library/analytics")}
           className="cursor-pointer gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
@@ -166,6 +173,15 @@ export function UserNavDropdown({
           <Settings2 size={15} className="text-muted-foreground" />
           <span>{t("System Settings", "إعدادات النظام")}</span>
         </DropdownMenuItem>
+
+        </>}
+        {role === "student" && <>
+          <DropdownMenuItem onClick={() => onNavigate("/profile")} className="cursor-pointer gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-muted" data-testid="menu-item-profile">
+            <User size={15} className="text-muted-foreground" />
+            <span>{t("My student profile", "ملفي كطالب")}</span>
+          </DropdownMenuItem>
+          <DropdownMenuLabel className="px-3 py-2 text-xs font-normal text-muted-foreground">{t("Read-only access: Books and Index", "صلاحية قراءة فقط: الكتب والفهرس")}</DropdownMenuLabel>
+        </>}
 
         <DropdownMenuSeparator />
 

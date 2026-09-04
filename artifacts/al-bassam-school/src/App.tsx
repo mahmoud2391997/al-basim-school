@@ -33,6 +33,7 @@ import {
   Clock3,
   Database,
   Download,
+  Eye,
   Filter,
   FileSpreadsheet,
   GraduationCap,
@@ -55,6 +56,7 @@ import {
   Trash2,
   Trophy,
   Upload,
+  User,
   UsersRound,
   X,
 } from "lucide-react";
@@ -126,12 +128,18 @@ import {
   seedDemoData,
 } from "./api-client/local";
 import {
+  authenticate,
   changeCredentials,
+  changeStudentCredentials,
   createSession,
   ensureCredentials,
+  getSessionUser,
+  getStudentUsers,
   isAuthenticated,
   logout as webLogout,
+  signUpStudent,
   verifyLogin,
+  type WebRole,
 } from "@/lib/web-auth";
 import {
   getAcademicYears,
@@ -438,6 +446,7 @@ const navItems = [
     icon: Library,
     tabs: [
       { label: "Books", arabic: "الكتب", href: "/library" },
+      { label: "Library Users", arabic: "مستخدمو المكتبة", href: "/library/users" },
       {
         label: "Categories",
         arabic: "تصنيفات الكتب",
@@ -457,6 +466,8 @@ const navItems = [
 
 function Shell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
+  const sessionUser = getSessionUser();
+  const isStudent = sessionUser?.role === "student";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -478,6 +489,8 @@ function Shell({ children }: { children: ReactNode }) {
   const mobileDrawerOpen = mobileOpen && isMobile;
   const displayCollapsed = collapsed && !mobileDrawerOpen;
   const text = t;
+  const studentLibraryRoutes = ["/library", "/library/index"];
+  const canStudentAccess = (path: string) => studentLibraryRoutes.includes(path);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -555,11 +568,16 @@ function Shell({ children }: { children: ReactNode }) {
             </button>
           </div>
           <nav className="space-y-1">
-            {navItems.map((item) => {
+            {navItems.filter((item) => !isStudent || item.href === "/library").map((item) => {
+              const visibleTabs = isStudent
+                ? item.tabs.filter((tab) => tab.href === "/library" || tab.href === "/library/index")
+                : item.tabs;
               const groupHrefs = [
                 item.href,
-                ...item.tabs.map((tab) => tab.href),
+                ...visibleTabs.map((tab) => tab.href),
               ];
+              /* Students receive a deliberately small, read-only library surface. */
+              if (isStudent && item.href !== "/library") return null;
               const active =
                 item.href === "/"
                   ? location === "/"
@@ -592,7 +610,7 @@ function Shell({ children }: { children: ReactNode }) {
                         </span>
                       )}
                     </Link>
-                    {!displayCollapsed && item.tabs.length > 0 && (
+{!displayCollapsed && visibleTabs.length > 0 && (
                       <button
                         onClick={() =>
                           setExpandedGroups((current) => ({
@@ -618,13 +636,13 @@ function Shell({ children }: { children: ReactNode }) {
                       </button>
                     )}
                   </div>
-                  {!displayCollapsed &&
-                    item.tabs.length > 0 &&
+{!displayCollapsed &&
+                    visibleTabs.length > 0 &&
                     (expandedGroups[item.href] ?? active) && (
                       <div
                         className={`mt-1 space-y-0.5 border-sidebar-border pb-1 ${language === "ar" ? "mr-9 border-r-2 border-r-[#14BAC6]/40 pr-3" : "ml-9 border-l-2 border-l-[#14BAC6]/40 pl-3"}`}
                       >
-                        {item.tabs.map((tab) => (
+                        {visibleTabs.map((tab) => (
                           <Link
                             key={tab.href}
                             href={tab.href}
@@ -640,12 +658,12 @@ function Shell({ children }: { children: ReactNode }) {
                   );
                 })}
           </nav>
-          {!displayCollapsed && (
+{!isStudent && !displayCollapsed && (
             <p className="mb-3 mt-9 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-sidebar-foreground/45">
               {text("Administration", "الإدارة")}
             </p>
           )}
-          <Link
+          {!isStudent && <Link
             href="/settings"
             onClick={() => setMobileOpen(false)}
             className={`group flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/settings" ? "nav-active bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/65"}`}
@@ -664,7 +682,7 @@ function Shell({ children }: { children: ReactNode }) {
                 {text("Settings", "الإعدادات")}
               </span>
             )}
-          </Link>
+          </Link>}
           <button
             onClick={async () => {
               if (
@@ -703,28 +721,37 @@ function Shell({ children }: { children: ReactNode }) {
               )}
           </button>
         </div>
-        <div className={`mt-auto ${displayCollapsed ? "px-2 pb-4" : "p-5"}`}>
+<div className={`mt-auto ${displayCollapsed ? "px-2 pb-4" : "p-5"}`}>
+          {isStudent && (
+  <Link
+  href="#/profile"
+  onClick={(event) => {
+  event.preventDefault();
+  setMobileOpen(false);
+  navigate("/profile");
+  }}
+  className={`mb-3 flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/profile" ? "nav-active bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/65"} ${displayCollapsed ? "justify-center px-0" : ""}`}
+  data-testid="link-nav-profile"
+  >
+              <User size={18} />
+              {!displayCollapsed && <span className="truncate text-sm font-medium">{text("My Profile", "ملفي الشخصي")}</span>}
+            </Link>
+          )}
           <div
             className={`${displayCollapsed ? "mt-3 justify-center" : "mt-5"} flex items-center gap-3${displayCollapsed ? "" : " border-t border-sidebar-border pt-5"}`}
           >
             {profilePicture ? (
-              <img src={profilePicture} alt={text("Library Admin", "أمين المكتبة")} className="h-9 w-9 rounded-full object-cover ring-2 ring-sidebar-border" />
+              <img src={profilePicture} alt={sessionUser?.fullName ?? text("Student", "طالب")} className="h-9 w-9 rounded-full object-cover ring-2 ring-sidebar-border" />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064] dark:text-[#263064]!">LA</div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064] dark:text-[#263064]!">{(sessionUser?.fullName ?? (isStudent ? "Student" : "Library Admin")).split(" ").map((part) => part[0]).slice(0, 2).join("")}</div>
             )}
             {!displayCollapsed && (
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-semibold text-sidebar-foreground">
-                  {text(
-                    "Library Admin",
-                    "أمين المكتبة",
-                  )}
+                  {sessionUser?.fullName ?? text(isStudent ? "Student" : "Library Admin", isStudent ? "طالب" : "أمين المكتبة")}
                 </div>
                 <div className="truncate text-[10px] text-sidebar-foreground/45">
-                  {text(
-                    "Library office",
-                    "مكتب المكتبة",
-                  )}
+                  {isStudent ? text("Student profile", "ملف الطالب") : text("Library office", "مكتب المكتبة")}
                 </div>
               </div>
             )}
@@ -764,6 +791,7 @@ function Shell({ children }: { children: ReactNode }) {
               <span className="mx-2 text-border">/</span>
               <span className="truncate">
                 {(() => {
+                  if (location === "/profile") return text("My Profile", "ملفي الشخصي");
                   if (location === "/settings") return text("Settings", "الإعدادات");
                   const parent = navItems.find(
                     (item) =>
@@ -807,6 +835,7 @@ function Shell({ children }: { children: ReactNode }) {
               </button>
             </div>
             {/* Global Search Button Trigger */}
+            {!isStudent && <>
             <button
               onClick={() => setSearchOpen(true)}
               className="hidden items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 md:flex"
@@ -832,6 +861,7 @@ function Shell({ children }: { children: ReactNode }) {
             >
               <Search size={18} />
             </button>
+            </>}
 
             <button
               onClick={toggleTheme}
@@ -843,34 +873,37 @@ function Shell({ children }: { children: ReactNode }) {
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            {/* Notifications Menu Popover */}
-            <NotificationsMenu
+            {/* Notifications are an admin-only workspace feature. */}
+            {!isStudent && <NotificationsMenu
               t={text}
               language={language}
               onNavigate={navigate}
-            />
+            />}
 
             <div className="hidden h-7 w-px bg-border sm:block" />
 
-            {/* Reactive Library Admin Dropdown */}
-            <UserNavDropdown
-              t={text}
+  {/* Role-aware account menu */}
+  <UserNavDropdown
+  role={sessionUser?.role ?? "admin"}
+  t={text}
               language={language}
               theme={theme}
-              profilePicture={profilePicture}
-              onLanguageChange={setLanguage}
+  profilePicture={profilePicture}
+  displayName={sessionUser?.fullName}
+  username={sessionUser?.username}
+  onLanguageChange={setLanguage}
               onThemeChange={toggleTheme}
               onNavigate={navigate}
             />
           </div>
         </header>
-        <GlobalSearchDialog
+        {!isStudent && <GlobalSearchDialog
           open={searchOpen}
           onOpenChange={setSearchOpen}
           t={text}
           language={language}
           onNavigate={navigate}
-        />
+        />}
         <div className="px-5 py-7 sm:px-8 lg:px-10">{children}</div>
       </main>
     </div>
@@ -1306,7 +1339,7 @@ function ErrorState({
       <p className="mt-1 text-sm text-[#B92327]/70">
         {t(
           "The workspace will try again when you ask it to.",
-          "ستحاول مساحة العمل مجددًا بمجرد طلب ذلك.",
+          "ستحاول مساحة العمل مجددًا بم��رد طلب ذلك.",
         )}
       </p>
       <Button
@@ -1698,7 +1731,7 @@ function Dashboard() {
                   onClick={() => setActivityTab("borrows")}
                   className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${activityTab === "borrows" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  {t("Borrows", "الإعارات")}
+                  {t("Borrows", "الإع��رات")}
                 </button>
                 <button
                   onClick={() => setActivityTab("books")}
@@ -2314,10 +2347,70 @@ function StudentDialog({
   );
 }
 
+function RecordDetailsDialog({
+  record,
+  open,
+  onOpenChange,
+  title,
+  arabicTitle,
+}: {
+  record?: Record<string, unknown>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  arabicTitle: string;
+}) {
+  const { t } = useT();
+  const labelMap: Record<string, [string, string]> = {
+    fullName: ["Full name", "الاسم الكامل"],
+    fullNameArabic: ["Arabic name", "الاسم بالعربية"],
+    studentNumber: ["Student number", "رقم الطالب"],
+    employeeCode: ["Employee code", "الرقم الوظيفي"],
+    employeeNumber: ["Employee number", "الرقم الوظيفي"],
+    nationalId: ["National ID", "الهوية الوطنية"],
+    grade: ["Grade", "الصف"],
+    className: ["Class", "الفصل"],
+    guardianName: ["Guardian", "ولي الأمر"],
+    guardianPhone: ["Guardian phone", "هاتف ولي الأمر"],
+    enrollmentDate: ["Enrollment date", "تاريخ التسجيل"],
+    subject: ["Subject", "المادة"],
+    jobTitle: ["Job title", "المسمى الوظيفي"],
+    phone: ["Phone", "الهاتف"],
+    status: ["Status", "الحالة"],
+    title: ["Title", "العنوان"],
+    author: ["Author", "المؤلف"],
+    category: ["Category", "التصنيف"],
+    language: ["Language", "اللغة"],
+    isbn: ["ISBN", "الرقم الدولي"],
+    shelf: ["Shelf", "الرف"],
+    copies: ["Copies", "النسخ"],
+    availableCopies: ["Available copies", "النسخ المتاحة"],
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[88dvh] max-w-2xl overflow-y-auto border-border bg-[#FCFBF0] p-0">
+        <DialogHeader className="border-b border-border bg-card px-6 py-5 text-start">
+          <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Eye /></div>
+          <DialogTitle className="text-2xl text-foreground">{title}</DialogTitle>
+          <DialogDescription>{arabicTitle} · {t("Complete record details", "كامل تفاصيل السجل")}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 px-6 py-6 sm:grid-cols-2">
+          {record && Object.entries(record).filter(([key]) => key !== "id").map(([key, value]) => {
+            const labels = labelMap[key] ?? [key.replace(/([A-Z])/g, " $1"), key];
+            const display = value === null || value === undefined || value === "" ? "—" : String(value);
+            return <div key={key} className="rounded-xl border border-border/70 bg-background/60 px-4 py-3 text-start"><div className="flex items-baseline justify-between gap-3"><span className="text-xs font-semibold text-muted-foreground">{t(labels[0], labels[1])}</span><span className="text-[10px] text-muted-foreground/70">{t(labels[1], labels[0])}</span></div><p className="mt-1 break-words text-sm font-medium text-foreground" dir="auto">{display}</p></div>;
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function StudentRow({
   student,
   onEdit,
   onDelete,
+  onView,
   selected,
   onSelect,
   focused,
@@ -2325,6 +2418,7 @@ function StudentRow({
   student: Student;
   onEdit: (student: Student) => void;
   onDelete: (student: Student) => void;
+  onView: (student: Student) => void;
   selected: boolean;
   onSelect: (checked: boolean) => void;
   focused: boolean;
@@ -2341,8 +2435,17 @@ function StudentRow({
       className={`group grid min-w-[1180px] grid-cols-[minmax(280px,2fr)_minmax(120px,.85fr)_minmax(150px,1.1fr)_minmax(120px,1fr)_minmax(170px,1.25fr)_minmax(140px,1fr)_minmax(110px,.8fr)_88px] items-center gap-4 border-b border-border/70 px-5 py-4 transition-colors hover:bg-secondary/40 ${focused ? "bg-primary/25 ring-4 ring-inset ring-primary/80 shadow-[0_0_0_4px_hsl(var(--primary)/.28)]" : ""}`}
       data-testid={`row-student-${student.id}`}
       data-focused={focused ? "true" : undefined}
+      onClick={(event) => {
+        if (event.target instanceof HTMLElement && event.target.closest("button, [role=checkbox]")) return;
+        onView(student);
+      }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") onView(student);
+      }}
     >
-      <div className="flex items-center gap-3 text-start">
+      <div className="flex items-center gap-3 text-start" onClick={(event) => event.stopPropagation()}>
         <Checkbox
           checked={selected}
           onCheckedChange={onSelect}
@@ -2402,7 +2505,15 @@ function StudentRow({
       >
         {statusLabel}
       </span>
-      <div className="flex justify-center items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
+      <div className="flex justify-center items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100" onClick={(event) => event.stopPropagation()}>
+        <button
+          onClick={() => onView(student)}
+          className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+          data-testid={`button-view-student-${student.id}`}
+          aria-label={`View ${student.fullName}`}
+        >
+          <Eye size={14} />
+        </button>
         <button
           onClick={() => onEdit(student)}
           className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
@@ -2432,6 +2543,7 @@ function StudentsPage() {
   const focusTimerRef = useRef<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Student | undefined>();
+  const [viewingStudent, setViewingStudent] = useState<Student>();
   const [toast, setToast] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -2759,7 +2871,7 @@ function StudentsPage() {
               onSort={toggleSort}
               align="center"
             >
-              {t("National ID", "الهوية الوطنية")}
+              {t("National ID", "الهوية الو��نية")}
             </SortHeader>
             <SortHeader
               columnKey="class"
@@ -2803,9 +2915,10 @@ function StudentsPage() {
             <StudentRow
               key={student.id}
               student={student}
-              onEdit={edit}
-              onDelete={remove}
-              selected={selectedIds.has(student.id)}
+  onEdit={edit}
+  onDelete={remove}
+  onView={setViewingStudent}
+  selected={selectedIds.has(student.id)}
               focused={focusedStudentId === student.id}
               onSelect={(checked) => toggleStudentSelection(student.id, checked)}
             />
@@ -2825,6 +2938,13 @@ function StudentsPage() {
         onOpenChange={setDialogOpen}
         editing={editing}
         onSaved={setToast}
+      />
+      <RecordDetailsDialog
+        record={viewingStudent as unknown as Record<string, unknown>}
+        open={Boolean(viewingStudent)}
+        onOpenChange={(open) => !open && setViewingStudent(undefined)}
+        title={viewingStudent?.fullName ?? t("Student", "الطالب")}
+        arabicTitle={viewingStudent?.fullNameArabic ?? "الطالب"}
       />
       <ImportDialog
         open={importOpen}
@@ -2869,7 +2989,7 @@ const teacherSections: {
     titleAr: "البيانات الشخصية",
     fields: [
       { key: "name", label: "Name", arabic: "الاسم", required: true },
-      { key: "surname", label: "Surname", arabic: "اللقب", required: true },
+      { key: "surname", label: "Surname", arabic: "ا��لقب", required: true },
       {
         key: "englishName",
         label: "English name",
@@ -2881,7 +3001,7 @@ const teacherSections: {
         arabic: "الهوية الوطنية",
         placeholder: "10xxxxxxxxxx",
       },
-      { key: "nationality", label: "Nationality", arabic: "الجنسية" },
+      { key: "nationality", label: "Nationality", arabic: "ا��جنسية" },
       {
         key: "gender",
         label: "Gender",
@@ -3338,7 +3458,7 @@ function TeacherRow({
       >
         {statusLabel}
       </span>
-      <div className="flex justify-center items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
+      <div className="flex justify-center items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100" onClick={(event) => event.stopPropagation()}>
         <button
           onClick={() => onEdit(teacher)}
           className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
@@ -3460,7 +3580,7 @@ function EmployeeDialog({
                 <DialogTitle className="mt-1 text-2xl text-foreground">
                   {t(
                     isEditing ? "Update employee" : "Add an employee",
-                    isEditing ? "تحديث بيانات موظف" : "إضافة موظف",
+                    isEditing ? "تحديث بيان��ت موظف" : "إضافة موظف",
                   )}
                 </DialogTitle>
                 <DialogDescription className="mt-1">
@@ -3621,7 +3741,7 @@ function EmployeeRow({
       >
         {statusLabel}
       </span>
-      <div className="flex justify-center items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
+      <div className="flex justify-center items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100" onClick={(event) => event.stopPropagation()}>
         <button
           onClick={() => onEdit(employee)}
           className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
@@ -4146,7 +4266,7 @@ function TeachersPage() {
       Promise.all(ids.map((id) => new Promise<void>((resolve) => deletion.mutate({ id }, { onSettled: () => resolve() })))).then(() => {
         setSelectedIds(new Set());
         queryClient.invalidateQueries({ queryKey: getGetTeachersQueryKey() });
-        setToast(t(`${ids.length} teacher records deleted`, `تم حذف ${ids.length} من سجلات المعلمين`));
+        setToast(t(`${ids.length} teacher records deleted`, `تم حذف ${ids.length} من سجلات المعلم��ن`));
       });
     });
   };
@@ -4767,7 +4887,7 @@ function BookDialog({
                         <AlertTriangle size={15} />
                         {t(
                           `Total copies cannot be below the ${minTotalCopies} copies currently on loan.`,
-                          `لا يمكن أن يقل إجمالي النسخ عن ${minTotalCopies} نسخة معارة حالياً.`,
+                          `لا يمكن أن يقل إجمالي النسخ عن ${minTotalCopies} نسخة معارة حا��ياً.`,
                         )}
                       </p>
                     )}
@@ -5014,7 +5134,9 @@ function BorrowDialog({
 }
 
 function LibraryPage() {
+  const isStudent = getSessionUser()?.role === "student";
   const [search, setSearch] = useState("");
+  const [viewingBook, setViewingBook] = useState<Book>();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Book | undefined>();
   const [borrowing, setBorrowing] = useState<Book>();
@@ -5276,7 +5398,8 @@ function LibraryPage() {
           "فهرس حيّ للقصص والمراجع والاكتشافات على كل رف.",
         )}
         action={
-          <div className="flex flex-wrap items-center gap-2">
+<div className="flex flex-wrap items-center gap-2">
+            {!isStudent && <>
             <ExportMenu entityType="books" data={books} t={t} />
             <Button
               variant="outline"
@@ -5303,6 +5426,7 @@ function LibraryPage() {
             >
               <Plus size={17} /> {t("Add book", "إضافة كتاب")}
             </Button>
+            </>}
           </div>
         }
       />
@@ -5444,7 +5568,7 @@ function LibraryPage() {
               className="h-9 shrink-0 bg-primary px-3 text-xs hover:bg-primary/85"
               data-testid="button-scan-add-new"
             >
-              <Plus size={14} /> {t("Catalogue it now", "أضفه للفهرس الآن")}
+              <Plus size={14} /> {t("Catalogue it now", "أضفه للفهرس ال��ن")}
             </Button>
             <button
               onClick={() => setScanned(undefined)}
@@ -5635,8 +5759,10 @@ function LibraryPage() {
               book={book}
               onEdit={edit}
               onDelete={remove}
-              onConditionChange={handleConditionChange}
-              selected={selectedIds.has(book.id)}
+  onConditionChange={handleConditionChange}
+  readOnly={isStudent}
+  onView={setViewingBook}
+  selected={selectedIds.has(book.id)}
               onSelect={(checked) => toggleBookSelection(book.id, checked)}
             />
           ))}
@@ -5664,8 +5790,14 @@ function LibraryPage() {
           editing ? borrows.filter((b) => b.bookId === editing.id).length : 0
         }
       />
+      <Dialog open={Boolean(viewingBook)} onOpenChange={(open) => !open && setViewingBook(undefined)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{viewingBook?.title}</DialogTitle><DialogDescription>{t("Book details", "تفاصيل الكتاب")}</DialogDescription></DialogHeader>
+          {viewingBook && <div className="grid gap-3 text-sm"><div><span className="font-semibold">{t("Author", "المؤلف")}: </span>{viewingBook.author || "—"}</div><div><span className="font-semibold">{t("Category", "التصنيف")}: </span>{viewingBook.category || "—"}</div><div><span className="font-semibold">{t("Language", "اللغة")}: </span>{viewingBook.language || "—"}</div><div><span className="font-semibold">{t("ISBN", "الرقم الدولي")}: </span>{viewingBook.isbn || "—"}</div><div><span className="font-semibold">{t("Shelf", "الرف")}: </span>{viewingBook.shelf || "—"}</div><div><span className="font-semibold">{t("Copies", "النسخ")}: </span>{viewingBook.availableCopies ?? viewingBook.copies}/{viewingBook.copies}</div><div><span className="font-semibold">{t("Status", "الحالة")}: </span>{viewingBook.status || "available"}</div></div>}
+        </DialogContent>
+      </Dialog>
       {(() => {
-        if (!borrows.length) return null;
+        if (isStudent || !borrows.length) return null;
         return (
           <section className="mt-6 overflow-hidden rounded-xl border border-border bg-card soft-shadow">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
@@ -5783,6 +5915,8 @@ function BookRow({
   onEdit,
   onDelete,
   onConditionChange,
+  readOnly = false,
+  onView,
   selected = false,
   onSelect,
 }: {
@@ -5790,6 +5924,8 @@ function BookRow({
   onEdit: (book: Book) => void;
   onDelete: (book: Book) => void;
   onConditionChange: (book: Book, action: "lost" | "damaged" | "fixed" | "found") => void;
+  readOnly?: boolean;
+  onView?: (book: Book) => void;
   selected?: boolean;
   onSelect?: (checked: boolean) => void;
 }) {
@@ -5802,8 +5938,14 @@ function BookRow({
     <div
       className="group grid min-w-[920px] grid-cols-[2fr_1.1fr_.8fr_1.25fr_.75fr_1.1fr_250px] items-center border-b border-border/70 px-5 py-3 transition-colors hover:bg-secondary/40"
       data-testid={`row-book-${book.id}`}
+      onClick={(event) => {
+        if (event.target instanceof HTMLElement && event.target.closest("button, [role=checkbox], select")) return;
+        onView?.(book);
+      }}
+      role={onView ? "button" : undefined}
+      tabIndex={onView ? 0 : undefined}
     >
-      <div className="flex items-center gap-3 text-start">
+      <div className="flex items-center gap-3 text-start" onClick={(event) => event.stopPropagation()}>
         {onSelect && <Checkbox checked={selected} onCheckedChange={(checked) => onSelect(checked === true)} aria-label={`Select ${book.title}`} data-testid={`checkbox-book-${book.id}`} />}
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#DBB46C]/20 text-[#EC9F42]">
           <BookOpen size={17} strokeWidth={1.7} />
@@ -5858,6 +6000,7 @@ function BookRow({
         {book.isbn || "—"}
       </span>
       <div className="flex flex-col items-end gap-1">
+        {readOnly ? <button onClick={() => onView?.(book)} className="rounded-md p-2 text-primary hover:bg-primary/10" data-testid={`button-view-book-${book.id}`} aria-label={`View ${book.title}`}><Eye size={16} /></button> : <>
         <div className="flex justify-end gap-1">
           <button
             onClick={() => onEdit(book)}
@@ -5910,6 +6053,7 @@ function BookRow({
             {t("Found", "تم العثور عليه")}
           </button>
         </div>
+        </>}
       </div>
     </div>
   );
@@ -6295,7 +6439,7 @@ function BorrowsPage() {
         arabic="الاستعارات"
         description={t(
           "Keep track of books currently away from the shelves.",
-          "تابع الكتب الموجودة حاليًا خارج الرفوف.",
+          "تابع الكتب ا��موجودة حاليًا خارج الرفوف.",
         )}
         action={<Button onClick={() => setBookPickerOpen(true)} className="h-11 rounded-lg bg-primary px-5 text-primary-foreground hover:bg-primary/85" data-testid="button-borrows-borrow"><Plus size={17} /> {t("Borrow a book", "استعارة كتاب")}</Button>}
       />
@@ -6888,7 +7032,7 @@ function BorrowHistoryPage() {
               <p className="text-xs text-muted-foreground">
                 {t(
                   "All students ranked by books borrowed this academic year, highest to lowest.",
-                  "جميع الطلاب مرتبون حسب عدد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
+                  "جميع الطلاب مرتبون ح��ب عدد الكتب المستعارة خلال العام الدراسي، من الأكبر إلى الأقل.",
                 )}
               </p>
             </div>
@@ -7990,9 +8134,10 @@ function IndexPage() {
     },
   ];
   const filters = useTableFilters(filterFields);
+  const isStudent = getSessionUser()?.role === "student";
   const books = useMemo(
-    () => sorted.filter((b) => filters.matches(filters.values, b)),
-    [sorted, filters.values, filterFields],
+    () => sorted.filter((b) => filters.matches(filters.values, b) && (!isStudent || (b.availableCopies ?? b.copies ?? 0) > 0)),
+    [sorted, filters.values, filterFields, isStudent],
   );
   const bookPages = usePagination(books);
   return (
@@ -8174,7 +8319,7 @@ function IndexPage() {
                 {book.isbn || "—"}
               </span>
               <span className="justify-self-center text-center font-mono text-xs font-bold text-foreground">
-                {book.availableCopies ?? book.copies}/{book.copies}
+                {isStudent ? (book.availableCopies ?? book.copies ?? 0) : `${book.availableCopies ?? book.copies}/${book.copies}`}
               </span>
             </div>
           ))}
@@ -8190,6 +8335,32 @@ function IndexPage() {
       )}
     </div>
   );
+}
+
+function StudentProfilePage() {
+  const { t } = useT();
+  const [user, setUser] = useState(() => getSessionUser());
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newUsername, setNewUsername] = useState(user?.username ?? "");
+  const [newPassword, setNewPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const save = async (event: FormEvent) => {
+    event.preventDefault(); setMessage("");
+    if (!user) return;
+    setSaving(true);
+    const result = await changeStudentCredentials(user.username, currentPassword, newUsername, newPassword);
+    setSaving(false);
+    if (!result.ok) { setMessage(result.error ?? t("Unable to save changes", "تعذر حفظ التغييرات")); return; }
+    const updated = { ...user, username: newUsername.trim().toLowerCase() };
+    createSession(updated); setUser(updated); setCurrentPassword(""); setNewPassword("");
+    setMessage(t("Credentials updated successfully.", "تم تحديث بيانات الدخول بنجاح."));
+  };
+  return <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 text-start" dir="auto">
+    <header><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("Student account", "حساب الطالب")}</p><h1 className="mt-2 text-3xl font-bold text-foreground">{user?.fullName ?? t("Student profile", "ملف الطالب")}</h1><p className="mt-1 text-sm text-muted-foreground">{t("View your information and update your login credentials.", "اطّلع على بياناتك وحدّث بيانات الدخول.")}</p></header>
+    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm"><div className="grid gap-4 sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">{t("Student number", "رقم الطالب")}</p><p className="mt-1 font-mono text-sm font-semibold">{user?.studentNumber ?? "—"}</p></div><div><p className="text-xs text-muted-foreground">{t("Role", "الدور")}</p><p className="mt-1 text-sm font-semibold">{t("Student", "طالب")}</p></div></div></section>
+    <form onSubmit={save} className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm"><h2 className="text-lg font-bold">{t("Change credentials", "تغيير بيانات الدخول")}</h2><label className="flex flex-col gap-2 text-sm font-medium">{t("Current password", "كلمة المرور الحالية")}<input required type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="rounded-lg border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30" /></label><label className="flex flex-col gap-2 text-sm font-medium">{t("Username", "اسم المستخدم")}<input required value={newUsername} onChange={(event) => setNewUsername(event.target.value)} className="rounded-lg border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30" /></label><label className="flex flex-col gap-2 text-sm font-medium">{t("New password", "كلمة المرور الجديدة")}<input required minLength={8} type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="rounded-lg border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30" /></label>{message && <p className="text-sm text-primary" role="status">{message}</p>}<Button type="submit" disabled={saving}>{saving ? t("Saving…", "جارٍ الحفظ…") : t("Save credentials", "حفظ بيانات الدخول")}</Button></form>
+  </main>;
 }
 
 function SettingsPage() {
@@ -8517,7 +8688,7 @@ function SettingsPage() {
                 {isDesktop
                   ? t(
                       "Stored on this device so it persists across app restarts.",
-                      "تُحفظ على هذا الجهاز لتستمر بين جلسات التطبيق.",
+                      "تُحفظ على هذا الجهاز لتستمر بين ��لسات التطبيق.",
                     )
                   : t(
                       "This web session keeps the picture for the current session only.",
@@ -8675,8 +8846,22 @@ function SettingsPage() {
   );
 }
 
-function Router() {
-  const [location] = useLocation();
+  function LibraryUsersPage() {
+    const { t } = useT();
+    const users = getStudentUsers();
+    return <main className="mx-auto max-w-6xl p-6" data-testid="page-library-users">
+      <PageHeading eyebrow="Library access" eyebrowAr="صلاحيات المكتبة" title="Library Users" arabic="مستخدمو المكتبة" description="Student accounts with read-only access to Books and Index." descriptionAr="حسابات الطلاب بصلاحية قراءة الكتب والفهرس فقط." />
+      <section className="rounded-xl border border-border bg-card p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">{t("Student accounts", "حسابات الطلاب")}</h2><span className="text-sm text-muted-foreground">{users.length}</span></div>{users.length ? <div className="grid gap-3">{users.map((user) => <div key={user.username} className="flex items-center justify-between rounded-lg border border-border p-4"><div><p className="font-semibold">{user.fullName || user.username}</p><p className="text-xs text-muted-foreground">{user.username} · {user.studentNumber}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{t("Books + Index", "الكتب + الفهرس")}</span></div>)}</div> : <p className="text-sm text-muted-foreground">{t("No student accounts yet.", "لا توجد حسابات ط��اب بعد.")}</p>}</section>
+    </main>;
+  }
+
+  function Router() {
+  const [location, setLocation] = useLocation();
+  const sessionUser = getSessionUser();
+  if (sessionUser?.role === "student" && !["/library", "/library/index", "/profile"].includes(location)) {
+    setLocation("/library");
+    return null;
+  }
   return (
     <ErrorBoundary resetKey={location}>
       <Shell>
@@ -8686,13 +8871,15 @@ function Router() {
           <Route path="/students/distribution" component={DistributionPage} />
           <Route path="/teachers" component={TeachersPage} />
           <Route path="/employees" component={EmployeesPage} />
-          <Route path="/library" component={LibraryPage} />
-          <Route path="/library/categories" component={CategoriesPage} />
+  <Route path="/library" component={LibraryPage} />
+  <Route path="/library/users" component={LibraryUsersPage} />
+  <Route path="/library/categories" component={CategoriesPage} />
           <Route path="/library/borrows" component={BorrowsPage} />
           <Route path="/library/history" component={BorrowHistoryPage} />
           <Route path="/library/index" component={IndexPage} />
           <Route path="/library/analytics" component={AnalyticsPage} />
-          <Route path="/settings" component={SettingsWithPassword} />
+          <Route path="/profile" component={StudentProfilePage} />
+  <Route path="/settings" component={SettingsWithPassword} />
           <Route component={NotFound} />
         </Switch>
       </Shell>
@@ -8807,7 +8994,7 @@ function PasswordSettings() {
         {t("Security & Credentials", "الأمان وبيانات الدخول")}
       </div>
       <h2 className="mt-1 text-xl font-bold text-foreground">
-        {t("Change username and password", "تغيير اسم المستخدم وكلمة المرور")}
+        {t("Change username and password", "تغي��ر اسم المستخدم وكلمة المرور")}
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
         {t(
@@ -8908,6 +9095,9 @@ function AuthGate() {
   const [setupRequired, setSetupRequired] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [studentNumber, setStudentNumber] = useState("");
+  const [signupMode, setSignupMode] = useState(false);
   const [error, setError] = useState("");
 
   const frontendOnly =
@@ -8958,16 +9148,17 @@ function AuthGate() {
     event.preventDefault();
     setError("");
     if (frontendOnly) {
-      const ok = await verifyLogin(username, password);
-      if (!ok) {
-        return setError(
-          t(
-            "Authentication failed. Please check your credentials.",
-            "فشل تسجيل الدخول. يرجى التحقق من اسم المستخدم وكلمة المرور.",
-          ),
-        );
+      if (signupMode) {
+        const result = await signUpStudent(username, password, fullName, studentNumber);
+        if (!result.ok) return setError(result.error || t("Could not create account.", "تعذر إنشاء الحساب."));
+        const user = await authenticate(username, password);
+        if (!user) return setError(t("Account created, but sign in failed.", "تم إنشاء الحساب ولكن تعذر تسجيل الدخول."));
+        createSession(user);
+      } else {
+        const user = await authenticate(username, password);
+        if (!user) return setError(t("Authentication failed. Please check your credentials.", "فشل تسجيل الدخول. يرجى التحقق من اسم المستخدم وكلمة المرور."));
+        createSession(user);
       }
-      createSession();
       setPassword("");
       seedDemoData();
       setReady(true);
@@ -9032,7 +9223,9 @@ function AuthGate() {
           <h1 className="mt-3 text-2xl font-bold text-foreground">
             {setupRequired
               ? t("Create admin account", "إنشاء حساب المدير")
-              : t("Sign in", "تسجيل الدخول")}
+              : signupMode
+                ? t("Student signup", "تسجيل الطالب")
+                : t("Sign in", "تسجيل الدخول")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
             {setupRequired
@@ -9047,6 +9240,18 @@ function AuthGate() {
           </p>
 
           <div className="mt-6 space-y-3.5">
+            {signupMode && !setupRequired && (
+              <>
+                <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
+                  <span>{t("Full name", "الاسم الكامل")}</span>
+                  <input required value={fullName} onChange={(event) => setFullName(event.target.value)} className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-sans outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" data-testid="input-student-full-name" />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
+                  <span>{t("Student number", "الرقم الطلابي")}</span>
+                  <input required value={studentNumber} onChange={(event) => setStudentNumber(event.target.value)} className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-sans outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" data-testid="input-student-number" />
+                </label>
+              </>
+            )}
             <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
               <span>{t("Username", "اسم المستخدم")}</span>
               <input
@@ -9065,7 +9270,7 @@ function AuthGate() {
               <span>{t("Password", "كلمة المرور")}</span>
               <input
                 required
-                minLength={10}
+                minLength={signupMode ? 8 : 10}
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -9083,8 +9288,16 @@ function AuthGate() {
           >
             {setupRequired
               ? t("Create account", "إنشاء الحساب")
-              : t("Sign in", "تسجيل الدخول")}
+              : signupMode
+                ? t("Create student account", "إنشاء حساب الطالب")
+                : t("Sign in", "تسجيل الدخول")}
           </Button>
+
+          {!setupRequired && (
+            <button type="button" onClick={() => { setSignupMode((value) => !value); setError(""); }} className="mt-4 w-full text-xs font-semibold text-primary hover:underline" data-testid="button-toggle-student-signup">
+              {signupMode ? t("Already have an account? Sign in", "لديك حساب؟ تسجيل الدخول") : t("New student? Sign up", "طالب جديد؟ إنشاء حساب")}
+            </button>
+          )}
 
           {error && <p className="mt-3 text-xs font-medium text-destructive">{error}</p>}
         </form>
