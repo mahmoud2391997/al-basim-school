@@ -56,7 +56,6 @@ import {
   Trash2,
   Trophy,
   Upload,
-  User,
   UsersRound,
   X,
 } from "lucide-react";
@@ -130,14 +129,12 @@ import {
 import {
   authenticate,
   changeCredentials,
-  changeStudentCredentials,
   createSession,
   ensureCredentials,
   getSessionUser,
-  getStudentUsers,
+  getSharedStudentCredentials,
   isAuthenticated,
   logout as webLogout,
-  signUpStudent,
   verifyLogin,
   type WebRole,
 } from "@/lib/web-auth";
@@ -722,21 +719,6 @@ function Shell({ children }: { children: ReactNode }) {
           </button>
         </div>
 <div className={`mt-auto ${displayCollapsed ? "px-2 pb-4" : "p-5"}`}>
-          {isStudent && (
-  <Link
-  href="#/profile"
-  onClick={(event) => {
-  event.preventDefault();
-  setMobileOpen(false);
-  navigate("/profile");
-  }}
-  className={`mb-3 flex items-center gap-3 rounded-lg px-3 py-3 transition-all hover:bg-sidebar-accent ${location === "/profile" ? "nav-active bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/65"} ${displayCollapsed ? "justify-center px-0" : ""}`}
-  data-testid="link-nav-profile"
-  >
-              <User size={18} />
-              {!displayCollapsed && <span className="truncate text-sm font-medium">{text("My Profile", "ملفي الشخصي")}</span>}
-            </Link>
-          )}
           <div
             className={`${displayCollapsed ? "mt-3 justify-center" : "mt-5"} flex items-center gap-3${displayCollapsed ? "" : " border-t border-sidebar-border pt-5"}`}
           >
@@ -791,7 +773,6 @@ function Shell({ children }: { children: ReactNode }) {
               <span className="mx-2 text-border">/</span>
               <span className="truncate">
                 {(() => {
-                  if (location === "/profile") return text("My Profile", "ملفي الشخصي");
                   if (location === "/settings") return text("Settings", "الإعدادات");
                   const parent = navItems.find(
                     (item) =>
@@ -8466,32 +8447,6 @@ function IndexPage() {
   );
 }
 
-function StudentProfilePage() {
-  const { t } = useT();
-  const [user, setUser] = useState(() => getSessionUser());
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newUsername, setNewUsername] = useState(user?.username ?? "");
-  const [newPassword, setNewPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [saving, setSaving] = useState(false);
-  const save = async (event: FormEvent) => {
-    event.preventDefault(); setMessage("");
-    if (!user) return;
-    setSaving(true);
-    const result = await changeStudentCredentials(user.username, currentPassword, newUsername, newPassword);
-    setSaving(false);
-    if (!result.ok) { setMessage(result.error ?? t("Unable to save changes", "تعذر حفظ التغييرات")); return; }
-    const updated = { ...user, username: newUsername.trim().toLowerCase() };
-    createSession(updated); setUser(updated); setCurrentPassword(""); setNewPassword("");
-    setMessage(t("Credentials updated successfully.", "تم تحديث بيانات الدخول بنجاح."));
-  };
-  return <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 text-start" dir="auto">
-    <header><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("Student account", "حساب الطالب")}</p><h1 className="mt-2 text-3xl font-bold text-foreground">{user?.fullName ?? t("Student profile", "ملف الطالب")}</h1><p className="mt-1 text-sm text-muted-foreground">{t("View your information and update your login credentials.", "اطّلع على بياناتك وحدّث بيانات الدخول.")}</p></header>
-    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm"><div className="grid gap-4 sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">{t("Student number", "رقم الطالب")}</p><p className="mt-1 font-mono text-sm font-semibold">{user?.studentNumber ?? "—"}</p></div><div><p className="text-xs text-muted-foreground">{t("Role", "الدور")}</p><p className="mt-1 text-sm font-semibold">{t("Student", "طالب")}</p></div></div></section>
-    <form onSubmit={save} className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm"><h2 className="text-lg font-bold">{t("Change credentials", "تغيير بيانات الدخول")}</h2><label className="flex flex-col gap-2 text-sm font-medium">{t("Current password", "كلمة المرور الحالية")}<input required type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="rounded-lg border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30" /></label><label className="flex flex-col gap-2 text-sm font-medium">{t("Username", "اسم المستخدم")}<input required value={newUsername} onChange={(event) => setNewUsername(event.target.value)} className="rounded-lg border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30" /></label><label className="flex flex-col gap-2 text-sm font-medium">{t("New password", "كلمة المرور الجديدة")}<input required minLength={8} type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="rounded-lg border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30" /></label>{message && <p className="text-sm text-primary" role="status">{message}</p>}<Button type="submit" disabled={saving}>{saving ? t("Saving…", "جارٍ الحفظ…") : t("Save credentials", "حفظ بيانات الدخول")}</Button></form>
-  </main>;
-}
-
 function SettingsPage() {
   const { t } = useT();
   const [exporting, setExporting] = useState(false);
@@ -9007,17 +8962,24 @@ function SettingsPage() {
 
   function LibraryUsersPage() {
     const { t } = useT();
-    const users = getStudentUsers();
+    const shared = getSharedStudentCredentials();
     return <main className="mx-auto max-w-6xl p-6" data-testid="page-library-users">
-      <PageHeading eyebrow="Library access" eyebrowAr="صلاحيات المكتبة" title="Library Users" arabic="مستخدمو المكتبة" description="Student accounts with read-only access to Books and Index." descriptionAr="حسابات الطلاب بصلاحية قراءة الكتب والفهرس فقط." />
-      <section className="rounded-xl border border-border bg-card p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">{t("Student accounts", "حسابات الطلاب")}</h2><span className="text-sm text-muted-foreground">{users.length}</span></div>{users.length ? <div className="grid gap-3">{users.map((user) => <div key={user.username} className="flex items-center justify-between rounded-lg border border-border p-4"><div><p className="font-semibold">{user.fullName || user.username}</p><p className="text-xs text-muted-foreground">{user.username} · {user.studentNumber}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{t("Books + Index", "الكتب + الفهرس")}</span></div>)}</div> : <p className="text-sm text-muted-foreground">{t("No student accounts yet.", "لا توجد حسابات طلاب بعد.")}</p>}</section>
+      <PageHeading eyebrow="Library access" eyebrowAr="صلاحيات المكتبة" title="Library Users" arabic="مستخدمو المكتبة" description="A single shared student login gives all students read-only access to Books and Index." descriptionAr="حساب واحد مشترك يمنح جميع الطلاب صلاحية قراءة الكتب والفهرس فقط." />
+      <section className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">{t("Shared student login", "حساب الطلاب المشترك")}</h2><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{t("All students", "جميع الطلاب")}</span></div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-lg border border-border p-4"><p className="text-xs text-muted-foreground">{t("Username", "اسم المستخدم")}</p><p className="mt-1 font-mono text-sm font-semibold" data-testid="text-shared-username">{shared.username}</p></div>
+          <div className="rounded-lg border border-border p-4"><p className="text-xs text-muted-foreground">{t("Password", "كلمة المرور")}</p><p className="mt-1 font-mono text-sm font-semibold" data-testid="text-shared-password">{shared.password}</p></div>
+        </div>
+        <p className="mt-4 text-sm text-muted-foreground">{t("Share these credentials with all students. They can use them to sign in and browse Books and Index.", "شارك بيانات الدخول هذه مع جميع الطلاب. يمكنهم استخدامها لتسجيل الدخول وتصفح الكتب والفهرس.")}</p>
+      </section>
     </main>;
   }
 
   function Router() {
   const [location, setLocation] = useLocation();
   const sessionUser = getSessionUser();
-  if (sessionUser?.role === "student" && !["/library", "/library/index", "/profile"].includes(location)) {
+  if (sessionUser?.role === "student" && !["/library", "/library/index"].includes(location)) {
     setLocation("/library");
     return null;
   }
@@ -9037,7 +8999,6 @@ function SettingsPage() {
           <Route path="/library/history" component={BorrowHistoryPage} />
           <Route path="/library/index" component={IndexPage} />
           <Route path="/library/analytics" component={AnalyticsPage} />
-          <Route path="/profile" component={StudentProfilePage} />
   <Route path="/settings" component={SettingsWithPassword} />
           <Route component={NotFound} />
         </Switch>
@@ -9254,9 +9215,6 @@ function AuthGate() {
   const [setupRequired, setSetupRequired] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [studentNumber, setStudentNumber] = useState("");
-  const [signupMode, setSignupMode] = useState(false);
   const [error, setError] = useState("");
 
   const frontendOnly =
@@ -9307,17 +9265,9 @@ function AuthGate() {
     event.preventDefault();
     setError("");
     if (frontendOnly) {
-      if (signupMode) {
-        const result = await signUpStudent(username, password, fullName, studentNumber);
-        if (!result.ok) return setError(result.error || t("Could not create account.", "تعذر إنشاء الحساب."));
-        const user = await authenticate(username, password);
-        if (!user) return setError(t("Account created, but sign in failed.", "تم إنشاء الحساب ولكن تعذر تسجيل الدخول."));
-        createSession(user);
-      } else {
-        const user = await authenticate(username, password);
-        if (!user) return setError(t("Authentication failed. Please check your credentials.", "فشل تسجيل الدخول. يرجى التحقق من اسم المستخدم وكلمة المرور."));
-        createSession(user);
-      }
+      const user = await authenticate(username, password);
+      if (!user) return setError(t("Authentication failed. Please check your credentials.", "فشل تسجيل الدخول. يرجى التحقق من اسم المستخدم وكلمة المرور."));
+      createSession(user);
       setPassword("");
       seedDemoData();
       setReady(true);
@@ -9382,9 +9332,7 @@ function AuthGate() {
           <h1 className="mt-3 text-2xl font-bold text-foreground">
             {setupRequired
               ? t("Create admin account", "إنشاء حساب المدير")
-              : signupMode
-                ? t("Student signup", "تسجيل الطالب")
-                : t("Sign in", "تسجيل الدخول")}
+              : t("Sign in", "تسجيل الدخول")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
             {setupRequired
@@ -9399,18 +9347,6 @@ function AuthGate() {
           </p>
 
           <div className="mt-6 space-y-3.5">
-            {signupMode && !setupRequired && (
-              <>
-                <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
-                  <span>{t("Full name", "الاسم الكامل")}</span>
-                  <input required value={fullName} onChange={(event) => setFullName(event.target.value)} className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-sans outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" data-testid="input-student-full-name" />
-                </label>
-                <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
-                  <span>{t("Student number", "الرقم الطلابي")}</span>
-                  <input required value={studentNumber} onChange={(event) => setStudentNumber(event.target.value)} className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-sans outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" data-testid="input-student-number" />
-                </label>
-              </>
-            )}
             <label className="grid gap-1 text-xs font-semibold text-foreground text-start">
               <span>{t("Username", "اسم المستخدم")}</span>
               <input
@@ -9429,7 +9365,7 @@ function AuthGate() {
               <span>{t("Password", "كلمة المرور")}</span>
               <input
                 required
-                minLength={signupMode ? 8 : 10}
+                minLength={10}
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -9447,16 +9383,8 @@ function AuthGate() {
           >
             {setupRequired
               ? t("Create account", "إنشاء الحساب")
-              : signupMode
-                ? t("Create student account", "إنشاء حساب الطالب")
-                : t("Sign in", "تسجيل الدخول")}
+              : t("Sign in", "تسجيل الدخول")}
           </Button>
-
-          {!setupRequired && (
-            <button type="button" onClick={() => { setSignupMode((value) => !value); setError(""); }} className="mt-4 w-full text-xs font-semibold text-primary hover:underline" data-testid="button-toggle-student-signup">
-              {signupMode ? t("Already have an account? Sign in", "لديك حساب؟ تسجيل الدخول") : t("New student? Sign up", "طالب جديد؟ إنشاء حساب")}
-            </button>
-          )}
 
           {error && <p className="mt-3 text-xs font-medium text-destructive">{error}</p>}
         </form>

@@ -4,6 +4,9 @@ const SESSION_KEY = "al-bassam:web-session";
 const SESSION_USER_KEY = "al-bassam:web-session-user";
 const SEED_FLAG_KEY = "al-bassam:web-seeded";
 
+export const SHARED_STUDENT_USERNAME = "student";
+export const SHARED_STUDENT_PASSWORD = "0123456789";
+
 const PBKDF2_ITERATIONS = 100000;
 export type WebRole = "library-admin" | "student";
 export type WebUser = { username: string; role: WebRole; fullName?: string; studentNumber?: string; active?: boolean };
@@ -25,10 +28,15 @@ function readStudents(): StoredCredential[] { try { return JSON.parse(window.loc
 async function matches(password: string, credential: StoredCredential) { const [salt, expected] = credential.hash.split(":"); if (!salt || !expected) return false; const hash = await deriveHash(password, salt); if (hash.length !== expected.length) return false; let diff = 0; for (let i = 0; i < hash.length; i++) diff |= hash.charCodeAt(i) ^ expected.charCodeAt(i); return diff === 0; }
 
 export async function ensureCredentials(): Promise<boolean> {
-  if (readAdmin()) return true;
-  const salt = randomHex(16); const hash = await deriveHash("0123456789", salt);
-  window.localStorage.setItem(CRED_KEY, JSON.stringify({ username: "schooladmin", role: "library-admin", hash: `${salt}:${hash}`, active: true }));
-  return false;
+  let configured = true;
+  if (!readAdmin()) {
+    const salt = randomHex(16); const hash = await deriveHash("0123456789", salt);
+    window.localStorage.setItem(CRED_KEY, JSON.stringify({ username: "schooladmin", role: "library-admin", hash: `${salt}:${hash}`, active: true }));
+    configured = false;
+  }
+  const studentSalt = randomHex(16); const studentHash = await deriveHash(SHARED_STUDENT_PASSWORD, studentSalt);
+  window.localStorage.setItem(STUDENT_CRED_KEY, JSON.stringify([{ username: SHARED_STUDENT_USERNAME, role: "student", active: true, hash: `${studentSalt}:${studentHash}` }]));
+  return configured;
 }
 export async function verifyLogin(username: string, password: string): Promise<boolean> { return Boolean(await authenticate(username, password)); }
 export async function authenticate(username: string, password: string): Promise<WebUser | null> {
@@ -36,35 +44,13 @@ export async function authenticate(username: string, password: string): Promise<
   const credential = [readAdmin(), ...readStudents()].find((item) => item?.username.toLowerCase() === normalized && item.active !== false);
   return credential && await matches(password, credential) ? { username: credential.username, role: credential.role, fullName: credential.fullName, studentNumber: credential.studentNumber, active: credential.active } : null;
 }
-export async function signUpStudent(username: string, password: string, fullName: string, studentNumber: string): Promise<{ ok: boolean; error?: string }> {
-  const normalized = username.trim().toLowerCase();
-  if (!normalized || !fullName.trim() || !studentNumber.trim()) return { ok: false, error: "Name, username, and student number are required" };
-  if (password.length < 8) return { ok: false, error: "Password must be at least 8 characters" };
-  if (readAdmin()?.username.toLowerCase() === normalized || readStudents().some((item) => item.username.toLowerCase() === normalized)) return { ok: false, error: "That username is already registered" };
-  const salt = randomHex(16); const hash = await deriveHash(password, salt);
-  window.localStorage.setItem(STUDENT_CRED_KEY, JSON.stringify([...readStudents(), { username: normalized, role: "student", fullName: fullName.trim(), studentNumber: studentNumber.trim(), active: true, hash: `${salt}:${hash}` }]));
-  return { ok: true };
+export function getSharedStudentCredentials(): WebUser & { password: string } {
+  return { username: SHARED_STUDENT_USERNAME, password: SHARED_STUDENT_PASSWORD, role: "student" };
 }
-export function getStudentUsers(): WebUser[] { return readStudents().map(({ hash: _hash, ...user }) => user); }
 export function isAuthenticated(): boolean { return Boolean(window.localStorage.getItem(SESSION_KEY)); }
 export function getSessionUser(): WebUser | null { try { const raw = window.localStorage.getItem(SESSION_USER_KEY); return raw ? JSON.parse(raw) as WebUser : null; } catch { return null; } }
 export function createSession(user: WebUser = { username: "schooladmin", role: "library-admin" }): void { window.localStorage.setItem(SESSION_KEY, randomHex(24)); window.localStorage.setItem(SESSION_USER_KEY, JSON.stringify(user)); }
 export function logout(): void { window.localStorage.removeItem(SESSION_KEY); window.localStorage.removeItem(SESSION_USER_KEY); }
-export async function changeStudentCredentials(currentUsername: string, currentPassword: string, newUsername: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
-  const students = readStudents();
-  const index = students.findIndex((item) => item.username.toLowerCase() === currentUsername.trim().toLowerCase());
-  if (index < 0) return { ok: false, error: "Student account not found" };
-  if (!(await matches(currentPassword, students[index]))) return { ok: false, error: "Current password is incorrect" };
-  const username = newUsername.trim().toLowerCase();
-  if (!username) return { ok: false, error: "New username is required" };
-  if (newPassword.length < 8) return { ok: false, error: "New password must be at least 8 characters" };
-  if ([readAdmin(), ...students].some((item, itemIndex) => item && itemIndex !== index + 1 && item.username.toLowerCase() === username)) return { ok: false, error: "That username is already registered" };
-  const salt = randomHex(16); const hash = await deriveHash(newPassword, salt);
-  students[index] = { ...students[index], username, hash: `${salt}:${hash}` };
-  window.localStorage.setItem(STUDENT_CRED_KEY, JSON.stringify(students));
-  return { ok: true };
-}
-
 export async function changeCredentials(currentPassword: string, newUsername: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
   const credentials = readAdmin(); if (!credentials) return { ok: false, error: "No admin account configured" }; if (!(await matches(currentPassword, credentials))) return { ok: false, error: "Current password is incorrect" };
   const username = newUsername.trim(); if (!username) return { ok: false, error: "New username is required" }; if (newPassword.length < 10) return { ok: false, error: "New password must be at least 10 characters" };
@@ -72,5 +58,4 @@ export async function changeCredentials(currentPassword: string, newUsername: st
 }
 export function isSeeded(): boolean { return window.localStorage.getItem(SEED_FLAG_KEY) === "true"; }
 export function markSeeded(): void { window.localStorage.setItem(SEED_FLAG_KEY, "true"); }
-export { STUDENT_CRED_KEY };
 

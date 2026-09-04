@@ -130,9 +130,9 @@ select, option, [role="listbox"], [role="menu"], [role="option"], [role="menuite
 
   --popover-border: 230 22% 86%;
 
-  --primary: 184 82% 43%;
+  --primary: 230 45% 27%;
 
-  --primary-foreground: 230 45% 15%;
+  --primary-foreground: 0 0% 100%;
 
   --secondary: 184 40% 92%;
 
@@ -151,7 +151,7 @@ select, option, [role="listbox"], [role="menu"], [role="option"], [role="menuite
   --destructive-foreground: 55 67% 97%;
 
   --input: 230 18% 78%;
-  --ring: 184 82% 43%;
+  --ring: 230 45% 27%;
   --chart-1: 194 73% 43%;
   --chart-2: 177 57% 40%;
   --chart-3: 42 78% 66%;
@@ -279,9 +279,9 @@ select, option, [role="listbox"], [role="menu"], [role="option"], [role="menuite
 
   --popover-border: 222 30% 25%;
 
-  --primary: 194 73% 52%;
+  --primary: 230 45% 27%;
 
-  --primary-foreground: 222 50% 8%;
+  --primary-foreground: 0 0% 100%;
 
   --secondary: 222 30% 22%;
 
@@ -301,7 +301,7 @@ select, option, [role="listbox"], [role="menu"], [role="option"], [role="menuite
 
   /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
   --input: 222 30% 31%;
-  --ring: 194 73% 52%;
+  --ring: 230 45% 35%;
   --chart-1: 194 73% 52%;
   --chart-2: 177 57% 48%;
   --chart-3: 42 78% 66%;
