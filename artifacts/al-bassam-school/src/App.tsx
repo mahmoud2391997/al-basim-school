@@ -172,6 +172,7 @@ import {
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConfirmProvider, useConfirm } from "@/hooks/use-confirm";
+import { useIsMobile } from "@/hooks/use-mobile";
 import NotFound from "@/pages/not-found";
 import {
   addSubjectToCatalog,
@@ -472,7 +473,10 @@ function Shell({ children }: { children: ReactNode }) {
   const { lang: language, setLanguage, t } = useT();
   const { theme, toggleTheme } = useTheme();
   const { profilePicture } = useProfilePicture();
+  const isMobile = useIsMobile();
   const sidebarWidth = collapsed ? 64 : 208;
+  const mobileDrawerOpen = mobileOpen && isMobile;
+  const displayCollapsed = collapsed && !mobileDrawerOpen;
   const text = t;
 
   useEffect(() => {
@@ -497,7 +501,7 @@ function Shell({ children }: { children: ReactNode }) {
         data-testid="sidebar-navigation"
       >
         <div className="flex h-[88px] shrink-0 items-center border-b border-sidebar-border px-1">
-          <LogoMark compact={collapsed} />
+          <LogoMark compact={displayCollapsed} />
           <button
             onClick={() => setMobileOpen(false)}
             className={`${language === "ar" ? "mr-auto" : "ml-auto"} rounded-md p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:hidden`}
@@ -510,11 +514,11 @@ function Shell({ children }: { children: ReactNode }) {
             <X size={18} />
           </button>
         </div>
-        <div className={`min-h-0 flex-1 overflow-y-auto pt-7 ${collapsed ? "px-2" : "px-4"}`}>
+        <div className={`min-h-0 flex-1 overflow-y-auto pt-7 ${displayCollapsed ? "px-2" : "px-4"}`}>
           <div
-            className={`mb-3 flex items-center ${collapsed ? "justify-center px-0" : "justify-between gap-1 px-1"}`}
+            className={`mb-3 flex items-center ${displayCollapsed ? "justify-center px-0" : "justify-between gap-1 px-1"}`}
           >
-            {!collapsed && (
+            {!displayCollapsed && (
               <p className="truncate px-2 text-[10px] font-bold uppercase tracking-[.2em] text-sidebar-foreground/45">
                 {text(
                   "Workspace",
@@ -524,7 +528,7 @@ function Shell({ children }: { children: ReactNode }) {
             )}
             <button
               onClick={toggleCollapsed}
-              className="rounded-md bg-white p-1.5 text-foreground shadow-[0_0_0_1px_rgba(219,180,108,.45)] transition-colors hover:bg-white/85 dark:bg-sidebar-accent dark:text-sidebar-accent-foreground dark:hover:bg-sidebar-accent/80"
+              className="hidden rounded-md bg-white p-1.5 text-foreground shadow-[0_0_0_1px_rgba(219,180,108,.45)] transition-colors hover:bg-white/85 dark:bg-sidebar-accent dark:text-sidebar-accent-foreground dark:hover:bg-sidebar-accent/80 md:block"
               data-testid="button-collapse-sidebar"
               aria-label={text(
                 collapsed ? "Open sidebar" : "Collapse sidebar",
@@ -582,13 +586,13 @@ function Shell({ children }: { children: ReactNode }) {
                             : "group-hover:text-[#14BAC6]"
                         }
                       />
-                      {!collapsed && (
+                      {!displayCollapsed && (
                         <span className="flex-1 truncate text-sm font-medium">
                           {text(item.label, item.arabic)}
                         </span>
                       )}
                     </Link>
-                    {!collapsed && item.tabs.length > 0 && (
+                    {!displayCollapsed && item.tabs.length > 0 && (
                       <button
                         onClick={() =>
                           setExpandedGroups((current) => ({
@@ -614,7 +618,7 @@ function Shell({ children }: { children: ReactNode }) {
                       </button>
                     )}
                   </div>
-                  {!collapsed &&
+                  {!displayCollapsed &&
                     item.tabs.length > 0 &&
                     (expandedGroups[item.href] ?? active) && (
                       <div
@@ -636,7 +640,7 @@ function Shell({ children }: { children: ReactNode }) {
                   );
                 })}
           </nav>
-          {!collapsed && (
+          {!displayCollapsed && (
             <p className="mb-3 mt-9 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-sidebar-foreground/45">
               {text("Administration", "الإدارة")}
             </p>
@@ -655,7 +659,7 @@ function Shell({ children }: { children: ReactNode }) {
                   : "group-hover:text-[#14BAC6]"
               }
             />
-            {!collapsed && (
+            {!displayCollapsed && (
               <span className="flex-1 truncate text-sm font-medium">
                 {text("Settings", "الإعدادات")}
               </span>
@@ -680,7 +684,7 @@ function Shell({ children }: { children: ReactNode }) {
               authToken = "";
               window.location.reload();
             }}
-            className={`mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-[#B92327] transition-colors hover:bg-[#B92327]/10 ${collapsed ? "justify-center" : ""}`}
+            className={`mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-[#B92327] transition-colors hover:bg-[#B92327]/10 ${displayCollapsed ? "justify-center" : ""}`}
             data-testid="button-logout"
             aria-label={text(
               "Log out",
@@ -692,23 +696,23 @@ function Shell({ children }: { children: ReactNode }) {
             )}
           >
             <LogOut size={17} />
-            {!collapsed &&
+            {!displayCollapsed &&
               text(
                 "Log out",
                 "\u062A\u0633\u062C\u064A\u0644\u0020\u0627\u0644\u062E\u0631\u0648\u062C",
               )}
           </button>
         </div>
-        <div className={`mt-auto ${collapsed ? "px-2 pb-4" : "p-5"}`}>
+        <div className={`mt-auto ${displayCollapsed ? "px-2 pb-4" : "p-5"}`}>
           <div
-            className={`${collapsed ? "mt-3 justify-center" : "mt-5"} flex items-center gap-3${collapsed ? "" : " border-t border-sidebar-border pt-5"}`}
+            className={`${displayCollapsed ? "mt-3 justify-center" : "mt-5"} flex items-center gap-3${displayCollapsed ? "" : " border-t border-sidebar-border pt-5"}`}
           >
             {profilePicture ? (
               <img src={profilePicture} alt={text("Library Admin", "أمين المكتبة")} className="h-9 w-9 rounded-full object-cover ring-2 ring-sidebar-border" />
             ) : (
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBB46C] text-xs font-bold text-[#263064] dark:text-[#263064]!">LA</div>
             )}
-            {!collapsed && (
+            {!displayCollapsed && (
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-semibold text-sidebar-foreground">
                   {text(
@@ -744,7 +748,7 @@ function Shell({ children }: { children: ReactNode }) {
         dir={language === "ar" ? "rtl" : "ltr"}
       >
         <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-border/70 bg-background/90 px-5 backdrop-blur-xl sm:px-8 lg:px-10">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
               className="rounded-lg p-2 text-muted-foreground hover:bg-muted md:hidden"
@@ -753,12 +757,12 @@ function Shell({ children }: { children: ReactNode }) {
             >
               <Menu size={21} />
             </button>
-            <div className="hidden text-xs text-muted-foreground sm:block">
+            <div className="hidden min-w-0 max-w-[260px] truncate text-xs text-muted-foreground lg:block">
               <span className="font-medium text-foreground">
                 {text("Al-Bassam School", "مدارس البسام الأهلية")}
               </span>
               <span className="mx-2 text-border">/</span>
-              <span>
+              <span className="truncate">
                 {(() => {
                   if (location === "/settings") return text("Settings", "الإعدادات");
                   const parent = navItems.find(
@@ -777,11 +781,11 @@ function Shell({ children }: { children: ReactNode }) {
                 })()}
               </span>
             </div>
-            <span className="ar hidden text-[11px] text-muted-foreground sm:block">
+            <span className="ar hidden text-[11px] text-muted-foreground lg:block">
               البسام
             </span>
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-4">
 
             <div
               className="flex items-center rounded-lg border border-border bg-card p-0.5 text-[10px] font-semibold"
@@ -1550,7 +1554,7 @@ function Dashboard() {
           "نظرة حية متكاملة على حركة الإعارة المكتبية، سجلات الطلاب، ومؤشرات العمليات المدرسية اليوم.",
         )}
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={() => setLocation("/library/borrows")}
               className="h-11 rounded-lg bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90 gap-1.5"
@@ -1821,7 +1825,7 @@ function Dashboard() {
                   onClick={() => setLocation("/library/borrows")}
                   className="cursor-pointer rounded-lg border border-[#B92327]/30 bg-[#B92327]/5 p-3 text-xs transition-colors hover:bg-[#B92327]/10 flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <AlertTriangle size={15} className="text-[#B92327] shrink-0" />
                     <span className="font-semibold text-[#B92327]">
                       {overdueBorrows.length} {t("Overdue loan(s) require return", "إعارة متأخرة تتطلب المتابعة")}
@@ -1836,7 +1840,7 @@ function Dashboard() {
                   onClick={() => setLocation("/library/borrows")}
                   className="cursor-pointer rounded-lg border border-[#DBB46C]/40 bg-[#DBB46C]/10 p-3 text-xs transition-colors hover:bg-[#DBB46C]/20 flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Clock3 size={15} className="text-[#EC9F42] shrink-0" />
                     <span className="font-semibold text-foreground">
                       {dueSoonBorrows.length} {t("Loan(s) due within 3 days", "إعارة تستحق خلال 3 أيام")}
@@ -1873,7 +1877,7 @@ function Dashboard() {
               <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 {t("Quick Actions", "إجراءات مباشرة")}
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   onClick={() => setLocation("/library/borrows")}
                   className="flex flex-col items-start gap-1 rounded-lg border border-border bg-primary/5 p-3 text-start transition-colors hover:border-primary/50 hover:bg-primary/10"
@@ -2597,7 +2601,7 @@ function StudentsPage() {
         description="A clear, current directory for every learner in the Al-Bassam community."
         descriptionAr="دليل واضح ومحدّث لكل متعلم في مجتمع البسام التعليمية."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ExportMenu entityType="students" data={students} t={t} />
             <Button
               variant="outline"
@@ -2653,7 +2657,7 @@ function StudentsPage() {
       {selectedIds.size > 0 && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="toolbar-student-bulk-actions">
           <span className="text-sm font-semibold text-foreground">{t(`${selectedIds.size} students selected`, `تم تحديد ${selectedIds.size} طالب`)}</span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحديد")}</Button>
             <Button variant="destructive" size="sm" onClick={removeSelectedStudents} disabled={deletion.isPending}>
               <Trash2 data-icon="inline-start" /> {t("Delete selected", "حذف المحدد")}
@@ -3116,7 +3120,7 @@ function TeacherDialog({
               <span
                 className={`text-xs text-muted-foreground ${t("ar", "en") === "ar" ? "" : "ar"}`}
               >
-                {t("������عديل السجل", "Edit record")}
+                {t("تعديل السجل", "Edit record")}
               </span>
             </div>
           </DialogHeader>
@@ -3772,7 +3776,7 @@ function EmployeesPage() {
     <div className="rise-in" dir={t("ltr", "rtl")}>
       <PageHeading
         eyebrow="Employees · 02"
-        eyebrowAr="��ل��وظفون · ٠٢"
+        eyebrowAr="الموظفون · ٠٢"
         title="Employees"
         arabic="الموظفون"
         description={t(
@@ -3780,7 +3784,7 @@ function EmployeesPage() {
           "الفريق خلف اليوم الدراسي — الإدارة والتشغيل والدعم.",
         )}
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ExportMenu entityType="employees" data={employees} t={t} />
             <Button
               variant="outline"
@@ -3847,7 +3851,7 @@ function EmployeesPage() {
       {selectedIds.size > 0 && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="toolbar-employee-bulk-actions">
           <span className="text-sm font-semibold text-foreground">{t(`${selectedIds.size} employees selected`, `تم تحديد ${selectedIds.size} موظف`)}</span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحديد")}</Button>
             <Button variant="destructive" size="sm" onClick={removeSelectedEmployees} disabled={deletion.isPending}>
               <Trash2 data-icon="inline-start" /> {t("Delete selected", "حذف المحدد")}
@@ -4158,7 +4162,7 @@ function TeachersPage() {
           "دليل هيئة التدريس، مرتبة لسياق سريع قبل المحادثة القادمة.",
         )}
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ExportMenu entityType="teachers" data={teachers} t={t} />
             <Button
               variant="outline"
@@ -4225,7 +4229,7 @@ function TeachersPage() {
       {selectedIds.size > 0 && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="toolbar-teacher-bulk-actions">
           <span className="text-sm font-semibold text-foreground">{t(`${selectedIds.size} teachers selected`, `تم تحديد ${selectedIds.size} معلم`)}</span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحديد")}</Button>
             <Button variant="destructive" size="sm" onClick={removeSelectedTeachers} disabled={deletion.isPending}>
               <Trash2 data-icon="inline-start" /> {t("Delete selected", "حذف المحدد")}
@@ -4942,7 +4946,7 @@ function BorrowDialog({
                 data-testid="input-borrower"
               >
                 <option value="">
-                  {borrowerOptions.length ? t("Choose a borrower…", "ا��تر مستعيرًا…") : t("No borrowers registered yet", "لا يوجد مستعيرون مسجلون بعد")}
+                  {borrowerOptions.length ? t("Choose a borrower…", "اختر مستعيرًا…") : t("No borrowers registered yet", "لا يوجد مستعيرون مسجلون بعد")}
                 </option>
                 {borrowerOptions.map((borrower) => (
                   <option value={borrower.id} key={borrower.id}>
@@ -5272,7 +5276,7 @@ function LibraryPage() {
           "فهرس حيّ للقصص والمراجع والاكتشافات على كل رف.",
         )}
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ExportMenu entityType="books" data={books} t={t} />
             <Button
               variant="outline"
@@ -5311,7 +5315,7 @@ function LibraryPage() {
           <Barcode size={22} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-[.14em] text-[#EC9F42]">
               {t("Scanner station", "محطة الماسح الضوئي")}
             </span>
@@ -5494,7 +5498,7 @@ function LibraryPage() {
       {selectedIds.size > 0 && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="toolbar-book-bulk-actions">
           <span className="text-sm font-semibold text-foreground">{t(`${selectedIds.size} books selected`, `تم تحديد ${selectedIds.size} كتاب`)}</span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحديد")}</Button>
             <Button variant="destructive" size="sm" onClick={removeSelectedBooks} disabled={deletion.isPending}>
               <Trash2 data-icon="inline-start" /> {t("Delete selected", "حذف المحدد")}
@@ -6304,7 +6308,7 @@ function BorrowsPage() {
           <Barcode size={22} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-[.14em] text-[#EC9F42]">
               {t("Scanner station", "محطة الماسح الضوئي")}
             </span>
@@ -6340,7 +6344,7 @@ function BorrowsPage() {
           </span>
         )}
       </form>
-      <div className="mb-5 flex items-center justify-between gap-3">
+      <div className="mb-5 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -7023,7 +7027,7 @@ function ReportSection({ title, titleAr, columns, data, exportType, t }: {
           <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{title}</div>
           <h3 className="mt-1 text-lg font-bold text-foreground">{titleAr}</h3>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExcel} className="gap-1.5 text-xs">
             <FileSpreadsheet size={14} />
             {t("Export Excel", "تصدير Excel")}
@@ -7270,7 +7274,7 @@ function AnalyticsPage() {
             />
           </div>
 
-          <div className="mt-6 flex gap-2 border-b border-border pb-px">
+          <div className="mt-6 flex flex-wrap gap-2 border-b border-border pb-px">
             {(["overview", "borrowing", "books"] as const).map((tab) => (
               <button
                 key={tab}
@@ -7406,7 +7410,7 @@ function AnalyticsPage() {
                       {t("Most borrowed students", "أكثر الطلاب استعارة")}
                     </h2>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => exportTableToPDF(mostBorrowedStudents.map(({ student, count }, index) => ({ rank: index + 1, student: student.fullName, class: `${student.grade}${student.className ? ` · ${student.className}` : ""}`, borrows: count })), [{ key: "rank", header: "Rank", headerAr: "الترتيب" }, { key: "student", header: "Student", headerAr: "الطالب" }, { key: "class", header: "Class", headerAr: "الفصل" }, { key: "borrows", header: "Books borrowed", headerAr: "الكتب المستعارة" }], "Student ranking", "ترتيب الطلاب")}>
                       <Download size={14} /> {t("Export PDF", "تصدير PDF")}
                     </Button>
@@ -7509,7 +7513,7 @@ function AnalyticsPage() {
                       {t("Borrows per grade", "الإعارات حسب الصف")}
                     </h3>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => exportTableToPDF(borrowsByGrade.map((g) => ({ grade: g.name, borrows: g.count, percentage: totalBorrowCount ? `${Math.round((g.count / totalBorrowCount) * 1000) / 10}%` : "0%" })), [{ key: "grade", header: "Grade", headerAr: "الصف" }, { key: "borrows", header: "Borrows", headerAr: "الإعارات" }, { key: "percentage", header: "Percentage", headerAr: "النسبة" }], "Borrows per grade", "الإعارات حسب الصف")}>
                       <Download size={14} /> {t("Export PDF", "تصدير PDF")}
                     </Button>
@@ -7526,7 +7530,7 @@ function AnalyticsPage() {
                       <ResponsiveContainer width="100%" height="100%">
                         <RechartsBarChart data={borrowsByGrade}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                          <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                           <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                           <RechartsTooltip />
                           <Bar dataKey="count" fill="#263064" radius={[4, 4, 0, 0]} />
@@ -7775,7 +7779,7 @@ function CategoriesPage() {
             data-testid="input-search-categories"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={groupSort}
             onChange={(event) =>
@@ -8418,7 +8422,7 @@ function SettingsPage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-foreground">
                           {year.label}
                         </span>
@@ -8430,10 +8434,6 @@ function SettingsPage() {
                             )}
                           </span>
                         )}
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {formatDate(year.startDate)} —{" "}
-                        {formatDate(year.endDate)}
                       </div>
                     </div>
                     <ChevronDown
@@ -9012,12 +9012,12 @@ function AuthGate() {
       >
         <form
           onSubmit={submit}
-          className="w-full max-w-md rounded-xl border border-border bg-card p-7 soft-shadow"
+          className="w-full max-w-md rounded-xl border border-[#263064] bg-card p-7 soft-shadow"
         >
           {/* Header & Language Toggle */}
           <div className="flex items-center justify-between">
-            <div className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-              {t("Al-Bassam School", "مارس البسام الأهلية")}
+            <div className="text-[10px] font-bold uppercase tracking-[.2em] text-[#263064]">
+              {t("Al-Bassam School", "مدارس البسام الأهلية")}
             </div>
             <button
               type="button"
@@ -9056,7 +9056,7 @@ function AuthGate() {
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 placeholder={t("Username", "اسم المستخدم")}
-                className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-sans outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                className="h-11 w-full rounded-lg border border-[#263064]/30 bg-card px-3 text-sm font-sans outline-none focus:border-[#263064] focus:ring-2 focus:ring-[#263064]/15"
                 data-testid="input-login-username"
               />
             </label>
@@ -9070,7 +9070,7 @@ function AuthGate() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder={t("Password (10+ characters)", "كلمة المرور (10 خانات فأكثر)")}
-                className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm font-sans outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                className="h-11 w-full rounded-lg border border-[#263064]/30 bg-card px-3 text-sm font-sans outline-none focus:border-[#263064] focus:ring-2 focus:ring-[#263064]/15"
                 data-testid="input-login-password"
               />
             </label>
@@ -9078,7 +9078,7 @@ function AuthGate() {
 
           <Button
             type="submit"
-            className="mt-5 w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11 text-sm font-bold"
+            className="mt-5 w-full border border-[#263064] bg-[#263064] text-white hover:bg-[#1c224a] hover:border-[#1c224a] h-11 text-sm font-bold rounded-lg transition-colors"
             data-testid="button-login-submit"
           >
             {setupRequired

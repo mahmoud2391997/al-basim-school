@@ -10,12 +10,12 @@ select, option, [role="listbox"], [role="menu"], [role="option"], [role="menuite
 ::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
 [dir="rtl"] .bilingual-name, .bilingual-name { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; align-items: baseline; }
 [dir="rtl"] .bilingual-name [dir="ltr"] { unicode-bidi: isolate; }
+/* Wide data tables & grids keep their fixed min-width and rely on their
+   .overflow-x-auto wrapper to scroll horizontally on narrow screens. Collapsing
+   only the body rows (while headers kept a fixed min-width) produced a broken
+   misaligned hybrid, so we leave tables to their own scroll containers. */
 @media (max-width: 900px) {
-  main { min-width: 0; }
-  table { width: 100%; table-layout: fixed; }
-  th, td { max-width: 15rem; overflow-wrap: anywhere; }
-  .table-scroll, [data-table-scroll], main .overflow-x-auto { overflow-x: visible !important; }
-  main [data-testid^="row-"] { min-width: 0 !important; grid-template-columns: minmax(0, 1fr) !important; justify-items: stretch; }
+  main { min-width: 0; overflow-x: clip; }
 }
 
 @theme inline {
@@ -379,14 +379,9 @@ select, option, [role="listbox"], [role="menu"], [role="option"], [role="menuite
 }
 
 @media (max-width: 640px) {
-  main { padding-inline: 0.75rem; }
   th, td { padding-inline: 0.625rem; }
   [data-testid^="button-import-"], [data-testid^="button-template-"] { min-height: 2.75rem; }
   [role="dialog"] { width: calc(100vw - 1rem); max-height: calc(100vh - 1rem); }
-}
-
-@media (min-width: 641px) and (max-width: 1024px) {
-  main { padding-inline: 1rem; }
 }
 
 @keyframes rise-in {

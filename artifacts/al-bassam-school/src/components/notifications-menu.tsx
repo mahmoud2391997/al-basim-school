@@ -255,9 +255,9 @@ export function NotificationsMenu({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        align={language === "ar" ? "start" : "end"}
+        align="end"
         sideOffset={8}
-        className="w-80 sm:w-96 p-0 shadow-xl border-border bg-card overflow-hidden"
+        className="w-80 max-w-[calc(100vw-1rem)] sm:w-96 p-0 shadow-xl border-border bg-card overflow-hidden"
         dir={language === "ar" ? "rtl" : "ltr"}
       >
         {/* Header */}

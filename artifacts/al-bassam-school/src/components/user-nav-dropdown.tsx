@@ -95,9 +95,9 @@ export function UserNavDropdown({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align={language === "ar" ? "start" : "end"}
+        align="end"
         sideOffset={8}
-        className="w-64 p-1.5 shadow-xl border-border bg-card"
+        className="w-64 max-w-[calc(100vw-1rem)] p-1.5 shadow-xl border-border bg-card"
       >
         {/* Profile Info */}
         <DropdownMenuLabel className="p-2 font-normal">

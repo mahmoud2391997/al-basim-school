@@ -234,7 +234,7 @@ export function GlobalSearchDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl p-0 gap-0 overflow-hidden border-border bg-card shadow-2xl"
+        className="max-w-2xl p-0 gap-0 overflow-y-auto overflow-x-hidden border-border bg-card shadow-2xl"
         dir={language === "ar" ? "rtl" : "ltr"}
       >
         <DialogTitle className="sr-only">{t("Search Workspace", "البحث في مساحة العمل")}</DialogTitle>
