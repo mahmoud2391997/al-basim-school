@@ -1,15 +1,67 @@
 import { FormEvent, useRef, useState } from "react";
 import { Bot, Send, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getActiveSchoolSystem } from "@/api-client/local";
+import { getStudents, getTeachers, getBooks, getBorrows } from "@/api-client/local";
 
 type Message = { role: "user" | "assistant"; content: string };
+
+const INTENT_REGEXES: Array<{ test: RegExp; answer: () => Promise<string> }> = [
+  {
+    test: /\b(available|برا|متاح|مكتبة|كتب|books?)\b/i,
+    answer: async () => {
+      const books = await getBooks();
+      const available = books.reduce((sum, book) => sum + Number(book.availableCopies ?? 0), 0);
+      return `There are ${available} available copies across ${books.length} titles.`;
+    },
+  },
+  {
+    test: /\b(active loans|borrowed|loans?|استعارات?|معار)\b/i,
+    answer: async () => {
+      const borrows = await getBorrows();
+      const active = borrows.filter((b) => !b.returnedAt);
+      return `There are ${active.length} active loan${active.length === 1 ? "" : "s"} right now.`;
+    },
+  },
+  {
+    test: /\b(student|students|طالب|طلاب|تلاميذ)\b/i,
+    answer: async () => {
+      const students = await getStudents();
+      const active = students.filter((s) => s.status === "active");
+      return `There are ${students.length} registered students (${active.length} active).`;
+    },
+  },
+  {
+    test: /\b(teacher|teachers|معلم|معلمين|مدرسين)\b/i,
+    answer: async () => {
+      const teachers = await getTeachers();
+      const active = teachers.filter((t) => t.status === "active");
+      return `There are ${teachers.length} teachers (${active.length} active).`;
+    },
+  },
+];
+
+async function generateLocalAnswer(question: string): Promise<string> {
+  const normalized = question.trim().toLowerCase();
+  if (!normalized) return "Ask me about students, teachers, books, or loans.";
+  for (const intent of INTENT_REGEXES) {
+    if (intent.test.test(question)) return intent.answer();
+  }
+  const [students, teachers, books, borrows] = await Promise.all([
+    getStudents().then((items) => items.length),
+    getTeachers().then((items) => items.length),
+    getBooks().then((items) => items.length),
+    getBorrows().then((items) => items.filter((b) => !b.returnedAt).length),
+  ]);
+  return `I can answer questions from your ${getActiveSchoolSystem()} system data. Currently: ${students} students, ${teachers} teachers, ${books} book titles, and ${borrows} active loans. Try asking "How many books are available?" or "How many active loans are there?"`;
+}
 
 export function SchoolAssistant() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hello. I can answer questions about students, teachers, books, loans, and school metrics using the live system data." },
+    { role: "assistant", content: "Hello. I can answer questions about students, teachers, books, and loans using the local system data." },
   ]);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -22,13 +74,8 @@ export function SchoolAssistant() {
     setInput("");
     setLoading(true);
     try {
-      const configuredApiUrl = window.alBassamDesktop?.apiBaseUrl || import.meta.env.VITE_API_URL;
-      const apiBase = configuredApiUrl?.replace(/\/+$/, "");
-      const chatUrl = apiBase ? `${apiBase}/api/chat` : "/api/chat";
-      const response = await fetch(chatUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, history: messages.slice(-8) }) });
-      const result = await response.json() as { answer?: string; error?: string };
-      if (!response.ok) throw new Error(result.error || "The assistant is unavailable.");
-      setMessages([...next, { role: "assistant", content: result.answer || "I could not find an answer." }]);
+      const answer = await generateLocalAnswer(message);
+      setMessages([...next, { role: "assistant", content: answer }]);
     } catch (error) {
       setMessages([...next, { role: "assistant", content: error instanceof Error ? error.message : "The assistant is unavailable right now." }]);
     } finally {
@@ -44,7 +91,7 @@ export function SchoolAssistant() {
       {open && (
         <section className="mb-3 flex h-[min(620px,calc(100dvh-7rem))] w-[min(390px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" aria-label="School AI assistant">
           <header className="flex items-center justify-between bg-primary px-4 py-3 text-primary-foreground">
-            <div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-foreground/15"><Sparkles size={18} /></span><div><p className="font-bold">School Assistant</p><p className="text-xs opacity-75">Live system knowledge</p></div></div>
+            <div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-foreground/15"><Sparkles size={18} /></span><div><p className="font-bold">School Assistant</p><p className="text-xs opacity-75">Local system knowledge</p></div></div>
             <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setOpen(false)} aria-label="Close assistant"><X size={18} /></Button>
           </header>
           <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
