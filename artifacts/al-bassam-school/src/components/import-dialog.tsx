@@ -126,7 +126,7 @@ export function ImportDialog({
               <p className="mt-3 text-[10px] text-muted-foreground">
                 {t(
                   "Don't have a file? Use the Template button above to download one first.",
-                  "ليس لديك ملف؟ استخدم زر القالب أعلاه لتحميل واحد أولاً.",
+                  "ليس لديك ملف. استخدم زر القالب أعلاه لتحميل واحد أولاً.",
                 )}
               </p>
             </div>

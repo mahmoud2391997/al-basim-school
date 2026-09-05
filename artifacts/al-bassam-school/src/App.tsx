@@ -850,7 +850,7 @@ function Shell({ children }: { children: ReactNode }) {
               className="rounded-lg p-2 text-foreground transition-colors hover:bg-muted"
               data-testid="button-theme-toggle"
               aria-label={text("Toggle dark mode", "تبديل الوضع الليلي")}
-              title={text("Toggle dark mode", "تبديل ال��ضع الليلي")}
+              title={text("Toggle dark mode", "تبديل الوضع الليلي")}
             >
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -887,7 +887,7 @@ function Shell({ children }: { children: ReactNode }) {
           onNavigate={navigate}
         />}
   <div className="px-5 py-7 sm:px-8 lg:px-10">{children}</div>
-  <SchoolAssistant />
+  <SchoolAssistant language={language} canUse={sessionUser != null && sessionUser.role !== "student"} />
 </main>
     </div>
   );
@@ -2640,8 +2640,8 @@ function StudentsPage() {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
     confirm({
-      title: t(`Delete ${ids.length} selected students?`, `حذف ${ids.length} من الطلاب المحددين؟`),
-      description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا ي��كن التراجع عن هذا الإجراء."),
+      title: t(`Delete ${ids.length} selected students?`, `حذف ${ids.length} من الطلاب المحددين`),
+      description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
       confirmLabel: t("Delete selected", "حذف المحدد"),
       destructive: true,
     }, () => {
@@ -2665,11 +2665,11 @@ function StudentsPage() {
       {
         title: t(
           `Delete ${student.fullName}?`,
-          `حذف ${student.fullName}؟`,
+          `حذف ${student.fullName}`,
         ),
         description: t(
           `Delete ${student.fullName} from the directory? This cannot be undone.`,
-          `حذف ${student.fullName} من الدليل؟ لا يمكن التراجع عن هذا الإجراء.`,
+          `حذف ${student.fullName} من الدليل لا يمكن التراجع عن هذا الإجراء.`,
         ),
         confirmLabel: t("Delete", "حذف"),
         destructive: true,
@@ -2753,7 +2753,7 @@ function StudentsPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="toolbar-student-bulk-actions">
           <span className="text-sm font-semibold text-foreground">{t(`${selectedIds.size} students selected`, `تم تحديد ${selectedIds.size} طالب`)}</span>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحد��د")}</Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحديد")}</Button>
             <Button variant="destructive" size="sm" onClick={removeSelectedStudents} disabled={deletion.isPending}>
               <Trash2 data-icon="inline-start" /> {t("Delete selected", "حذف المحدد")}
             </Button>
@@ -3367,7 +3367,7 @@ function TeacherDialog({
               {pending
                 ? t("Saving…", "جارٍ الحفظ…")
                 : isEditing
-                  ? t("Save changes", "حفظ ��لتغييرات")
+                  ? t("Save changes", "حفظ التغييرات")
                   : t("Add teacher", "إضافة المعلم")}
             </Button>
           </DialogFooter>
@@ -3821,10 +3821,10 @@ function EmployeesPage() {
   const remove = (employee: Employee) => {
     confirm(
       {
-        title: t(`Delete ${employee.fullName}?`, `حذف ${employee.fullName}؟`),
+        title: t(`Delete ${employee.fullName}?`, `حذف ${employee.fullName}`),
         description: t(
           `Delete ${employee.fullName} from the staff directory? This cannot be undone.`,
-          `حذف ${employee.fullName} من سجل الموظفين؟ لا يمكن التراجع عن هذا الإجراء.`,
+          `حذف ${employee.fullName} من سجل الموظفين لا يمكن التراجع عن هذا الإجراء.`,
         ),
         confirmLabel: t("Delete", "حذف"),
         destructive: true,
@@ -3863,7 +3863,7 @@ function EmployeesPage() {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
     confirm({
-      title: t(`Delete ${ids.length} selected employees?`, `حذف ${ids.length} من الموظفين المحددين؟`),
+      title: t(`Delete ${ids.length} selected employees?`, `حذف ${ids.length} من الموظفين المحددين`),
       description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
       confirmLabel: t("Delete selected", "حذف المحدد"),
       destructive: true,
@@ -3925,7 +3925,7 @@ function EmployeesPage() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t(
               "Search by name or job title",
-              "ابحث بالاسم أو المسم�� الوظيفي",
+              "ابحث بالاسم أو المسمى الوظيفي",
             )}
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
             data-testid="input-search-employees"
@@ -4173,7 +4173,7 @@ function TeachersPage() {
     {
       key: "status",
       label: "Status",
-      arabic: "ال��الة",
+      arabic: "الحالة",
       options: ["active", "inactive"],
       accessor: (te) => te.status,
     },
@@ -4201,10 +4201,10 @@ function TeachersPage() {
   const remove = (teacher: Teacher) => {
     confirm(
       {
-        title: t(`Delete ${teacher.fullName}?`, `حذف ${teacher.fullName}؟`),
+        title: t(`Delete ${teacher.fullName}?`, `حذف ${teacher.fullName}`),
         description: t(
           `Delete ${teacher.fullName} from the faculty directory? This cannot be undone.`,
-          `حذف ${teacher.fullName} من دليل هيئة التدريس؟ لا يمكن التراجع عن هذا الإجراء.`,
+          `حذف ${teacher.fullName} من دليل هيئة التدريس لا يمكن التراجع عن هذا الإجراء.`,
         ),
         confirmLabel: t("Delete", "حذف"),
         destructive: true,
@@ -4241,7 +4241,7 @@ function TeachersPage() {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
     confirm({
-      title: t(`Delete ${ids.length} selected teachers?`, `حذف ${ids.length} من المعلمين المحددين؟`),
+      title: t(`Delete ${ids.length} selected teachers?`, `حذف ${ids.length} من المعلمين المحددين`),
       description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
       confirmLabel: t("Delete selected", "حذف امحدد"),
       destructive: true,
@@ -5377,10 +5377,10 @@ function LibraryPage() {
   const remove = (book: Book) => {
     confirm(
       {
-        title: t(`Delete “${book.title}”?`, `حذف "${book.title}"؟`),
+        title: t(`Delete “${book.title}”?`, `حذف "${book.title}"`),
         description: t(
           `Delete “${book.title}” from the catalogue? This cannot be undone.`,
-          `حذف "${book.title}" من الفهرس؟ لا يمكن التراجع عن هذا الإجراء.`,
+          `حذف "${book.title}" من الفهرس لا يمكن التراجع عن هذا الإجراء.`,
         ),
         confirmLabel: t("Delete", "حذف"),
         destructive: true,
@@ -5419,8 +5419,8 @@ function LibraryPage() {
         description: t(
           `Are you sure you want to ${action === "fixed" || action === "found" ? "restore" : "mark"} “${book.title}”?`,
           action === "fixed" || action === "found"
-            ? `هل تريد استعاة "${book.title}"؟`
-            : `هل تريد وضع علامة على "${book.title}"؟`,
+            ? `هل تريد استعاة "${book.title}"`
+            : `هل تريد وضع علامة على "${book.title}"`,
         ),
         confirmLabel: t("Yes", "نعم"),
         destructive: action === "lost" || action === "damaged",
@@ -5485,7 +5485,7 @@ function LibraryPage() {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
     confirm({
-      title: t(`Delete ${ids.length} selected books?`, `حذف ${ids.length} من الكتب المحددة؟`),
+      title: t(`Delete ${ids.length} selected books?`, `حذف ${ids.length} من الكتب المحددة`),
       description: t("These records will be permanently deleted. This cannot be undone.", "سيتم حذف هذه السجلات نهائيًا. لا يمكن التراجع عن هذا الإجراء."),
       confirmLabel: t("Delete selected", "حذف المحدد"),
       destructive: true,
@@ -5542,7 +5542,7 @@ function LibraryPage() {
           </div>
         }
       />
-      <form
+      {!isStudent && <form
         onSubmit={handleScan}
         className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center dark:border-[#DBB46C]/40 dark:from-card dark:to-[#DBB46C]/10"
         data-testid="form-scan-barcode"
@@ -5587,7 +5587,7 @@ function LibraryPage() {
             {t("Looking up…", "جارٍ البحث…")}
           </span>
         )}
-      </form>
+      </form>}
       {scanned &&
         (scanned.status === "found" ? (
           <div
@@ -5905,7 +5905,7 @@ function LibraryPage() {
       <Dialog open={Boolean(viewingBook)} onOpenChange={(open) => !open && setViewingBook(undefined)}>
         <DialogContent>
           <DialogHeader><DialogTitle>{viewingBook?.title}</DialogTitle><DialogDescription>{t("Book details", "تفاصيل الكتاب")}</DialogDescription></DialogHeader>
-          {viewingBook && <div className="grid gap-3 text-sm"><div><span className="font-semibold">{t("Author", "المؤلف")}: </span>{viewingBook.author || "—"}</div><div><span className="font-semibold">{t("Category", "التصنيف")}: </span>{viewingBook.category || "—"}</div><div><span className="font-semibold">{t("Language", "اللغة")}: </span>{viewingBook.language || "—"}</div><div><span className="font-semibold">{t("ISBN", "الرقم الدولي")}: </span>{viewingBook.isbn || "—"}</div><div><span className="font-semibold">{t("Shelf", "الرف")}: </span>{viewingBook.shelf || "—"}</div><div><span className="font-semibold">{t("Copies", "النسخ")}: </span>{viewingBook.availableCopies ?? viewingBook.copies}/{viewingBook.copies}</div><div><span className="font-semibold">{t("Status", "الحالة")}: </span>{viewingBook.status || "available"}</div></div>}
+          {viewingBook && <div className="grid gap-3 text-sm"><div><span className="font-semibold">{t("Author", "المؤلف")}: </span>{viewingBook.author || "—"}</div><div><span className="font-semibold">{t("Category", "التصنيف")}: </span>{viewingBook.category || "—"}</div><div><span className="font-semibold">{t("Language", "اللغة")}: </span>{viewingBook.language || "—"}</div><div><span className="font-semibold">{t("ISBN", "الرقم الدولي")}: </span>{viewingBook.isbn || "—"}</div><div><span className="font-semibold">{t("Shelf", "الرف")}: </span>{viewingBook.shelf || "—"}</div><div><span className="font-semibold">{t("Copies", "النسخ")}: </span>{isStudent ? (viewingBook.availableCopies ?? viewingBook.copies) : `${viewingBook.availableCopies ?? viewingBook.copies}/${viewingBook.copies}`}</div><div><span className="font-semibold">{t("Status", "الحالة")}: </span>{viewingBook.status || "available"}</div></div>}
         </DialogContent>
       </Dialog>
       {(() => {
@@ -6099,7 +6099,7 @@ function BookRow({
           />
         </div>
         <span className="text-center font-mono text-xs font-bold text-foreground">
-          {available}/{book.copies}
+          {readOnly ? available : `${available}/${book.copies}`}
         </span>
       </div>
       <span className="justify-self-center text-center text-xs text-muted-foreground">
@@ -6373,16 +6373,16 @@ function ReturnBorrowControls({
       condition === "good"
         ? t(
             `Return “${borrow.bookTitle}” to the shelf?`,
-            `هل تريد إعادة "${borrow.bookTitle}" إلى الرف؟`,
+            `هل تريد إعادة "${borrow.bookTitle}" إلى الرف`,
           )
         : condition === "damaged"
           ? t(
               `Confirm that “${borrow.bookTitle}” was returned damaged?`,
-              `هل تؤكد أن "${borrow.bookTitle}" أُعيد ككتاب تالف؟`,
+              `هل تؤكد أن "${borrow.bookTitle}" أُعيد ككتاب تالف`,
             )
           : t(
               `Report “${borrow.bookTitle}” as lost?`,
-              `هل تريد الإبلاغ عن فقدان "${borrow.bookTitle}"؟`,
+              `هل تريد الإبلاغ عن فقدان "${borrow.bookTitle}"`,
             );
     confirm(
       {
@@ -7488,7 +7488,7 @@ function AnalyticsPage() {
         arabic="تحليلات المكتبة"
         description={t(
           "Reports, charts and insights for the entire library catalogue.",
-          "تقارير ورسو�� بيانية وتحليلات لجميع كتب المكتبة.",
+          "تقارير ورسوم بيانية وتحليلات لجميع كتب المكتبة.",
         )}
       />
       {booksQuery.isLoading || borrowsQuery.isLoading ? (
@@ -8547,7 +8547,7 @@ function SettingsPage() {
     const confirmed = window.confirm(
       t(
         "Warning: importing this backup will overwrite the current database data. Continue?",
-        "تحذير: استيراد هذه النسخة الاحتياطية سيؤدي إلى استبدال بيانات قاعدة البيانات الحالية. هل تريد المتابعة؟",
+        "تحذير: استيراد هذه النسخة الاحتياطية سيؤدي إلى استبدال بيانات قاعدة البيانات الحالية. هل تريد المتابعة",
       ),
     );
     if (!confirmed) return;
