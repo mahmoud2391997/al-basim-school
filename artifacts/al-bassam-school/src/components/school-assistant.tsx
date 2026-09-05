@@ -22,7 +22,10 @@ export function SchoolAssistant() {
     setInput("");
     setLoading(true);
     try {
-      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, history: messages.slice(-8) }) });
+      const configuredApiUrl = window.alBassamDesktop?.apiBaseUrl || import.meta.env.VITE_API_URL;
+      const apiBase = configuredApiUrl?.replace(/\/+$/, "");
+      const chatUrl = apiBase ? `${apiBase}/api/chat` : "/api/chat";
+      const response = await fetch(chatUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, history: messages.slice(-8) }) });
       const result = await response.json() as { answer?: string; error?: string };
       if (!response.ok) throw new Error(result.error || "The assistant is unavailable.");
       setMessages([...next, { role: "assistant", content: result.answer || "I could not find an answer." }]);
