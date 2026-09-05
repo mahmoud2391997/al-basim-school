@@ -9,7 +9,6 @@ import {
   Globe,
   Check,
   Shield,
-  User,
   Moon,
   Sun,
 } from "lucide-react";
@@ -176,10 +175,6 @@ export function UserNavDropdown({
 
         </>}
         {role === "student" && <>
-          <DropdownMenuItem onClick={() => onNavigate("/profile")} className="cursor-pointer gap-2.5 px-3 py-2 text-xs font-medium text-foreground hover:bg-muted" data-testid="menu-item-profile">
-            <User size={15} className="text-muted-foreground" />
-            <span>{t("My student profile", "ملفي كطالب")}</span>
-          </DropdownMenuItem>
           <DropdownMenuLabel className="px-3 py-2 text-xs font-normal text-muted-foreground">{t("Read-only access: Books and Index", "صلاحية قراءة فقط: الكتب والفهرس")}</DropdownMenuLabel>
         </>}
 
