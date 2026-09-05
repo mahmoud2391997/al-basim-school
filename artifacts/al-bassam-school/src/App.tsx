@@ -150,6 +150,7 @@ import { ImportDialog } from "@/components/import-dialog";
 import { ExportMenu } from "@/components/export-menu";
 import { NotificationsMenu } from "@/components/notifications-menu";
 import { GlobalSearchDialog } from "@/components/global-search-dialog";
+import { SchoolAssistant } from "@/components/school-assistant";
 import {
   getDefaultAcademicYear,
   getStoredAcademicYearId,
@@ -885,8 +886,9 @@ function Shell({ children }: { children: ReactNode }) {
           language={language}
           onNavigate={navigate}
         />}
-        <div className="px-5 py-7 sm:px-8 lg:px-10">{children}</div>
-      </main>
+  <div className="px-5 py-7 sm:px-8 lg:px-10">{children}</div>
+  <SchoolAssistant />
+</main>
     </div>
   );
 }
@@ -2751,7 +2753,7 @@ function StudentsPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3" data-testid="toolbar-student-bulk-actions">
           <span className="text-sm font-semibold text-foreground">{t(`${selectedIds.size} students selected`, `تم تحديد ${selectedIds.size} طالب`)}</span>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحديد")}</Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>{t("Clear selection", "إلغاء التحد��د")}</Button>
             <Button variant="destructive" size="sm" onClick={removeSelectedStudents} disabled={deletion.isPending}>
               <Trash2 data-icon="inline-start" /> {t("Delete selected", "حذف المحدد")}
             </Button>
@@ -3365,7 +3367,7 @@ function TeacherDialog({
               {pending
                 ? t("Saving…", "جارٍ الحفظ…")
                 : isEditing
-                  ? t("Save changes", "حفظ التغييرات")
+                  ? t("Save changes", "حفظ ��لتغييرات")
                   : t("Add teacher", "إضافة المعلم")}
             </Button>
           </DialogFooter>
@@ -4171,7 +4173,7 @@ function TeachersPage() {
     {
       key: "status",
       label: "Status",
-      arabic: "الحالة",
+      arabic: "ال��الة",
       options: ["active", "inactive"],
       accessor: (te) => te.status,
     },
