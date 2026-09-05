@@ -3923,7 +3923,7 @@ function EmployeesPage() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t(
               "Search by name or job title",
-              "ابحث بالاسم أو المسمى الوظيفي",
+              "ابحث بالاسم أو المسم�� الوظيفي",
             )}
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
             data-testid="input-search-employees"
@@ -7486,7 +7486,7 @@ function AnalyticsPage() {
         arabic="تحليلات المكتبة"
         description={t(
           "Reports, charts and insights for the entire library catalogue.",
-          "تقارير ورسوم بيانية وتحليلات لجميع كتب المكتبة.",
+          "تقارير ورسو�� بيانية وتحليلات لجميع كتب المكتبة.",
         )}
       />
       {booksQuery.isLoading || borrowsQuery.isLoading ? (
@@ -8202,22 +8202,6 @@ function CategoriesPage() {
 function IndexPage() {
   const { t } = useT();
   const [search, setSearch] = useState("");
-  const [scan, setScan] = useState("");
-  const [scanning, setScanning] = useState(false);
-  const handleScan = async (event: FormEvent) => {
-    event.preventDefault();
-    const code = scan.trim();
-    if (!code || scanning) return;
-    setScanning(true);
-    try {
-      const results = await getBooks({ search: code });
-      const match = results.find((book) => (book.isbn || "").trim() === code);
-      setSearch(match?.title ?? code);
-    } finally {
-      setScanning(false);
-      setScan("");
-    }
-  };
   const query = useGetBooks(
     { search: search || undefined },
     {
@@ -8277,14 +8261,6 @@ function IndexPage() {
           "\u0627\u0644\u0643\u0627\u062A\u0627\u0644\u0648\u062C\u0020\u0627\u0644\u0643\u0627\u0645\u0644\u0020\u0641\u064A\u0020\u0642\u0627\u0626\u0645\u0629\u0020\u0623\u0628\u062C\u062F\u064A\u0629\u0020\u0648\u0627\u062D\u062F\u0629\u060C\u0020\u062C\u0627\u0647\u0632\u0020\u0644\u0644\u0628\u062D\u062B\u0020\u0627\u0644\u0633\u0631\u064A\u0639\u002E",
         )}
       />
-      <form onSubmit={handleScan} className="mb-5 flex flex-col gap-2 rounded-xl border border-[#DBB46C]/50 bg-gradient-to-l from-[#FCFBF0] to-[#DBB46C]/15 p-4 sm:flex-row sm:items-center" data-testid="form-student-scan-barcode">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-[#DBB46C]"><Barcode size={22} /></div>
-        <div className="min-w-0 flex-1">
-          <span className="text-xs font-bold uppercase tracking-[.14em] text-[#EC9F42]">{t("Scan a book", "مسح كتاب")}</span>
-          <input value={scan} onChange={(event) => setScan(event.target.value)} placeholder={t("Scan a book barcode, then press Enter…", "امسح باركود الكتاب ثم اضغط Enter…")} className="mt-1 h-10 w-full rounded-lg border border-input bg-card px-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" data-testid="input-student-scan-barcode" />
-        </div>
-        {scanning && <span className="text-xs text-muted-foreground">{t("Looking up…", "جارٍ البحث…")}</span>}
-      </form>
       <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row">
         <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 sm:max-w-md">
           <Search size={16} className="text-muted-foreground" />
